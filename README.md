@@ -23,3 +23,12 @@ karma.run comes with batteries included and features such as:
 There are many features and tasks yet to be implemented. Some of them are:
  * Releasing a karma.run-compatible web-based GUI ("the web editor") as FOSS.
  * Writing and releasing official client libraries for different programming languages.
+
+## Dependencies & Licenses
+
+karma.run depends on three external software packages:
+ * [github.com/boltdb/bolt](https://github.com/boltdb/bolt) (MIT licensed)
+ * [github.com/kr/pretty](https://github.com/kr/pretty) (MIT licensed)
+ * [golang.org/x/crypto/bcrypt](https://github.com/golang/crypto) (BSD licensed)
+ 
+ Please see their respective LICENSE files for legal information.
