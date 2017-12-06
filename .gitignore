@@ -7,5 +7,4 @@ gin-bin
 pkg/
 bin/
 app/
-src/github.com/
-src/golang.org/
+src/
