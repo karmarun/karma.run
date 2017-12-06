@@ -21,6 +21,7 @@ karma.run comes with batteries included and features such as:
 ## Roadmap
 
 There are many features and tasks yet to be implemented. Some of them are:
+ * Write lots of unit tests and measure code coverage.
  * Releasing a karma.run-compatible web-based GUI ("the web editor") as FOSS.
  * Writing and releasing official client libraries for different programming languages.
 
