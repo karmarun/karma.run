@@ -1,3 +1,8 @@
+// Copyright 2017 karma.run AG. All rights reserved.
+// Use of this source code is governed by an AGPL license that can be found in the LICENSE file.
+//
+// Package codec/karma is DEPRECATED and should not be used. It exists for historic reasons and will
+// be removed in the near future.
 package karma
 
 import (
