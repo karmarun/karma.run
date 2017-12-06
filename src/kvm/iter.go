@@ -10,12 +10,14 @@ import (
 )
 
 type Iterator interface {
-	Init() err.Error
+	Reset() err.Error
 	Next() (val.Value, err.Error) // (nil, nil) == exhausted
-	Close()
 }
 
 func IterForEach(i Iterator, f func(val.Value) (bool, err.Error)) err.Error {
+	if e := i.Reset(); e != nil {
+		return e
+	}
 	for v, e := i.Next(); ; v, e = i.Next() {
 		if e != nil {
 			return e
@@ -39,7 +41,8 @@ func newListIterator(l val.List) *listIterator {
 	return &listIterator{l, 0}
 }
 
-func (i listIterator) Init() err.Error {
+func (i *listIterator) Reset() err.Error {
+	i.cursor = 0
 	return nil
 }
 
@@ -52,15 +55,12 @@ func (i *listIterator) Next() (val.Value, err.Error) {
 	return v, nil
 }
 
-func (i listIterator) Close() {
-}
-
 type concatIterator struct {
 	l, r Iterator
 }
 
-func (i concatIterator) Init() err.Error {
-	le, re := i.r.Init(), i.r.Init()
+func (i concatIterator) Reset() err.Error {
+	le, re := i.r.Reset(), i.r.Reset()
 	if le == nil {
 		return re
 	}
@@ -83,12 +83,8 @@ func (i concatIterator) Next() (val.Value, err.Error) {
 	}
 	return rv, nil
 }
-func (i concatIterator) Close() {
-	i.l.Close()
-	i.r.Close()
-}
 
-// convenience adapter for Iterators that implements val.Value
+// adapter for Iterators that implements val.Value
 type IteratorVal struct {
 	Iterator Iterator
 }
@@ -123,24 +119,31 @@ func (IteratorVal) Primitive() bool {
 type limitIterator struct {
 	SubIterator Iterator
 	Skip, Pass  int
+	skip, pass  int
 }
 
-func (*limitIterator) Init() err.Error { return nil }
+func newLimitIterator(sub Iterator, skip, pass int) *limitIterator {
+	return &limitIterator{sub, skip, pass, skip, pass}
+}
+
+func (i *limitIterator) Reset() err.Error {
+	if e := i.SubIterator.Reset(); e != nil {
+		return e
+	}
+	i.skip, i.pass = i.Skip, i.Pass
+	return nil
+}
 
 func (i *limitIterator) Next() (val.Value, err.Error) {
-	for i.Skip > 0 {
+	for i.skip > 0 {
 		i.SubIterator.Next()
-		i.Skip--
+		i.skip--
 	}
-	if i.Pass == 0 {
+	if i.pass == 0 {
 		return nil, nil
 	}
-	i.Pass--
+	i.pass--
 	return i.SubIterator.Next()
-}
-
-func (i limitIterator) Close() {
-	i.SubIterator.Close()
 }
 
 type mapListIterator struct {
@@ -148,7 +151,9 @@ type mapListIterator struct {
 	MapFunc     func(val.Value) (val.Value, err.Error)
 }
 
-func (mapListIterator) Init() err.Error { return nil }
+func (i mapListIterator) Reset() err.Error {
+	return i.SubIterator.Reset()
+}
 
 func (i mapListIterator) Next() (val.Value, err.Error) {
 
@@ -166,16 +171,14 @@ func (i mapListIterator) Next() (val.Value, err.Error) {
 
 }
 
-func (i mapListIterator) Close() {
-	i.SubIterator.Close()
-}
-
 type filterIterator struct {
 	SubIterator Iterator
 	FilterFunc  func(val.Value) (bool, err.Error)
 }
 
-func (filterIterator) Init() err.Error { return nil }
+func (i filterIterator) Reset() err.Error {
+	return i.SubIterator.Reset()
+}
 
 func (i filterIterator) Next() (val.Value, err.Error) {
 
@@ -204,22 +207,15 @@ func (i filterIterator) Next() (val.Value, err.Error) {
 
 }
 
-func (i filterIterator) Close() {
-	i.SubIterator.Close()
-}
-
 type bucketIterator struct {
 	VM     VirtualMachine
 	Mid    string
 	Model  BucketModel
 	Cursor *bolt.Cursor // initialized in Init
+	first  bool
 }
 
-func (i *bucketIterator) Init() err.Error {
-
-	if i.Cursor != nil {
-		return nil // already initialized
-	}
+func (i *bucketIterator) Reset() err.Error {
 
 	bk := i.VM.RootBucket.Bucket([]byte(i.Mid))
 	if bk == nil {
@@ -231,7 +227,7 @@ func (i *bucketIterator) Init() err.Error {
 	}
 
 	i.Cursor = bk.Cursor()
-
+	i.first = true
 	return nil
 }
 
@@ -239,11 +235,9 @@ func (i *bucketIterator) Next() (val.Value, err.Error) {
 
 	kb, vb := ([]byte)(nil), ([]byte)(nil)
 
-	if i.Cursor == nil {
-		if e := i.Init(); e != nil {
-			return nil, e
-		}
+	if i.first {
 		kb, vb = i.Cursor.First() // must be invoked at beginning
+		i.first = false
 	} else {
 		kb, vb = i.Cursor.Next()
 	}
@@ -257,20 +251,13 @@ func (i *bucketIterator) Next() (val.Value, err.Error) {
 	return DematerializeMeta(v.(val.Struct)), nil
 }
 
-func (i *bucketIterator) Close() {
-	if i.Cursor == nil {
-		return
-	}
-	i.Cursor = nil
-}
-
 type permissionIterator struct {
 	VM          VirtualMachine
 	SubIterator Iterator
 }
 
-func (permissionIterator) Init() err.Error {
-	return nil
+func (i permissionIterator) Reset() err.Error {
+	return i.SubIterator.Reset()
 }
 
 func (i permissionIterator) Next() (val.Value, err.Error) {
@@ -298,8 +285,4 @@ _continue: // recursion could easily overflow stack
 
 	return v, nil
 
-}
-
-func (i permissionIterator) Close() {
-	i.SubIterator.Close()
 }

@@ -599,13 +599,12 @@ func slurpIterators(v val.Value) (val.Value, err.Error) {
 }
 
 func iteratorToList(i Iterator) (val.List, err.Error) {
-	ir := &limitIterator{SubIterator: i, Skip: 0, Pass: MaxListOutput}
+	ir := newLimitIterator(i, 0, MaxListOutput)
 	ls := make(val.List, 0, 1024)
 	e := IterForEach(ir, func(v val.Value) (bool, err.Error) {
 		ls = append(ls, v)
 		return true, nil
 	})
-	ir.Close()
 	if e != nil {
 		return nil, e
 	}

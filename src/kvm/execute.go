@@ -275,10 +275,7 @@ func (vm VirtualMachine) Execute(it inst.Instruction, input val.Value) (val.Valu
 			input = stack.Pop()
 
 		case inst.Pop:
-			v := stack.Pop()
-			if it, ok := v.(IteratorVal); ok {
-				it.Iterator.Close()
-			}
+			stack.Pop()
 
 		case inst.CreateMultiple:
 
@@ -755,8 +752,10 @@ func (vm VirtualMachine) Execute(it inst.Instruction, input val.Value) (val.Valu
 				stack.Push(ls[0])
 
 			case IteratorVal:
+				if e := ls.Iterator.Reset(); e != nil {
+					return nil, e
+				}
 				v, e := ls.Iterator.Next()
-				ls.Iterator.Close()
 				if e != nil {
 					return nil, e
 				}
@@ -795,7 +794,6 @@ func (vm VirtualMachine) Execute(it inst.Instruction, input val.Value) (val.Valu
 					}
 					return true, nil // continue
 				})
-				ls.Iterator.Close()
 				if e != nil {
 					return nil, e
 				}
@@ -830,7 +828,6 @@ func (vm VirtualMachine) Execute(it inst.Instruction, input val.Value) (val.Valu
 					}
 					return true, nil // continue
 				})
-				ls.Iterator.Close()
 				if e != nil {
 					return nil, e
 				}
@@ -874,11 +871,7 @@ func (vm VirtualMachine) Execute(it inst.Instruction, input val.Value) (val.Valu
 				stack.Push(value)
 
 			case IteratorVal:
-				value.Iterator = &limitIterator{
-					Skip:        offset,
-					Pass:        length,
-					SubIterator: value.Iterator,
-				}
+				value.Iterator = newLimitIterator(value.Iterator, offset, length)
 				stack.Push(value)
 			}
 
@@ -1201,27 +1194,15 @@ func (vm VirtualMachine) Execute(it inst.Instruction, input val.Value) (val.Valu
 				stack.Push(val.Int64(len(ls)))
 
 			case IteratorVal:
-
-				switch ir := ls.Iterator.(type) {
-				case *bucketIterator:
-					// manually initialize
-					if e := ir.Init(); e != nil {
-						return nil, e
-					}
-					stack.Push(val.Int64(ir.Cursor.Bucket().Stats().KeyN))
-
-				default:
-					count := 0
-					e := IterForEach(ir, func(val.Value) (bool, err.Error) {
-						count++
-						return true, nil // continue
-					})
-					if e != nil {
-						return nil, e
-					}
-					stack.Push(val.Int64(count))
+				count := 0
+				e := IterForEach(ls.Iterator, func(val.Value) (bool, err.Error) {
+					count++
+					return true, nil // continue
+				})
+				if e != nil {
+					return nil, e
 				}
-				ls.Iterator.Close()
+				stack.Push(val.Int64(count))
 
 			default:
 				log.Panicf("Execute: Length: unexpected type on stack: %T.", ls)
