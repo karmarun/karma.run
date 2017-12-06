@@ -25,6 +25,22 @@ There are many features and tasks yet to be implemented. Some of them are:
  * Releasing a karma.run-compatible web-based GUI ("the web editor") as FOSS.
  * Writing and releasing official client libraries for different programming languages.
 
+## Status
+
+The project is currently in alpha stage. Concretely, any and all APIs are subject to change.
+In regards to documentation, there is some but it's mostly old and unusable, we are working
+on an updated and accurate version.
+Tests have been conducted by building real-life applications on top of karma.run but not
+formalized as unit-tests and no coverage numbers are available yet.
+
+## Installation
+
+To install karma.run you need the [Go toolchain](https://golang.org):
+
+    $ go get github.com/karmarun/karma.run
+    
+Stable tags will have binary releases.
+
 ## Dependencies & Licenses
 
 karma.run depends on three external software packages:
