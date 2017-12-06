@@ -1693,8 +1693,8 @@ func (vm VirtualMachine) TypeExpression(node xpr.Expression, argument, expected 
 		}
 		node[1] = rhs
 		// TODO: constant optimization
-		elems := mdl.Either(lhs.Actual.Unwrap(), rhs.Actual.Unwrap(), nil)
-		retNode = xpr.TypedExpression{node, expected, mdl.List{elems}}
+		model := mdl.Either(lhs.Actual.Unwrap(), rhs.Actual.Unwrap(), nil)
+		retNode = xpr.TypedExpression{node, expected, model}
 
 	case xpr.After:
 		lhs, e := vm.TypeExpression(node[0], argument, DateTimeModel)
