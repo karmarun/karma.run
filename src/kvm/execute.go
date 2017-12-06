@@ -1213,26 +1213,25 @@ func (vm VirtualMachine) Execute(it inst.Instruction, input val.Value) (val.Valu
 			rhs := unMeta(stack.Pop()) // order matters
 			lhs := unMeta(stack.Pop()) // order matters
 
-			ll, lok := lhs.(val.List)
-			rl, rok := rhs.(val.List)
+			var e err.Error
 
-			switch {
-			case lok && rok:
-				for _, e := range rl {
-					ll = append(ll, e)
+			ll, ok := lhs.(val.List)
+			if !ok {
+				if ll, e = iteratorToList(lhs.(IteratorVal).Iterator); e != nil {
+					return nil, e
 				}
-				stack.Push(ll)
-
-			case !lok && rok:
-				stack.Push(IteratorVal{concatIterator{lhs.(IteratorVal).Iterator, newListIterator(rl)}})
-
-			case lok && !rok:
-				stack.Push(IteratorVal{concatIterator{newListIterator(ll), rhs.(IteratorVal).Iterator}})
-
-			case !lok && !rok:
-				stack.Push(IteratorVal{concatIterator{lhs.(IteratorVal).Iterator, rhs.(IteratorVal).Iterator}})
-
 			}
+			rl, ok := rhs.(val.List)
+			if !ok {
+				if rl, e = iteratorToList(rhs.(IteratorVal).Iterator); e != nil {
+					return nil, e
+				}
+			}
+
+			for _, e := range rl {
+				ll = append(ll, e)
+			}
+			stack.Push(ll)
 
 		case inst.After:
 			rhs := unMeta(stack.Pop()).(val.DateTime) // order matters

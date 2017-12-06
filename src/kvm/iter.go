@@ -211,7 +211,7 @@ type bucketIterator struct {
 	VM     VirtualMachine
 	Mid    string
 	Model  BucketModel
-	Cursor *bolt.Cursor // initialized in Init
+	cursor *bolt.Cursor // initialized in Reset
 	first  bool
 }
 
@@ -226,7 +226,7 @@ func (i *bucketIterator) Reset() err.Error {
 		}
 	}
 
-	i.Cursor = bk.Cursor()
+	i.cursor = bk.Cursor()
 	i.first = true
 	return nil
 }
@@ -235,17 +235,17 @@ func (i *bucketIterator) Next() (val.Value, err.Error) {
 
 	kb, vb := ([]byte)(nil), ([]byte)(nil)
 
-	if i.Cursor == nil {
+	if i.cursor == nil {
 		if e := i.Reset(); e != nil {
 			return nil, e
 		}
 	}
 
 	if i.first {
-		kb, vb = i.Cursor.First() // must be invoked at beginning
+		kb, vb = i.cursor.First() // must be invoked at beginning
 		i.first = false
 	} else {
-		kb, vb = i.Cursor.Next()
+		kb, vb = i.cursor.Next()
 	}
 
 	if kb == nil {
