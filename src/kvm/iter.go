@@ -235,6 +235,12 @@ func (i *bucketIterator) Next() (val.Value, err.Error) {
 
 	kb, vb := ([]byte)(nil), ([]byte)(nil)
 
+	if i.Cursor == nil {
+		if e := i.Reset(); e != nil {
+			return nil, e
+		}
+	}
+
 	if i.first {
 		kb, vb = i.Cursor.First() // must be invoked at beginning
 		i.first = false
