@@ -1,0 +1,11 @@
+log/*
+*.sqlite
+.idea
+*.DS_Store
+*.dump
+gin-bin
+pkg/
+bin/
+app/
+src/github.com/
+src/golang.org/
