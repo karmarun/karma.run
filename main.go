@@ -3,16 +3,16 @@
 package main
 
 import (
-	"api"
-	_ "codec/binary"
-	_ "codec/json"
 	"crypto/tls"
-	"db"
 	"encoding/base64"
 	"flag"
 	"github.com/boltdb/bolt"
+	"github.com/karmarun/karma.run/api"
+	_ "github.com/karmarun/karma.run/codec/binary"
+	_ "github.com/karmarun/karma.run/codec/json"
+	"github.com/karmarun/karma.run/db"
+	"github.com/karmarun/karma.run/kvm"
 	"golang.org/x/crypto/acme/autocert"
-	"kvm"
 	"log"
 	"net/http"
 	"os"
