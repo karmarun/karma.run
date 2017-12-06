@@ -4,7 +4,7 @@ package xpr
 
 import (
 	"fmt"
-	"kvm/val"
+	"github.com/karmarun/karma.run/kvm/val"
 )
 
 type Expression interface {

@@ -3,7 +3,7 @@
 package xpr
 
 import (
-	"kvm/val"
+	"github.com/karmarun/karma.run/kvm/val"
 )
 
 type Argument struct{}

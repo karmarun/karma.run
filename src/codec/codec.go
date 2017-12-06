@@ -3,9 +3,9 @@
 package codec
 
 import (
-	"kvm/err"
-	"kvm/mdl"
-	"kvm/val"
+	"github.com/karmarun/karma.run/kvm/err"
+	"github.com/karmarun/karma.run/kvm/mdl"
+	"github.com/karmarun/karma.run/kvm/val"
 	"log"
 )
 

@@ -4,8 +4,8 @@ package mdl
 
 import (
 	"fmt"
-	"kvm/err"
-	"kvm/val"
+	"github.com/karmarun/karma.run/kvm/err"
+	"github.com/karmarun/karma.run/kvm/val"
 	"time"
 )
 

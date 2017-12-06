@@ -3,7 +3,7 @@
 package mdl
 
 import (
-	"kvm/val"
+	"github.com/karmarun/karma.run/kvm/val"
 )
 
 func (m *Recursion) ValueType() val.Type {

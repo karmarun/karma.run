@@ -3,7 +3,7 @@
 package kvm
 
 import (
-	"kvm/mdl"
+	"github.com/karmarun/karma.run/kvm/mdl"
 	"testing"
 )
 

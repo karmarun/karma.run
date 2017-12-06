@@ -3,11 +3,11 @@
 package karma
 
 import (
-	"codec/karma"
 	"encoding/binary"
 	"fmt"
-	"kvm/mdl"
-	"kvm/val"
+	"github.com/karmarun/karma.run/codec/karma"
+	"github.com/karmarun/karma.run/kvm/mdl"
+	"github.com/karmarun/karma.run/kvm/val"
 	"math"
 	"sort"
 	"time"

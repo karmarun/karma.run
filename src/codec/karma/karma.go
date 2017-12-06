@@ -8,7 +8,7 @@ package karma
 import (
 	"encoding/binary"
 	"fmt"
-	"kvm/val"
+	"github.com/karmarun/karma.run/kvm/val"
 	"math"
 	"time"
 	"unsafe"

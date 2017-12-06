@@ -3,7 +3,7 @@
 package xpr
 
 import (
-	"kvm/mdl"
+	"github.com/karmarun/karma.run/kvm/mdl"
 )
 
 type TypedExpression struct {

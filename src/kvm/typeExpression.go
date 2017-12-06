@@ -3,12 +3,12 @@
 package kvm
 
 import (
-	"definitions"
 	"fmt"
-	"kvm/err"
-	"kvm/mdl"
-	"kvm/val"
-	"kvm/xpr"
+	"github.com/karmarun/karma.run/definitions"
+	"github.com/karmarun/karma.run/kvm/err"
+	"github.com/karmarun/karma.run/kvm/mdl"
+	"github.com/karmarun/karma.run/kvm/val"
+	"github.com/karmarun/karma.run/kvm/xpr"
 	"regexp"
 )
 

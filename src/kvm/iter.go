@@ -3,10 +3,10 @@
 package kvm
 
 import (
-	"codec/karma.v2"
 	"github.com/boltdb/bolt"
-	"kvm/err"
-	"kvm/val"
+	"github.com/karmarun/karma.run/codec/karma.v2"
+	"github.com/karmarun/karma.run/kvm/err"
+	"github.com/karmarun/karma.run/kvm/val"
 )
 
 type Iterator interface {

@@ -3,14 +3,14 @@
 package kvm
 
 import (
-	"common"
-	"definitions"
 	"fmt"
+	"github.com/karmarun/karma.run/common"
+	"github.com/karmarun/karma.run/definitions"
+	"github.com/karmarun/karma.run/kvm/err"
+	"github.com/karmarun/karma.run/kvm/inst"
+	"github.com/karmarun/karma.run/kvm/mdl"
+	"github.com/karmarun/karma.run/kvm/val"
 	"github.com/kr/pretty"
-	"kvm/err"
-	"kvm/inst"
-	"kvm/mdl"
-	"kvm/val"
 	"log"
 	"math/rand"
 	"sort"

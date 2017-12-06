@@ -6,12 +6,12 @@
 package json
 
 import (
-	"codec"
 	"encoding/json"
 	"fmt"
-	"kvm/err"
-	"kvm/mdl"
-	"kvm/val"
+	"github.com/karmarun/karma.run/codec"
+	"github.com/karmarun/karma.run/kvm/err"
+	"github.com/karmarun/karma.run/kvm/mdl"
+	"github.com/karmarun/karma.run/kvm/val"
 	"log"
 	"reflect"
 	"sort"

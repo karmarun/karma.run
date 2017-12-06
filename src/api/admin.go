@@ -3,15 +3,15 @@
 package api
 
 import (
-	"codec"
 	"compress/gzip"
-	"db"
 	"encoding/base64"
 	"github.com/boltdb/bolt"
+	"github.com/karmarun/karma.run/codec"
+	"github.com/karmarun/karma.run/db"
+	"github.com/karmarun/karma.run/kvm"
+	"github.com/karmarun/karma.run/kvm/err"
+	"github.com/karmarun/karma.run/kvm/val"
 	"io"
-	"kvm"
-	"kvm/err"
-	"kvm/val"
 	"log"
 	"net/http"
 	"os"

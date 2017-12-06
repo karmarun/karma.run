@@ -4,10 +4,10 @@ package kvm
 
 import (
 	"fmt"
-	"kvm/err"
-	"kvm/mdl"
-	"kvm/val"
-	"kvm/xpr"
+	"github.com/karmarun/karma.run/kvm/err"
+	"github.com/karmarun/karma.run/kvm/mdl"
+	"github.com/karmarun/karma.run/kvm/val"
+	"github.com/karmarun/karma.run/kvm/xpr"
 )
 
 // findAutoTransformation tries to infer a transformation function from the source model to the target model.
