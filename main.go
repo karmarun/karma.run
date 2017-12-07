@@ -81,6 +81,9 @@ func main() {
 	}
 
 	{
+		if len(instanceSecret) == 0 {
+			log.Fatalln("please specify a base64-encoded instance secret (see --help)")
+		}
 		secret, e := base64.StdEncoding.DecodeString(instanceSecret)
 		if e != nil {
 			log.Fatalln("instance secret must be base64-encoded (see --help)")

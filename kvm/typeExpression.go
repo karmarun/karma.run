@@ -664,10 +664,7 @@ func (vm VirtualMachine) TypeExpression(node xpr.Expression, argument, expected 
 			return arg, e
 		}
 		node.Argument = arg
-		if ca, ok := arg.Actual.(ConstantModel); ok {
-			_ = ca // TODO: constant optimization
-		}
-		retNode = xpr.TypedExpression{node, expected, mdl.List{arg.Actual}}
+		retNode = xpr.TypedExpression{node, expected, arg.Actual}
 
 	case xpr.ExtractStrings:
 		arg, e := vm.TypeExpression(node.Argument, argument, AnyModel)
@@ -2311,7 +2308,7 @@ func (vm VirtualMachine) TypeExpression(node xpr.Expression, argument, expected 
 			}
 		}
 
-		retNode = xpr.TypedExpression{node, expected, mdl.List{expression.Actual}}
+		retNode = xpr.TypedExpression{node, expected, value.Actual.Unwrap()}
 
 	case xpr.MapSet:
 
