@@ -275,9 +275,6 @@ func (vm VirtualMachine) Execute(it inst.Instruction, input val.Value) (val.Valu
 		case inst.PopToInput:
 			input = stack.Pop()
 
-		case inst.Pop:
-			stack.Pop()
-
 		case inst.CreateMultiple:
 
 			mm, e := vm.Model(it.Model)

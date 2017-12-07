@@ -84,7 +84,11 @@ func (i concatIterator) forEach(f func(val.Value) err.Error) err.Error {
 }
 
 func (i concatIterator) length() int {
-	return i.left.length() + i.right.length()
+	l, r := i.left.length(), i.right.length()
+	if l == -1 || r == -1 {
+		return -1
+	}
+	return l + r
 }
 
 type limitIterator struct {
