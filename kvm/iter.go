@@ -65,23 +65,23 @@ func (i listIterator) length() int {
 }
 
 type concatIterator struct {
-	l, r iterator
+	left, right iterator
 }
 
-func newConcatIterator(l, r iterator) concatIterator {
-	return concatIterator{l, r}
+func newConcatIterator(left, right iterator) concatIterator {
+	return concatIterator{left, right}
 }
 
 func (i concatIterator) forEach(f func(val.Value) err.Error) err.Error {
-	e := i.l.forEach(f)
+	e := i.left.forEach(f)
 	if e != nil {
 		return e
 	}
-	return i.r.forEach(f)
+	return i.right.forEach(f)
 }
 
 func (i concatIterator) length() int {
-	return i.l.length() + i.r.length()
+	return i.left.length() + i.right.length()
 }
 
 type limitIterator struct {

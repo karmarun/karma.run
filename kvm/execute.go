@@ -1226,9 +1226,9 @@ func (vm VirtualMachine) Execute(it inst.Instruction, input val.Value) (val.Valu
 
 			switch rhs := rhs.(type) {
 			case val.List:
-				li = newListIterator(rhs)
+				ri = newListIterator(rhs)
 			case iteratorValue:
-				li = rhs.iterator
+				ri = rhs.iterator
 			default:
 				log.Panicf("unexpected type on stack: %T", rhs)
 			}
