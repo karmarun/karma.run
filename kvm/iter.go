@@ -107,6 +107,7 @@ func (i limitIterator) forEach(f func(val.Value) err.Error) err.Error {
 			if e := f(v); e != nil {
 				return e
 			}
+			passed++
 			return nil // continue
 		}
 		return limitReachedError
