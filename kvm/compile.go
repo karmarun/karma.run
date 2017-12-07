@@ -11,7 +11,7 @@ import (
 	"regexp"
 )
 
-// PRECONDITION: $typed obtained from error-less vm.TypeAST call
+// PRECONDITION: $typed obtained from error-less vm.TypeExpression
 func (vm VirtualMachine) Compile(typed xpr.TypedExpression) inst.Instruction {
 
 	if ca, ok := typed.Actual.(ConstantModel); ok {
@@ -151,7 +151,7 @@ func (vm VirtualMachine) Compile(typed xpr.TypedExpression) inst.Instruction {
 		condition := vm.Compile(node.Condition.(xpr.TypedExpression))
 		then := vm.Compile(node.Then.(xpr.TypedExpression))
 		elze := vm.Compile(node.Else.(xpr.TypedExpression))
-		return inst.Sequence{condition, inst.If{Then: then, Else: elze}}
+		return inst.Sequence{condition, inst.If{Then: flattenSequences(then, nil), Else: flattenSequences(elze, nil)}}
 
 	case xpr.With:
 		value := vm.Compile(node.Value.(xpr.TypedExpression))
@@ -182,7 +182,7 @@ func (vm VirtualMachine) Compile(typed xpr.TypedExpression) inst.Instruction {
 	case xpr.Filter:
 		value := vm.Compile(node.Value.(xpr.TypedExpression))
 		expression := vm.Compile(node.Expression.(xpr.TypedExpression))
-		return inst.Sequence{value, inst.Filter{expression}}
+		return inst.Sequence{value, inst.Filter{flattenSequences(expression, nil)}}
 
 	case xpr.AssertCase:
 		caze := node.Case.(xpr.TypedExpression).Actual.(ConstantModel).Value.(val.String)
@@ -197,17 +197,17 @@ func (vm VirtualMachine) Compile(typed xpr.TypedExpression) inst.Instruction {
 	case xpr.MapMap:
 		value := vm.Compile(node.Value.(xpr.TypedExpression))
 		expression := vm.Compile(node.Expression.(xpr.TypedExpression))
-		return inst.Sequence{value, inst.MapMap{expression}}
+		return inst.Sequence{value, inst.MapMap{flattenSequences(expression, nil)}}
 
 	case xpr.MapList:
 		value := vm.Compile(node.Value.(xpr.TypedExpression))
 		expression := vm.Compile(node.Expression.(xpr.TypedExpression))
-		return inst.Sequence{value, inst.MapList{expression}}
+		return inst.Sequence{value, inst.MapList{flattenSequences(expression, nil)}}
 
 	case xpr.ReduceList:
 		value := vm.Compile(node.Value.(xpr.TypedExpression))
 		expression := vm.Compile(node.Expression.(xpr.TypedExpression))
-		return inst.Sequence{value, inst.ReduceList{expression}}
+		return inst.Sequence{value, inst.ReduceList{flattenSequences(expression, nil)}}
 
 	case xpr.ResolveRefs:
 		value := vm.Compile(node.Value.(xpr.TypedExpression))
@@ -529,14 +529,15 @@ func (vm VirtualMachine) Compile(typed xpr.TypedExpression) inst.Instruction {
 		return inst.Sequence{value, inst.AssertModelRef{mref[1]}}
 
 	case xpr.SwitchModelRef:
-		cases := make(map[string]inst.Instruction, len(node.Cases))
+		cases := make(map[string]inst.Sequence, len(node.Cases))
 		for _, sub := range node.Cases {
 			mref := sub.Match.(xpr.TypedExpression).Actual.(ConstantModel).Value.(val.Ref)
-			cases[mref[1]] = vm.Compile(sub.Return.(xpr.TypedExpression))
+			it := vm.Compile(sub.Return.(xpr.TypedExpression))
+			cases[mref[1]] = flattenSequences(it, nil)
 		}
 		value := vm.Compile(node.Value.(xpr.TypedExpression))
 		deflt := vm.Compile(node.Default.(xpr.TypedExpression))
-		return inst.Sequence{value, inst.SwitchModelRef{Cases: cases, Default: deflt}}
+		return inst.Sequence{value, inst.SwitchModelRef{Cases: cases, Default: flattenSequences(deflt, nil)}}
 
 	case xpr.GraphFlow:
 		flow := make(map[string]inst.GraphFlowParam, len(node.Flow))
@@ -578,27 +579,31 @@ func (vm VirtualMachine) Compile(typed xpr.TypedExpression) inst.Instruction {
 	case xpr.SwitchType:
 		instruction := make(inst.SwitchType, len(node.Cases))
 		for k, v := range node.Cases {
-			instruction[k] = vm.Compile(v.(xpr.TypedExpression))
+			instruction[k] = flattenSequences(vm.Compile(v.(xpr.TypedExpression)), nil)
 		}
 		return inst.Sequence{vm.Compile(node.Value.(xpr.TypedExpression)), instruction}
 
 	case xpr.SwitchCase:
 		instruction := make(inst.SwitchCase, len(node.Cases))
 		for k, v := range node.Cases {
-			instruction[k] = vm.Compile(v.(xpr.TypedExpression))
+			instruction[k] = flattenSequences(vm.Compile(v.(xpr.TypedExpression)), nil)
 		}
 		return inst.Sequence{vm.Compile(node.Value.(xpr.TypedExpression)), instruction}
 
 	case xpr.MemSort:
 		return inst.Sequence{
 			vm.Compile(node.Value.(xpr.TypedExpression)),
-			inst.MemSort{vm.Compile(node.Expression.(xpr.TypedExpression))},
+			inst.MemSort{
+				flattenSequences(vm.Compile(node.Expression.(xpr.TypedExpression)), nil),
+			},
 		}
 
 	case xpr.MapSet:
 		return inst.Sequence{
 			vm.Compile(node.Value.(xpr.TypedExpression)),
-			inst.MapSet{vm.Compile(node.Expression.(xpr.TypedExpression))},
+			inst.MapSet{
+				flattenSequences(vm.Compile(node.Expression.(xpr.TypedExpression)), nil),
+			},
 		}
 
 	}

@@ -88,7 +88,7 @@ type MatchRegex struct {
 }
 
 type If struct {
-	Then, Else Instruction
+	Then, Else Sequence
 }
 
 type AssertCase struct {
@@ -192,27 +192,27 @@ type Sequence []Instruction
 type TraverseGraph struct {
 	Direction  string
 	StartModel string
-	EdgeFilter Instruction
+	EdgeFilter Sequence
 }
 
 type ReduceList struct {
-	Expression Instruction
+	Expression Sequence
 }
 
 type MapList struct {
-	Expression Instruction
+	Expression Sequence
 }
 
 type MapMap struct {
-	Expression Instruction
+	Expression Sequence
 }
 
 type MapStruct struct {
-	Expression Instruction
+	Expression Sequence
 }
 
 type Filter struct {
-	Expression Instruction
+	Expression Sequence
 }
 
 type GraphFlowParam struct {
@@ -232,8 +232,8 @@ type RelocateRef struct {
 }
 
 type SwitchModelRef struct {
-	Cases   map[string]Instruction
-	Default Instruction
+	Cases   map[string]Sequence
+	Default Sequence
 }
 
 type DebugPrintStack struct{}
@@ -318,14 +318,14 @@ type DivideUint16 struct{}
 type DivideUint32 struct{}
 type DivideUint64 struct{}
 
-type SwitchType map[string]Instruction
-type SwitchCase map[string]Instruction
+type SwitchType map[string]Sequence
+type SwitchCase map[string]Sequence
 type MapSet struct {
-	Expression Instruction
+	Expression Sequence
 }
 
 type MemSort struct {
-	Expression Instruction
+	Expression Sequence
 }
 
 func (Identity) _inst()          {}

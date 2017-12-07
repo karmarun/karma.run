@@ -34,16 +34,20 @@ var StackPool = &sync.Pool{
 	},
 }
 
-func (vm VirtualMachine) Execute(it inst.Instruction, input val.Value) (val.Value, err.Error) {
+func (vm VirtualMachine) Execute(program inst.Sequence, input val.Value) (val.Value, err.Error) {
 
-	if e := vm.lazyLoadPermissions(); e != nil {
-		return nil, e
+	if len(program) == 0 {
+		panic("empty program")
 	}
 
 	db := vm.RootBucket
 
-	if ct, ok := it.(inst.Constant); ok {
+	if ct, ok := program[0].(inst.Constant); ok && len(program) == 1 {
 		return ct.Value, nil
+	}
+
+	if e := vm.lazyLoadPermissions(); e != nil {
+		return nil, e
 	}
 
 	stack := StackPool.Get().(*Stack)
@@ -56,8 +60,6 @@ func (vm VirtualMachine) Execute(it inst.Instruction, input val.Value) (val.Valu
 		s = s[:0]
 		StackPool.Put(&s)
 	}()
-
-	program := flattenSequences(it, nil)
 
 	// pretty.Println(input)
 	// printDebugProgram(stack, program)
@@ -89,7 +91,7 @@ func (vm VirtualMachine) Execute(it inst.Instruction, input val.Value) (val.Valu
 			stack.Push(it.Value)
 
 		case inst.If:
-			cont := inst.Instruction(nil)
+			cont := inst.Sequence(nil)
 			if stack.Pop().(val.Bool) {
 				cont = it.Then
 			} else {
@@ -1795,7 +1797,7 @@ func printDebugProgram(stack *Stack, program []inst.Instruction) {
 
 func flattenSequences(it inst.Instruction, bf []inst.Instruction) inst.Sequence {
 	if bf == nil {
-		bf = make([]inst.Instruction, 0, 128)
+		bf = make([]inst.Instruction, 0, 32)
 	}
 	if sq, ok := it.(inst.Sequence); ok {
 		for _, is := range sq {

@@ -120,7 +120,7 @@ func (vm VirtualMachine) ParseCompileAndExecute(v val.Value, argument, expected 
 		return nil, nil, e
 	}
 
-	v, e = vm.Execute(instructions, nil)
+	v, e = vm.Execute(flattenSequences(instructions, nil), nil)
 	if e != nil {
 		return nil, nil, e
 	}
@@ -134,7 +134,7 @@ func (vm VirtualMachine) CompileAndExecute(node xpr.Expression, argument, expect
 	if e != nil {
 		return nil, nil, e
 	}
-	instructions := vm.Compile(typed)
+	instructions := flattenSequences(vm.Compile(typed), nil)
 	v, e := vm.Execute(instructions, nil)
 	if e != nil {
 		return nil, nil, e
@@ -143,7 +143,7 @@ func (vm VirtualMachine) CompileAndExecute(node xpr.Expression, argument, expect
 	return v, typed.Actual, e
 }
 
-func (vm VirtualMachine) ParseAndCompile(v val.Value, argument, expected mdl.Model) (inst.Instruction, mdl.Model, err.Error) {
+func (vm VirtualMachine) ParseAndCompile(v val.Value, argument, expected mdl.Model) (inst.Sequence, mdl.Model, err.Error) {
 
 	cacheKey := vm.MetaModelId() + string(val.Hash(v, nil).Sum(nil))
 
@@ -158,7 +158,8 @@ func (vm VirtualMachine) ParseAndCompile(v val.Value, argument, expected mdl.Mod
 		return nil, nil, e
 	}
 
-	instructions, model := vm.Compile(typed), typed.Actual
+	instruction, model := vm.Compile(typed), typed.Actual
+	instructions := flattenSequences(instruction, nil)
 	compilerCache.Set(cacheKey, compilerCacheEntry{instructions, model, nil})
 	return instructions, model, nil
 
@@ -178,7 +179,7 @@ func (vm VirtualMachine) Parse(v val.Value, argument, expected mdl.Model) (xpr.T
 }
 
 type compilerCacheEntry struct {
-	i inst.Instruction
+	i inst.Sequence
 	m mdl.Model
 	e err.Error
 }
@@ -459,7 +460,7 @@ const (
 // This enables the definition of impure permissions, i.e. permissions that depend on data reads.
 func (vm *VirtualMachine) CheckPermission(p Permission, v val.Meta) err.Error {
 
-	is, recKey := (inst.Instruction)(nil), v.Id[0]+v.Id[1]
+	is, recKey := (inst.Sequence)(nil), v.Id[0]+v.Id[1]
 
 	switch p {
 	case CreatePermission:
@@ -1815,10 +1816,10 @@ func (vm *VirtualMachine) reverseMigrationTree(to string, seen map[string]struct
 }
 
 type permissions struct {
-	create inst.Instruction
-	read   inst.Instruction
-	update inst.Instruction
-	delete inst.Instruction
+	create inst.Sequence
+	read   inst.Sequence
+	update inst.Sequence
+	delete inst.Sequence
 }
 
 func (vm *VirtualMachine) lazyLoadPermissions() err.Error {
@@ -1826,10 +1827,10 @@ func (vm *VirtualMachine) lazyLoadPermissions() err.Error {
 		return nil
 	}
 	vm.permissions = &permissions{
-		create: inst.Constant{val.Bool(true)},
-		read:   inst.Constant{val.Bool(true)},
-		update: inst.Constant{val.Bool(true)},
-		delete: inst.Constant{val.Bool(true)},
+		create: inst.Sequence{inst.Constant{val.Bool(true)}},
+		read:   inst.Sequence{inst.Constant{val.Bool(true)}},
+		update: inst.Sequence{inst.Constant{val.Bool(true)}},
+		delete: inst.Sequence{inst.Constant{val.Bool(true)}},
 	}
 	ps, e := vm.permissionsForUserId(vm.UserID)
 	vm.permissions = nil
