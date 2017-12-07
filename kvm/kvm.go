@@ -576,9 +576,9 @@ func slurpIterators(v val.Value) (val.Value, err.Error) {
 			return v
 		}
 		if iv, ok := v.(iteratorValue); ok {
-			l, f := iteratorToList(iv.iterator)
-			if f != nil {
-				e = f
+			l, e_ := iteratorToList(iv.iterator)
+			if e_ != nil {
+				e = e_
 			}
 			return l
 		}

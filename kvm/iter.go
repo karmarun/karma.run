@@ -38,8 +38,11 @@ func (iteratorValue) Primitive() bool {
 }
 
 type iterator interface {
+
 	// if f returns a non-nil error, forEach stops and returns it
 	forEach(f func(val.Value) err.Error) err.Error
+
+	// if length returns -1, it's up to the caller to count the iterator
 	length() int
 }
 
@@ -94,10 +97,9 @@ func newLimitIterator(sub iterator, skip, pass int) limitIterator {
 	return limitIterator{sub, skip, pass}
 }
 
-var limitReachedError = &err.ExecutionError{} // placeholder
-
 func (i limitIterator) forEach(f func(val.Value) err.Error) err.Error {
 	skipped, passed := 0, 0
+	stop := &err.ExecutionError{} // placeholder
 	e := i.sub.forEach(func(v val.Value) err.Error {
 		if skipped < i.skip {
 			skipped++
@@ -110,16 +112,16 @@ func (i limitIterator) forEach(f func(val.Value) err.Error) err.Error {
 			passed++
 			return nil // continue
 		}
-		return limitReachedError
+		return stop
 	})
-	if e == nil || e == limitReachedError {
-		return nil
+	if e == stop {
+		e = nil
 	}
 	return e
 }
 
 func (i limitIterator) length() int {
-	return countForEach(i)
+	return -1
 }
 
 type mappingIterator struct {
@@ -168,7 +170,7 @@ func (i filterIterator) forEach(f func(val.Value) err.Error) err.Error {
 }
 
 func (i filterIterator) length() int {
-	return countForEach(i)
+	return -1
 }
 
 // bucketRefIterator yields val.Refs to the elements in a bucket
@@ -193,13 +195,4 @@ func (i bucketRefIterator) forEach(f func(val.Value) err.Error) err.Error {
 
 func (i bucketRefIterator) length() int {
 	return i.bucket.Stats().KeyN
-}
-
-func countForEach(i iterator) int {
-	count := 0
-	_ = i.forEach(func(val.Value) err.Error {
-		count++
-		return nil
-	})
-	return count
 }

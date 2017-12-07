@@ -1202,7 +1202,19 @@ func (vm VirtualMachine) Execute(it inst.Instruction, input val.Value) (val.Valu
 				stack.Push(val.Int64(len(ls)))
 
 			case iteratorValue:
-				stack.Push(val.Int64(ls.iterator.length()))
+				l := ls.iterator.length()
+				if l == -1 {
+					count := 0
+					e := ls.iterator.forEach(func(val.Value) err.Error {
+						count++
+						return nil
+					})
+					if e != nil {
+						return nil, e
+					}
+					l = count
+				}
+				stack.Push(val.Int64(l))
 
 			default:
 				log.Panicf("unexpected type on stack: %T", ls)
