@@ -26,8 +26,6 @@ import (
 
 const ModelCacheCapacity = 512
 
-const MaxListOutput = 1024
-
 const SeparatorByte = '~'
 
 type VirtualMachine struct {
@@ -517,17 +515,11 @@ func (vm VirtualMachine) CheckPermission(p Permission, v val.Meta) err.Error {
 
 	bv, e := vm.Execute(is, v)
 	if e != nil {
-		return err.ExecutionError{
-			Problem: `permission returned an error`,
-			Child_:  e,
-			// C: val.Map{"model": v.Model, "id": v.Id, "error": e.ToValue()},
-		}
+		return e
 	}
 
 	if !unMeta(bv).(val.Bool) {
-		return err.PermissionDeniedError{
-		// C: val.Map{"model": v.Model, "id": v.Id},
-		}
+		return err.PermissionDeniedError{}
 	}
 
 	return nil
@@ -583,8 +575,8 @@ func slurpIterators(v val.Value) (val.Value, err.Error) {
 		if e != nil {
 			return v
 		}
-		if iv, ok := v.(IteratorVal); ok {
-			l, f := iteratorToList(iv.Iterator)
+		if iv, ok := v.(iteratorValue); ok {
+			l, f := iteratorToList(iv.iterator)
 			if f != nil {
 				e = f
 			}
@@ -598,29 +590,34 @@ func slurpIterators(v val.Value) (val.Value, err.Error) {
 	return v, nil
 }
 
-func iteratorToList(i Iterator) (val.List, err.Error) {
-	ir := newLimitIterator(i, 0, MaxListOutput)
-	ls := make(val.List, 0, MaxListOutput)
-	e := IterForEach(ir, func(v val.Value) (bool, err.Error) {
+func iteratorToList(ir iterator) (val.List, err.Error) {
+	ls := make(val.List, 0, 1024)
+	e := ir.forEach(func(v val.Value) err.Error {
 		ls = append(ls, v)
+		return nil
+	})
+	return ls, e
+}
+
+func (vm VirtualMachine) newReadPermissionFilterIterator(sub iterator) iterator {
+	return newFilterIterator(sub, func(v val.Value) (bool, err.Error) {
+		if vm.permissions != nil && vm.permissions.read != nil {
+			if e := vm.CheckPermission(ReadPermission, v.(val.Meta)); e != nil {
+				if _, ok := e.(err.PermissionDeniedError); ok {
+					return false, nil
+				}
+				return false, e
+			}
+		}
 		return true, nil
 	})
-	if e != nil {
-		return nil, e
-	}
-	return ls, nil
 }
 
-func (vm VirtualMachine) newPermissionIterator(sub Iterator) permissionIterator {
-	return permissionIterator{VM: vm, SubIterator: sub}
-}
-
-func (vm VirtualMachine) newBucketIterator(mid string) (*bucketIterator, err.Error) {
-	m, e := vm.Model(mid)
-	if e != nil {
-		return nil, e
-	}
-	return &bucketIterator{VM: vm, Mid: mid, Model: m}, nil
+func (vm VirtualMachine) newDerefMappingIterator(sub iterator) iterator {
+	return newMappingIterator(sub, func(v val.Value) (val.Value, err.Error) {
+		r := v.(val.Ref)
+		return vm.get(r[0], r[1])
+	})
 }
 
 type Stack []val.Value
@@ -829,9 +826,24 @@ func (vm VirtualMachine) InitDB() error {
 
 func (vm VirtualMachine) Get(mid, oid string) (val.Meta, err.Error) {
 
-	db := vm.RootBucket
+	mv, e := vm.get(mid, oid)
+	if e != nil {
+		return mv, e
+	}
 
-	bk := db.Bucket([]byte(mid))
+	if vm.permissions != nil && vm.permissions.read != nil {
+		if e := vm.CheckPermission(ReadPermission, mv); e != nil {
+			return val.Meta{}, e
+		}
+	}
+
+	return mv, nil
+
+}
+
+func (vm VirtualMachine) get(mid, oid string) (val.Meta, err.Error) {
+
+	bk := vm.RootBucket.Bucket([]byte(mid))
 	if bk == nil {
 		return val.Meta{}, err.ModelNotFoundError{
 			err.ObjectNotFoundError{
@@ -854,15 +866,7 @@ func (vm VirtualMachine) Get(mid, oid string) (val.Meta, err.Error) {
 
 	vl, _ := karma.Decode(dt, vm.WrapModelInMeta(mid, m.Model))
 
-	mv := DematerializeMeta(vl.(val.Struct))
-
-	if vm.permissions != nil && vm.permissions.read != nil {
-		if e := vm.CheckPermission(ReadPermission, mv); e != nil {
-			return val.Meta{}, e
-		}
-	}
-
-	return mv, nil
+	return DematerializeMeta(vl.(val.Struct)), nil
 
 }
 
@@ -1896,7 +1900,6 @@ func (vm *VirtualMachine) permissionsForUserId(uid string) (*permissions, err.Er
 		return nil, err.ExecutionError{
 			fmt.Sprintf(`non-boolean create permission expression in user %s`, uid),
 			nil,
-			// orExpressions(c),
 		}
 	}
 	ri, rm, re := vm.ParseAndCompile(orExpressions(r), im, mdl.Bool{})
@@ -1910,7 +1913,6 @@ func (vm *VirtualMachine) permissionsForUserId(uid string) (*permissions, err.Er
 		return nil, err.ExecutionError{
 			fmt.Sprintf(`non-boolean read permission expression in user %s`, uid),
 			nil,
-			// P: orExpressions(r)
 		}
 	}
 	ui, um, ue := vm.ParseAndCompile(orExpressions(u), im, mdl.Bool{})
@@ -1924,7 +1926,6 @@ func (vm *VirtualMachine) permissionsForUserId(uid string) (*permissions, err.Er
 		return nil, err.ExecutionError{
 			fmt.Sprintf(`non-boolean update permission expression in user %s`, uid),
 			nil,
-			// P: orExpressions(u)
 		}
 	}
 	di, dm, de := vm.ParseAndCompile(orExpressions(d), im, mdl.Bool{})
@@ -1938,7 +1939,6 @@ func (vm *VirtualMachine) permissionsForUserId(uid string) (*permissions, err.Er
 		return nil, err.ExecutionError{
 			fmt.Sprintf(`non-boolean delete permission expression in user %s`, uid),
 			nil,
-			// P: orExpressions(d)
 		}
 	}
 	return &permissions{

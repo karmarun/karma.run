@@ -352,15 +352,11 @@ func (vm VirtualMachine) Execute(it inst.Instruction, input val.Value) (val.Valu
 			}
 
 		case inst.All:
-			i := (Iterator)(nil)
-			i, e := vm.newBucketIterator(string(unMeta(stack.Pop()).(val.Ref)[1]))
-			if e != nil {
-				return nil, e
-			}
-			if vm.permissions != nil && vm.permissions.read != nil {
-				i = vm.newPermissionIterator(i)
-			}
-			stack.Push(IteratorVal{i})
+			mid := (unMeta(stack.Pop())).(val.Ref)[1]
+			bkir := newBucketRefIterator(mid, vm.RootBucket.Bucket([]byte(mid)))
+			drir := vm.newDerefMappingIterator(bkir)
+			prir := vm.newReadPermissionFilterIterator(drir)
+			stack.Push(iteratorValue{prir})
 
 		case inst.MapStruct:
 			mv := unMeta(stack.Pop()).(val.Struct)
@@ -426,9 +422,9 @@ func (vm VirtualMachine) Execute(it inst.Instruction, input val.Value) (val.Valu
 				reverse(ls)
 				out = ls
 
-			case IteratorVal:
+			case iteratorValue:
 				var e err.Error
-				out, e = iteratorToList(ls.Iterator)
+				out, e = iteratorToList(ls.iterator)
 				if e != nil {
 					return nil, e
 				}
@@ -454,11 +450,11 @@ func (vm VirtualMachine) Execute(it inst.Instruction, input val.Value) (val.Valu
 				}
 				stack.Push(cp)
 
-			case IteratorVal:
-				stack.Push(IteratorVal{
-					mapListIterator{SubIterator: ls.Iterator, MapFunc: func(value val.Value) (val.Value, err.Error) {
+			case iteratorValue:
+				stack.Push(iteratorValue{
+					newMappingIterator(ls.iterator, func(value val.Value) (val.Value, err.Error) {
 						return mapListFunc(vm, value, it.Expression)
-					}},
+					}),
 				})
 
 			default:
@@ -468,11 +464,11 @@ func (vm VirtualMachine) Execute(it inst.Instruction, input val.Value) (val.Valu
 		case inst.GraphFlow:
 
 			ov := make(val.Struct, 32)
-			in := make([]val.Ref, 0, MaxListOutput)
-			sn := make(map[val.Ref]struct{}, MaxListOutput)
+			in := make([]val.Ref, 0, 1024)
+			sn := make(map[val.Ref]struct{}, 1024)
 			in = append(in, unMeta(stack.Pop()).(val.Ref))
 
-			for len(in) > 0 && len(sn) <= MaxListOutput {
+			for len(in) > 0 {
 
 				cv := in[0]
 				in = in[1:]
@@ -729,11 +725,11 @@ func (vm VirtualMachine) Execute(it inst.Instruction, input val.Value) (val.Valu
 				}
 				stack.Push(cp)
 
-			case IteratorVal:
-				stack.Push(IteratorVal{
-					filterIterator{SubIterator: ls.Iterator, FilterFunc: func(value val.Value) (bool, err.Error) {
+			case iteratorValue:
+				stack.Push(iteratorValue{
+					newFilterIterator(ls.iterator, func(value val.Value) (bool, err.Error) {
 						return filterFunc(vm, value, it.Expression)
-					}},
+					}),
 				})
 
 			default:
@@ -752,24 +748,26 @@ func (vm VirtualMachine) Execute(it inst.Instruction, input val.Value) (val.Valu
 				}
 				stack.Push(ls[0])
 
-			case IteratorVal:
-				if e := ls.Iterator.Reset(); e != nil {
-					return nil, e
-				}
-				v, e := ls.Iterator.Next()
+			case iteratorValue:
+				out := val.Value(nil)
+				ir := newLimitIterator(ls.iterator, 0, 1)
+				e := ir.forEach(func(v val.Value) err.Error {
+					out = v
+					return nil
+				})
 				if e != nil {
 					return nil, e
 				}
-				if v == nil {
+				if out == nil {
 					return nil, err.ExecutionError{
 						fmt.Sprintf("first: empty list"),
 						nil,
 					}
 				}
-				stack.Push(v)
+				stack.Push(out)
 
 			default:
-				log.Panicf("Execute: First: unexpected type on stack: %T.", ls)
+				log.Panicf("unexpected type on stack: %T", ls)
 			}
 
 		case inst.InList:
@@ -786,15 +784,19 @@ func (vm VirtualMachine) Execute(it inst.Instruction, input val.Value) (val.Valu
 				}
 				stack.Push(out)
 
-			case IteratorVal:
+			case iteratorValue:
 				out := val.Bool(false)
-				e := IterForEach(ls.Iterator, func(v val.Value) (bool, err.Error) {
+				stop := &err.ExecutionError{} // placeholder
+				e := ls.iterator.forEach(func(v val.Value) err.Error {
 					if v.Equals(vl) {
 						out = true
-						return false, nil // break
+						return stop
 					}
-					return true, nil // continue
+					return nil // continue
 				})
+				if e == stop {
+					e = nil
+				}
 				if e != nil {
 					return nil, e
 				}
@@ -820,15 +822,19 @@ func (vm VirtualMachine) Execute(it inst.Instruction, input val.Value) (val.Valu
 				}
 				stack.Push(out)
 
-			case IteratorVal:
+			case iteratorValue:
 				out := val.Bool(false)
-				e := IterForEach(ls.Iterator, func(v val.Value) (bool, err.Error) {
+				stop := &err.ExecutionError{}
+				e := ls.iterator.forEach(func(v val.Value) err.Error {
 					if v.(val.Bool) {
 						out = true
-						return false, nil // break
+						return stop
 					}
-					return true, nil // continue
+					return nil // continue
 				})
+				if e == stop {
+					e = nil
+				}
 				if e != nil {
 					return nil, e
 				}
@@ -871,9 +877,10 @@ func (vm VirtualMachine) Execute(it inst.Instruction, input val.Value) (val.Valu
 				value = value[:minInt(len(value), length)]
 				stack.Push(value)
 
-			case IteratorVal:
-				value.Iterator = newLimitIterator(value.Iterator, offset, length)
-				stack.Push(value)
+			case iteratorValue:
+				stack.Push(iteratorValue{
+					newLimitIterator(value.iterator, offset, length),
+				})
 			}
 
 		case inst.SearchAllRegex:
@@ -1094,14 +1101,14 @@ func (vm VirtualMachine) Execute(it inst.Instruction, input val.Value) (val.Valu
 					}
 					temp = append(temp, sortable{comparable, item})
 				}
-			case IteratorVal:
-				e := IterForEach(ls.Iterator, func(item val.Value) (bool, err.Error) {
+			case iteratorValue:
+				e := ls.iterator.forEach(func(item val.Value) err.Error {
 					comparable, e := vm.Execute(expr, item)
 					if e != nil {
-						return false, e
+						return e
 					}
 					temp = append(temp, sortable{comparable, item})
-					return true, nil
+					return nil // continue
 				})
 				if e != nil {
 					return nil, e // TODO: add context
@@ -1194,19 +1201,11 @@ func (vm VirtualMachine) Execute(it inst.Instruction, input val.Value) (val.Valu
 			case val.List:
 				stack.Push(val.Int64(len(ls)))
 
-			case IteratorVal:
-				count := 0
-				e := IterForEach(ls.Iterator, func(val.Value) (bool, err.Error) {
-					count++
-					return true, nil // continue
-				})
-				if e != nil {
-					return nil, e
-				}
-				stack.Push(val.Int64(count))
+			case iteratorValue:
+				stack.Push(val.Int64(ls.iterator.length()))
 
 			default:
-				log.Panicf("Execute: Length: unexpected type on stack: %T.", ls)
+				log.Panicf("unexpected type on stack: %T", ls)
 			}
 
 		case inst.ConcatLists:
@@ -1214,25 +1213,27 @@ func (vm VirtualMachine) Execute(it inst.Instruction, input val.Value) (val.Valu
 			rhs := unMeta(stack.Pop()) // order matters
 			lhs := unMeta(stack.Pop()) // order matters
 
-			var e err.Error
+			li, ri := iterator(nil), iterator(nil)
 
-			ll, ok := lhs.(val.List)
-			if !ok {
-				if ll, e = iteratorToList(lhs.(IteratorVal).Iterator); e != nil {
-					return nil, e
-				}
-			}
-			rl, ok := rhs.(val.List)
-			if !ok {
-				if rl, e = iteratorToList(rhs.(IteratorVal).Iterator); e != nil {
-					return nil, e
-				}
+			switch lhs := lhs.(type) {
+			case val.List:
+				li = newListIterator(lhs)
+			case iteratorValue:
+				li = lhs.iterator
+			default:
+				log.Panicf("unexpected type on stack: %T", lhs)
 			}
 
-			for _, e := range rl {
-				ll = append(ll, e)
+			switch rhs := rhs.(type) {
+			case val.List:
+				li = newListIterator(rhs)
+			case iteratorValue:
+				li = rhs.iterator
+			default:
+				log.Panicf("unexpected type on stack: %T", rhs)
 			}
-			stack.Push(ll)
+
+			stack.Push(iteratorValue{newConcatIterator(li, ri)})
 
 		case inst.After:
 			rhs := unMeta(stack.Pop()).(val.DateTime) // order matters
@@ -1250,15 +1251,15 @@ func (vm VirtualMachine) Execute(it inst.Instruction, input val.Value) (val.Valu
 				stack.Push(val.Bool(a == null && b == null))
 				continue
 			}
-			if _, ok := a.(IteratorVal); ok {
+			if _, ok := a.(iteratorValue); ok {
 				return nil, err.ExecutionError{
-					`cannot compare persisted object collections`,
+					`cannot compare persistent object collections`, // TODO: not always persistent stuff
 					nil,
 				}
 			}
-			if _, ok := b.(IteratorVal); ok {
+			if _, ok := b.(iteratorValue); ok {
 				return nil, err.ExecutionError{
-					`cannot compare persisted object collections`,
+					`cannot compare persistent object collections`, // TODO: not always persistent stuff
 					nil,
 				}
 			}
@@ -1713,7 +1714,7 @@ func (vm VirtualMachine) Execute(it inst.Instruction, input val.Value) (val.Valu
 				if e != nil {
 					return nil, e
 				}
-				if _, ok := w.(IteratorVal); ok {
+				if _, ok := w.(iteratorValue); ok {
 					c[rand.Uint64()] = w // always treat iterators as distinct
 				} else {
 					c[val.Hash(w, nil).Sum64()] = w
@@ -1722,7 +1723,7 @@ func (vm VirtualMachine) Execute(it inst.Instruction, input val.Value) (val.Valu
 			stack.Push(c)
 
 		default:
-			panic(fmt.Sprintf("unimplemented inst.Instruction:  %T: %v", it, it))
+			panic(fmt.Sprintf("unimplemented inst.Instruction: %T: %v", it, it))
 		}
 
 	}
