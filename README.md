@@ -37,7 +37,7 @@ formalized as unit-tests and no coverage numbers are available yet.
 
 To install karma.run you need the [Go toolchain](https://golang.org):
 
-    $ go get github.com/karmarun/karma.run
+    $ go get karma.run
     
 Stable tags will have binary releases.
 
