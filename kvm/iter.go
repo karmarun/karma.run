@@ -133,8 +133,17 @@ type mappingIterator struct {
 	fnc func(val.Value) (val.Value, err.Error)
 }
 
-func newMappingIterator(i iterator, f func(val.Value) (val.Value, err.Error)) mappingIterator {
-	return mappingIterator{i, f}
+func newMappingIterator(sub iterator, f func(val.Value) (val.Value, err.Error)) mappingIterator {
+	if mi, ok := sub.(mappingIterator); ok {
+		return mappingIterator{mi.sub, func(v val.Value) (val.Value, err.Error) {
+			v, e := mi.fnc(v)
+			if e != nil {
+				return nil, e
+			}
+			return f(v)
+		}}
+	}
+	return mappingIterator{sub, f}
 }
 
 func (i mappingIterator) forEach(f func(val.Value) err.Error) err.Error {
@@ -157,6 +166,22 @@ type filterIterator struct {
 }
 
 func newFilterIterator(sub iterator, f func(val.Value) (bool, err.Error)) filterIterator {
+	if fm, ok := sub.(filterIterator); ok {
+		return filterIterator{fm.sub, func(input val.Value) (bool, err.Error) {
+			keep, e := fm.fnc(input)
+			if e != nil {
+				return false, e
+			}
+			if !keep {
+				return false, nil
+			}
+			keep, e = f(input)
+			if e != nil {
+				return false, e
+			}
+			return keep, nil
+		}}
+	}
 	return filterIterator{sub, f}
 }
 

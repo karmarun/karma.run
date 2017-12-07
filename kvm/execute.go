@@ -69,7 +69,7 @@ func (vm VirtualMachine) Execute(program inst.Sequence, input val.Value) (val.Va
 		switch it := program[pc].(type) {
 
 		case inst.Sequence:
-			log.Panicln("Execute: flattenSequences missed a Sequence")
+			log.Panicln("flattenSequences missed an inst.Sequence ;P")
 
 		case inst.DebugPrintStack:
 			pretty.Println("input:", input)
@@ -352,7 +352,8 @@ func (vm VirtualMachine) Execute(program inst.Sequence, input val.Value) (val.Va
 
 		case inst.All:
 			mid := (unMeta(stack.Pop())).(val.Ref)[1]
-			bkir := newBucketRefIterator(mid, vm.RootBucket.Bucket([]byte(mid)))
+			bucket := vm.RootBucket.Bucket([]byte(mid))
+			bkir := newBucketRefIterator(mid, bucket)
 			drir := vm.newDerefMappingIterator(bkir)
 			prir := vm.newReadPermissionFilterIterator(drir)
 			stack.Push(iteratorValue{prir})
@@ -450,27 +451,10 @@ func (vm VirtualMachine) Execute(program inst.Sequence, input val.Value) (val.Va
 				stack.Push(cp)
 
 			case iteratorValue:
-
-				mapping := func(v val.Value) (val.Value, err.Error) {
-					return vm.Execute(it.Expression, v)
-				}
-				iterator := ls.iterator
-
-				if mi, ok := iterator.(mappingIterator); ok {
-					f1 := mi.fnc
-					f2 := mapping
-					iterator = mi.sub
-					mapping = func(v val.Value) (val.Value, err.Error) {
-						v, e := f1(v)
-						if e != nil {
-							return nil, e
-						}
-						return f2(v)
-					}
-				}
-
 				stack.Push(iteratorValue{
-					newMappingIterator(iterator, mapping),
+					newMappingIterator(ls.iterator, func(v val.Value) (val.Value, err.Error) {
+						return vm.Execute(it.Expression, v)
+					}),
 				})
 
 			default:
@@ -742,35 +726,14 @@ func (vm VirtualMachine) Execute(program inst.Sequence, input val.Value) (val.Va
 				stack.Push(cp)
 
 			case iteratorValue:
-				iterator := ls.iterator
-				filter := func(value val.Value) (bool, err.Error) {
-					v, e := vm.Execute(it.Expression, value)
-					if e != nil {
-						return false, e
-					}
-					return bool(v.(val.Bool)), nil
-				}
-				if fm, ok := iterator.(filterIterator); ok {
-					iterator = fm.sub
-					f1 := fm.fnc
-					f2 := filter
-					filter = func(input val.Value) (bool, err.Error) {
-						keep, e := f1(input)
-						if e != nil {
-							return false, e
-						}
-						if !keep {
-							return false, nil
-						}
-						keep, e = f2(input)
-						if e != nil {
-							return false, e
-						}
-						return keep, nil
-					}
-				}
 				stack.Push(iteratorValue{
-					newFilterIterator(iterator, filter),
+					newFilterIterator(ls.iterator, func(value val.Value) (bool, err.Error) {
+						v, e := vm.Execute(it.Expression, value)
+						if e != nil {
+							return false, e
+						}
+						return bool(v.(val.Bool)), nil
+					}),
 				})
 
 			default:
