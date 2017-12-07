@@ -14,6 +14,7 @@ import (
 	"log"
 	"math/rand"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -1264,6 +1265,31 @@ func (vm VirtualMachine) Execute(it inst.Instruction, input val.Value) (val.Valu
 			stack.Push(val.Bool(
 				a.Equals(b),
 			))
+
+		case inst.ToString:
+			v := unMeta(stack.Pop())
+			s := val.String("")
+			switch v := v.(type) {
+			case val.Int8:
+				s = val.String(strconv.FormatInt(int64(v), 10))
+			case val.Int16:
+				s = val.String(strconv.FormatInt(int64(v), 10))
+			case val.Int32:
+				s = val.String(strconv.FormatInt(int64(v), 10))
+			case val.Int64:
+				s = val.String(strconv.FormatInt(int64(v), 10))
+			case val.Uint8:
+				s = val.String(strconv.FormatUint(uint64(v), 10))
+			case val.Uint16:
+				s = val.String(strconv.FormatUint(uint64(v), 10))
+			case val.Uint32:
+				s = val.String(strconv.FormatUint(uint64(v), 10))
+			case val.Uint64:
+				s = val.String(strconv.FormatUint(uint64(v), 10))
+			case val.String:
+				s = v
+			}
+			stack.Push(s)
 
 		case inst.ToFloat:
 			v := unMeta(stack.Pop())

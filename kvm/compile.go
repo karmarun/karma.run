@@ -82,14 +82,7 @@ func (vm VirtualMachine) Compile(typed xpr.TypedExpression) inst.Instruction {
 	case xpr.NewString:
 		arg := node.Argument.(xpr.TypedExpression)
 		asm := vm.Compile(arg)
-		switch arg.Actual.Concrete().(type) {
-		case mdl.String:
-			return asm
-		case mdl.Ref:
-			return inst.Sequence{asm, inst.StringToRef{}}
-		default:
-			panic(fmt.Sprintf("%T", arg.Actual.Concrete()))
-		}
+		return inst.Sequence{asm, inst.ToString{}}
 
 	case xpr.NewDateTime:
 		return vm.Compile(node.Argument.(xpr.TypedExpression))

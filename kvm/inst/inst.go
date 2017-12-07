@@ -249,6 +249,7 @@ type ToUint8 struct{}
 type ToUint16 struct{}
 type ToUint32 struct{}
 type ToUint64 struct{}
+type ToString struct{}
 
 type GreaterFloat struct{}
 type GreaterInt struct{}
@@ -482,3 +483,4 @@ func (StringToLower) _inst()     {}
 func (ConcatLists) _inst()       {}
 func (SearchAllRegex) _inst()    {}
 func (SearchRegex) _inst()       {}
+func (ToString) _inst()          {}

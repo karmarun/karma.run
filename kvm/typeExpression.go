@@ -26,7 +26,17 @@ var (
 	FloatModel    = mdl.Float{}
 	StringModel   = mdl.String{}
 	DateTimeModel = mdl.DateTime{}
-	NumericModel  = mdl.UnionOf(
+	IntegerModel  = mdl.RollOr([]mdl.Model{
+		Int8Model,
+		Int16Model,
+		Int32Model,
+		Int64Model,
+		Uint8Model,
+		Uint16Model,
+		Uint32Model,
+		Uint64Model,
+	})
+	NumericModel = mdl.RollOr([]mdl.Model{
 		FloatModel,
 		Int8Model,
 		Int16Model,
@@ -36,10 +46,10 @@ var (
 		Uint16Model,
 		Uint32Model,
 		Uint64Model,
-	)
+	})
 	NullModel     = mdl.Null{}
 	NullValue     = val.Null{}
-	SortableModel = mdl.UnionOf(
+	SortableModel = mdl.RollOr([]mdl.Model{
 		FloatModel,
 		BoolModel,
 		StringModel,
@@ -52,7 +62,7 @@ var (
 		Uint16Model,
 		Uint32Model,
 		Uint64Model,
-	)
+	})
 )
 
 var ZeroTypedExpression = xpr.TypedExpression{}
@@ -222,16 +232,13 @@ func (vm VirtualMachine) TypeExpression(node xpr.Expression, argument, expected 
 		retNode = xpr.TypedExpression{node, expected, model}
 
 	case xpr.NewString:
-		arg, e := vm.TypeExpression(node.Argument, argument, StringModel)
+		arg, e := vm.TypeExpression(node.Argument, argument, mdl.Or{StringModel, IntegerModel})
 		if e != nil {
 			return arg, e
 		}
 		node.Argument = arg
-		model := mdl.Model(StringModel)
-		if ca, ok := arg.Actual.(ConstantModel); ok {
-			model = ConstantModel{model, ca.Value}
-		}
-		retNode = xpr.TypedExpression{node, expected, model}
+		// TODO: constant optimization
+		retNode = xpr.TypedExpression{node, expected, StringModel}
 
 	case xpr.NewDateTime:
 		arg, e := vm.TypeExpression(node.Argument, argument, DateTimeModel)
