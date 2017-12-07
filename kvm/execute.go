@@ -1288,6 +1288,8 @@ func (vm VirtualMachine) Execute(it inst.Instruction, input val.Value) (val.Valu
 				s = val.String(strconv.FormatUint(uint64(v), 10))
 			case val.String:
 				s = v
+			default:
+				panic(fmt.Sprintf("unexpected type on stack: %T", v))
 			}
 			stack.Push(s)
 
