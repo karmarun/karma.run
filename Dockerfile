@@ -7,8 +7,8 @@ RUN mkdir -p gopath/src/github.com/boltdb/bolt
 RUN mkdir -p gopath/src/github.com/kr/pretty
 RUN mkdir -p gopath/src/golang.org/x/crypto
 
-# karmarun/karma.run tag 0.1.4-alpha
-RUN git clone --branch 0.1.4-alpha --depth 1  \
+# karmarun/karma.run tag 0.1.4-alpha.0
+RUN git clone --branch 0.1.4-alpha.0 --depth 1  \
     https://github.com/karmarun/karma.run.git \
     gopath/src/github.com/karmarun/karma.run
 
