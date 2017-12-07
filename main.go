@@ -20,14 +20,15 @@ import (
 )
 
 var (
-	httpPort           string
-	httpsPort          string
-	letsencryptDomains string
-	letsencryptEmail   string
-	httpsCertFile      string
-	httpsKeyFile       string
-	dataPath           string
-	instanceSecret     string
+	httpPort            string
+	httpsPort           string
+	letsencryptDomains  string
+	letsencryptEmail    string
+	letsencryptCacheDir string
+	httpsCertFile       string
+	httpsKeyFile        string
+	dataPath            string
+	instanceSecret      string
 )
 
 func init() {
@@ -37,6 +38,7 @@ func init() {
 
 	flag.StringVar(&letsencryptDomains, "letsencrypt-domains", "", "Comma-separated list of HTTPS domains to automatically secure via LetsEncrypt. Overriden by environment variable: LETSENCRYPT_DOMAINS.")
 	flag.StringVar(&letsencryptEmail, "letsencrypt-email", "", "Sets the contact email for LetsEncrypt. Required if --letsencrypt-domains is set. Overriden by environment variable: LETSENCRYPT_EMAIL.")
+	flag.StringVar(&letsencryptCacheDir, "letsencrypt-cache-dir", "", "Sets the LetsEncrypt file cache location. Required if --letsencrypt-domains is set. Overriden by environment variable: LETSENCRYPT_CACHE_DIR.")
 
 	flag.StringVar(&httpsCertFile, "https-cert-file", "", "Path to TLS certificate. Has no effect if LetsEncrypt config if set. Overriden by environment variable: HTTPS_CERT_FILE.")
 	flag.StringVar(&httpsKeyFile, "https-key-file", "", "Path to TLS private key file. Has no effect if LetsEncrypt config if set. Overriden by environment variable: HTTPS_KEY_FILE.")
@@ -65,6 +67,9 @@ func main() {
 		}
 		if s := os.Getenv(`LETSENCRYPT_EMAIL`); len(s) > 0 {
 			letsencryptEmail = s
+		}
+		if s := os.Getenv(`LETSENCRYPT_CACHE_DIR`); len(s) > 0 {
+			letsencryptCacheDir = s
 		}
 		if s := os.Getenv(`HTTPS_CERT_FILE`); len(s) > 0 {
 			httpsCertFile = s
@@ -107,6 +112,9 @@ func main() {
 			log.Fatalln(e)
 		}
 		if e := os.Setenv(`LETSENCRYPT_EMAIL`, letsencryptEmail); e != nil {
+			log.Fatalln(e)
+		}
+		if e := os.Setenv(`LETSENCRYPT_CACHE_DIR`, letsencryptCacheDir); e != nil {
 			log.Fatalln(e)
 		}
 		if e := os.Setenv(`HTTPS_CERT_FILE`, httpsCertFile); e != nil {
@@ -169,6 +177,9 @@ func main() {
 		if (len(letsencryptDomains) > 0 && len(letsencryptEmail) == 0) || (len(letsencryptDomains) == 0 && len(letsencryptEmail) > 0) {
 			log.Fatalln("--letsencrypt-email and --letsencrypt-domains must be set together.")
 		}
+		if (len(letsencryptDomains) > 0 && len(letsencryptCacheDir) == 0) || (len(letsencryptDomains) == 0 && len(letsencryptCacheDir) > 0) {
+			log.Fatalln("--letsencrypt-cache-dir and --letsencrypt-domains must be set together.")
+		}
 
 		if len(letsencryptDomains) > 0 {
 			domains := strings.Split(letsencryptDomains, ",")
@@ -177,7 +188,7 @@ func main() {
 			log.Println("LetsEncrypt email:", letsencryptEmail)
 			m := autocert.Manager{
 				Prompt:     autocert.AcceptTOS,
-				Cache:      (autocert.DirCache)(`dbs/autocert-cache`),
+				Cache:      (autocert.DirCache)(letsencryptCacheDir),
 				HostPolicy: autocert.HostWhitelist(domains...),
 				Email:      letsencryptEmail,
 			}
