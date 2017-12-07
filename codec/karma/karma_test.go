@@ -1,10 +1,10 @@
 package karma
 
 import (
-	"github.com/karmarun/karma.run/common"
-	"github.com/karmarun/karma.run/kvm/mdl"
-	"github.com/karmarun/karma.run/kvm/val"
 	"github.com/kr/pretty"
+	"karma.run/common"
+	"karma.run/kvm/mdl"
+	"karma.run/kvm/val"
 	"math/rand"
 	"strings"
 	"testing"

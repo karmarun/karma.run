@@ -3,7 +3,7 @@
 package definitions
 
 import (
-	"github.com/karmarun/karma.run/kvm/val"
+	"karma.run/kvm/val"
 )
 
 const (

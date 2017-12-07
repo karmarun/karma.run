@@ -4,7 +4,7 @@ package kvm
 
 import (
 	"fmt"
-	"github.com/karmarun/karma.run/kvm/mdl"
+	"karma.run/kvm/mdl"
 	"strings"
 )
 

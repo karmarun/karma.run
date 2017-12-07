@@ -4,8 +4,8 @@ package kvm
 
 import (
 	"github.com/boltdb/bolt"
-	"github.com/karmarun/karma.run/kvm/err"
-	"github.com/karmarun/karma.run/kvm/val"
+	"karma.run/kvm/err"
+	"karma.run/kvm/val"
 )
 
 // adapter for iterators that implements val.Value

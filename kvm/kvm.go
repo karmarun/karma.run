@@ -6,19 +6,19 @@ import (
 	"bytes"
 	"fmt"
 	"github.com/boltdb/bolt"
-	"github.com/karmarun/karma.run/cc"
-	"github.com/karmarun/karma.run/codec"
-	"github.com/karmarun/karma.run/codec/karma.v2"
-	"github.com/karmarun/karma.run/common"
-	"github.com/karmarun/karma.run/definitions"
-	"github.com/karmarun/karma.run/kvm/err"
-	"github.com/karmarun/karma.run/kvm/inst"
-	"github.com/karmarun/karma.run/kvm/mdl"
-	"github.com/karmarun/karma.run/kvm/val"
-	"github.com/karmarun/karma.run/kvm/xpr"
 	"github.com/kr/pretty"
 	"hash"
 	"hash/fnv" // FNV-1 has a very low collision rate
+	"karma.run/cc"
+	"karma.run/codec"
+	"karma.run/codec/karma.v2"
+	"karma.run/common"
+	"karma.run/definitions"
+	"karma.run/kvm/err"
+	"karma.run/kvm/inst"
+	"karma.run/kvm/mdl"
+	"karma.run/kvm/val"
+	"karma.run/kvm/xpr"
 	"log"
 	"sync"
 	"time"
@@ -397,22 +397,6 @@ func convertNumericType(v val.Value, m mdl.Model) val.Value {
 	panic(fmt.Sprintf("%T :: %T", v, m))
 }
 
-func mapListFunc(vm VirtualMachine, value val.Value, insts inst.Instruction) (val.Value, err.Error) {
-	mapped, e := vm.Execute(insts, value)
-	if e != nil {
-		return nil, e
-	}
-	return mapped, nil
-}
-
-func filterFunc(vm VirtualMachine, value val.Value, insts inst.Instruction) (bool, err.Error) {
-	keep, e := vm.Execute(insts, value)
-	if e != nil {
-		return false, e
-	}
-	return bool(keep.(val.Bool)), nil
-}
-
 func stringSliceContains(ss []string, s string) bool {
 	for _, t := range ss {
 		if t == s {
@@ -473,7 +457,7 @@ const (
 
 // CheckPermissions checks permissions, recursively. The base case is nil / permission granted.
 // This enables the definition of impure permissions, i.e. permissions that depend on data reads.
-func (vm VirtualMachine) CheckPermission(p Permission, v val.Meta) err.Error {
+func (vm *VirtualMachine) CheckPermission(p Permission, v val.Meta) err.Error {
 
 	is, recKey := (inst.Instruction)(nil), v.Id[0]+v.Id[1]
 

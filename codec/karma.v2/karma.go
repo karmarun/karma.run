@@ -5,9 +5,9 @@ package karma
 import (
 	"encoding/binary"
 	"fmt"
-	"github.com/karmarun/karma.run/codec/karma"
-	"github.com/karmarun/karma.run/kvm/mdl"
-	"github.com/karmarun/karma.run/kvm/val"
+	"karma.run/codec/karma"
+	"karma.run/kvm/mdl"
+	"karma.run/kvm/val"
 	"math"
 	"sort"
 	"time"

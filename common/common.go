@@ -3,10 +3,10 @@
 package common
 
 import (
-	"github.com/karmarun/karma.run/codec/json"
-	"github.com/karmarun/karma.run/definitions"
-	"github.com/karmarun/karma.run/kvm/mdl"
-	"github.com/karmarun/karma.run/kvm/val"
+	"karma.run/codec/json"
+	"karma.run/definitions"
+	"karma.run/kvm/mdl"
+	"karma.run/kvm/val"
 	"log"
 	"math/rand"
 	"net/http"

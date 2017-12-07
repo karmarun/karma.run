@@ -4,10 +4,10 @@ package binary
 
 import (
 	"fmt"
-	"github.com/karmarun/karma.run/codec"
-	"github.com/karmarun/karma.run/kvm/err"
-	"github.com/karmarun/karma.run/kvm/mdl"
-	"github.com/karmarun/karma.run/kvm/val"
+	"karma.run/codec"
+	"karma.run/kvm/err"
+	"karma.run/kvm/mdl"
+	"karma.run/kvm/val"
 	"math"
 	"time"
 )

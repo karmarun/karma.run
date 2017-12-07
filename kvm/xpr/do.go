@@ -3,7 +3,7 @@
 package xpr
 
 import (
-	"github.com/karmarun/karma.run/kvm/err"
+	"karma.run/kvm/err"
 )
 
 // transforms bind/do into with/return

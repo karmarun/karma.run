@@ -3,7 +3,7 @@
 package mdl
 
 import (
-	"github.com/karmarun/karma.run/kvm/val"
+	"karma.run/kvm/val"
 )
 
 type Int8 struct{}

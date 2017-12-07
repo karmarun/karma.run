@@ -4,7 +4,7 @@ package mdl
 
 import (
 	"fmt"
-	"github.com/karmarun/karma.run/kvm/val"
+	"karma.run/kvm/val"
 )
 
 // NOTE: Abstain from using directly!

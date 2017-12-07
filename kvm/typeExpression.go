@@ -4,11 +4,11 @@ package kvm
 
 import (
 	"fmt"
-	"github.com/karmarun/karma.run/definitions"
-	"github.com/karmarun/karma.run/kvm/err"
-	"github.com/karmarun/karma.run/kvm/mdl"
-	"github.com/karmarun/karma.run/kvm/val"
-	"github.com/karmarun/karma.run/kvm/xpr"
+	"karma.run/definitions"
+	"karma.run/kvm/err"
+	"karma.run/kvm/mdl"
+	"karma.run/kvm/val"
+	"karma.run/kvm/xpr"
 	"regexp"
 )
 
@@ -962,9 +962,16 @@ func (vm VirtualMachine) TypeExpression(node xpr.Expression, argument, expected 
 			return expression, e
 		}
 		node.Expression = expression
-		// NOTE: constant optimization possible if value and
-		//       expression both constant. pretty useless.
-		retNode = xpr.TypedExpression{node, expected, mdl.List{subArg}}
+		if ce, ok := expression.Actual.(ConstantModel); ok {
+			v := ce.Value.(val.Bool)
+			if v {
+				retNode = value
+			} else {
+				retNode = xpr.TypedExpression{node, expected, ConstantModel{value.Actual.Unwrap(), make(val.List, 0, 0)}}
+			}
+		} else {
+			retNode = xpr.TypedExpression{node, expected, value.Actual.Unwrap()}
+		}
 
 	case xpr.AssertCase:
 		caze, e := vm.TypeExpression(node.Case, argument, StringModel)

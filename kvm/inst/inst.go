@@ -3,7 +3,7 @@
 package inst
 
 import (
-	"github.com/karmarun/karma.run/kvm/val"
+	"karma.run/kvm/val"
 	"regexp"
 )
 

@@ -3,7 +3,7 @@
 package err
 
 import (
-	"github.com/karmarun/karma.run/kvm/val"
+	"karma.run/kvm/val"
 )
 
 type ModelParsingError struct {

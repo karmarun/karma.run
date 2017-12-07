@@ -79,7 +79,11 @@ func Reload() (*bolt.DB, error) {
 }
 
 func openDatabase(path string) (*bolt.DB, error) {
-	return bolt.Open(path, Perm, &bolt.Options{InitialMmapSize: InitialMmapSize, Timeout: time.Second * 3})
+	return bolt.Open(path, Perm, &bolt.Options{
+		InitialMmapSize: InitialMmapSize,
+		Timeout:         time.Second * 3,
+		// MmapFlags:       syscall.MAP_POPULATE,
+	})
 }
 
 func handleSignals() {

@@ -3,7 +3,7 @@
 package xpr
 
 import (
-	"github.com/karmarun/karma.run/common"
+	"karma.run/common"
 )
 
 var LanguageModel = common.QuickModel(model)

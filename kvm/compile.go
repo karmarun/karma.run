@@ -4,10 +4,10 @@ package kvm
 
 import (
 	"fmt"
-	"github.com/karmarun/karma.run/kvm/inst"
-	"github.com/karmarun/karma.run/kvm/mdl"
-	"github.com/karmarun/karma.run/kvm/val"
-	"github.com/karmarun/karma.run/kvm/xpr"
+	"karma.run/kvm/inst"
+	"karma.run/kvm/mdl"
+	"karma.run/kvm/val"
+	"karma.run/kvm/xpr"
 	"regexp"
 )
 

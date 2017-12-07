@@ -4,13 +4,13 @@ package kvm
 
 import (
 	"fmt"
-	"github.com/karmarun/karma.run/common"
-	"github.com/karmarun/karma.run/definitions"
-	"github.com/karmarun/karma.run/kvm/err"
-	"github.com/karmarun/karma.run/kvm/inst"
-	"github.com/karmarun/karma.run/kvm/mdl"
-	"github.com/karmarun/karma.run/kvm/val"
 	"github.com/kr/pretty"
+	"karma.run/common"
+	"karma.run/definitions"
+	"karma.run/kvm/err"
+	"karma.run/kvm/inst"
+	"karma.run/kvm/mdl"
+	"karma.run/kvm/val"
 	"log"
 	"math/rand"
 	"sort"
@@ -359,7 +359,7 @@ func (vm VirtualMachine) Execute(it inst.Instruction, input val.Value) (val.Valu
 			mv := unMeta(stack.Pop()).(val.Struct)
 			cp := make(val.Struct, len(mv))
 			for k, v := range mv {
-				mapped, e := mapListFunc(vm, val.Struct{"field": val.String(k), "value": v}, it.Expression)
+				mapped, e := vm.Execute(it.Expression, val.Struct{"field": val.String(k), "value": v})
 				if e != nil {
 					return nil, e
 				}
@@ -372,7 +372,7 @@ func (vm VirtualMachine) Execute(it inst.Instruction, input val.Value) (val.Valu
 			mv := unMeta(stack.Pop()).(val.Map)
 			cp := make(val.Map, len(mv))
 			for k, v := range mv {
-				mapped, e := mapListFunc(vm, val.Struct{"key": val.String(k), "value": v}, it.Expression)
+				mapped, e := vm.Execute(it.Expression, val.Struct{"key": val.String(k), "value": v})
 				if e != nil {
 					return nil, e
 				}
@@ -439,7 +439,7 @@ func (vm VirtualMachine) Execute(it inst.Instruction, input val.Value) (val.Valu
 			case val.List:
 				cp := make(val.List, len(ls), len(ls))
 				for i, value := range ls {
-					mapped, e := mapListFunc(vm, value, it.Expression)
+					mapped, e := vm.Execute(it.Expression, value)
 					if e != nil {
 						return nil, e
 					}
@@ -448,10 +448,27 @@ func (vm VirtualMachine) Execute(it inst.Instruction, input val.Value) (val.Valu
 				stack.Push(cp)
 
 			case iteratorValue:
+
+				mapping := func(v val.Value) (val.Value, err.Error) {
+					return vm.Execute(it.Expression, v)
+				}
+				iterator := ls.iterator
+
+				if mi, ok := iterator.(mappingIterator); ok {
+					f1 := mi.fnc
+					f2 := mapping
+					iterator = mi.sub
+					mapping = func(v val.Value) (val.Value, err.Error) {
+						v, e := f1(v)
+						if e != nil {
+							return nil, e
+						}
+						return f2(v)
+					}
+				}
+
 				stack.Push(iteratorValue{
-					newMappingIterator(ls.iterator, func(value val.Value) (val.Value, err.Error) {
-						return mapListFunc(vm, value, it.Expression)
-					}),
+					newMappingIterator(iterator, mapping),
 				})
 
 			default:
@@ -712,21 +729,46 @@ func (vm VirtualMachine) Execute(it inst.Instruction, input val.Value) (val.Valu
 			case val.List:
 				cp := make(val.List, 0, len(ls))
 				for _, value := range ls {
-					keep, e := filterFunc(vm, value, it.Expression)
+					keep, e := vm.Execute(it.Expression, value)
 					if e != nil {
 						return nil, e
 					}
-					if keep {
+					if keep.(val.Bool) {
 						cp = append(cp, value)
 					}
 				}
 				stack.Push(cp)
 
 			case iteratorValue:
+				iterator := ls.iterator
+				filter := func(value val.Value) (bool, err.Error) {
+					v, e := vm.Execute(it.Expression, value)
+					if e != nil {
+						return false, e
+					}
+					return bool(v.(val.Bool)), nil
+				}
+				if fm, ok := iterator.(filterIterator); ok {
+					iterator = fm.sub
+					f1 := fm.fnc
+					f2 := filter
+					filter = func(input val.Value) (bool, err.Error) {
+						keep, e := f1(input)
+						if e != nil {
+							return false, e
+						}
+						if !keep {
+							return false, nil
+						}
+						keep, e = f2(input)
+						if e != nil {
+							return false, e
+						}
+						return keep, nil
+					}
+				}
 				stack.Push(iteratorValue{
-					newFilterIterator(ls.iterator, func(value val.Value) (bool, err.Error) {
-						return filterFunc(vm, value, it.Expression)
-					}),
+					newFilterIterator(iterator, filter),
 				})
 
 			default:
