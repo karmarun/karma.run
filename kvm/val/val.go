@@ -132,9 +132,7 @@ func (v List) Copy() Value {
 }
 
 func (l List) Map(f func(int, Value) Value) List {
-	c := make(List, len(l), len(l))
-	c.OverMap(f)
-	return c
+	return l.Copy().(List).OverMap(f)
 }
 
 // Like Map, but overwrites list elements in-place
@@ -301,10 +299,8 @@ func (m Map) Keys() []string {
 	return keys
 }
 
-func (m Map) Map(f func(string, Value) Value) Map {
-	c := make(Map, len(m))
-	c.OverMap(f)
-	return c
+func (v Map) Map(f func(string, Value) Value) Map {
+	return v.Copy().(Map).OverMap(f)
 }
 
 // Like Map, but overwrites map elements in-place
