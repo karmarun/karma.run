@@ -12,21 +12,21 @@ type Recursion struct {
 	Label        string
 	Model        Model
 	traverseFlag bool       // not thread safe
-	transPointer *Recursion // not thread safe
+	transFlag    bool       // not thread safe
+	copyPtr      *Recursion // not thread safe
 }
 
 func (r *Recursion) Transform(f func(Model) Model) Model {
 	if r.Model == nil {
 		panic("mdl.*Recursion.Transform() called during model building")
 	}
-	if r.transPointer != nil {
-		return r.transPointer
+	if r.transFlag {
+		return r
 	}
-	c := &Recursion{Label: r.Label}
-	r.transPointer = c
-	c.Model = r.Model.Transform(f)
-	r.transPointer = nil
-	return f(c)
+	r.transFlag = true
+	r.Model = r.Model.Transform(f)
+	r.transFlag = false
+	return f(r)
 }
 
 func (r *Recursion) TraverseValue(j val.Value, f func(val.Value, Model)) {
@@ -45,7 +45,14 @@ func (r *Recursion) Traverse(p []string, f func([]string, Model)) {
 }
 
 func (r *Recursion) Copy() Model {
-	return r.Transform(TransformIdentity)
+	if r.copyPtr != nil {
+		return r.copyPtr
+	}
+	c := &Recursion{Label: r.Label}
+	r.copyPtr = c
+	c.Model = r.Model.Copy()
+	r.copyPtr = nil
+	return c
 }
 
 func (r *Recursion) Zero() val.Value {
@@ -68,9 +75,7 @@ type List struct {
 }
 
 func (m List) Transform(f func(Model) Model) Model {
-	c := List{}
-	c.Elements = m.Elements.Transform(f)
-	return f(c)
+	return f(List{m.Elements.Transform(f)})
 }
 
 func (l List) TraverseValue(j val.Value, f func(val.Value, Model)) {
@@ -83,7 +88,7 @@ func (l List) TraverseValue(j val.Value, f func(val.Value, Model)) {
 }
 
 func (l List) Copy() Model {
-	return l.Transform(TransformIdentity)
+	return List{l.Elements.Copy()}
 }
 
 func (r List) Traverse(p []string, f func([]string, Model)) {
@@ -111,9 +116,7 @@ type Map struct {
 }
 
 func (m Map) Transform(f func(Model) Model) Model {
-	c := Map{}
-	c.Elements = m.Elements.Transform(f)
-	return f(c)
+	return f(Map{m.Elements.Transform(f)})
 }
 
 func (m Map) TraverseValue(j val.Value, f func(val.Value, Model)) {
@@ -125,8 +128,8 @@ func (m Map) TraverseValue(j val.Value, f func(val.Value, Model)) {
 	}
 }
 
-func (l Map) Copy() Model {
-	return l.Transform(TransformIdentity)
+func (m Map) Copy() Model {
+	return Map{m.Elements.Copy()}
 }
 
 func (r Map) Traverse(p []string, f func([]string, Model)) {
@@ -156,7 +159,7 @@ func (r String) Zero() val.Value {
 }
 
 func (m String) Transform(f func(Model) Model) Model {
-	return f(String{})
+	return f(m)
 }
 
 func (s String) TraverseValue(j val.Value, f func(val.Value, Model)) {
@@ -187,7 +190,7 @@ func (r Float) Zero() val.Value {
 }
 
 func (m Float) Transform(f func(Model) Model) Model {
-	return f(Float{})
+	return f(m)
 }
 
 func (s Float) TraverseValue(j val.Value, f func(val.Value, Model)) {
@@ -222,11 +225,10 @@ func (r Struct) Zero() val.Value {
 }
 
 func (m Struct) Transform(f func(Model) Model) Model {
-	c := make(Struct, len(m))
-	for k, v := range m {
-		c[k] = v.Transform(f)
+	for k, w := range m {
+		m[k] = w.Transform(f)
 	}
-	return f(c)
+	return f(m)
 }
 
 func (s Struct) Keys() []string {
@@ -250,7 +252,11 @@ func (s Struct) TraverseValue(j val.Value, f func(val.Value, Model)) {
 }
 
 func (s Struct) Copy() Model {
-	return s.Transform(TransformIdentity)
+	c := make(Struct, len(s))
+	for k, w := range s {
+		c[k] = w.Copy()
+	}
+	return c
 }
 
 func (r Struct) Traverse(p []string, f func([]string, Model)) {
@@ -290,11 +296,10 @@ func (m Union) Zero() val.Value {
 }
 
 func (m Union) Transform(f func(Model) Model) Model {
-	c := make(Union, len(m))
-	for k, v := range m {
-		c[k] = v.Transform(f)
+	for k, w := range m {
+		m[k] = w.Transform(f)
 	}
-	return f(c)
+	return f(m)
 }
 
 func (s Union) Cases() []string {
@@ -315,7 +320,11 @@ func (s Union) TraverseValue(j val.Value, f func(val.Value, Model)) {
 }
 
 func (s Union) Copy() Model {
-	return s.Transform(TransformIdentity)
+	c := make(Union, len(s))
+	for k, w := range s {
+		c[k] = w.Copy()
+	}
+	return c
 }
 
 func (r Union) Traverse(p []string, f func([]string, Model)) {
@@ -350,7 +359,7 @@ func (r Bool) Zero() val.Value {
 }
 
 func (m Bool) Transform(f func(Model) Model) Model {
-	return f(Bool{})
+	return f(m)
 }
 
 func (b Bool) TraverseValue(j val.Value, f func(val.Value, Model)) {
@@ -382,7 +391,7 @@ func (r Any) Zero() val.Value {
 }
 
 func (m Any) Transform(f func(Model) Model) Model {
-	return f(Any{})
+	return f(m)
 }
 
 func (a Any) TraverseValue(j val.Value, f func(val.Value, Model)) {
@@ -415,7 +424,7 @@ func (r Ref) Zero() val.Value {
 }
 
 func (m Ref) Transform(f func(Model) Model) Model {
-	return f(Ref{m.Model})
+	return f(m)
 }
 
 func (r Ref) TraverseValue(j val.Value, f func(val.Value, Model)) {
@@ -450,9 +459,7 @@ func (r Unique) Zero() val.Value {
 }
 
 func (m Unique) Transform(f func(Model) Model) Model {
-	c := Unique{}
-	c.Model = m.Model.Transform(f)
-	return f(c)
+	return f(Unique{m.Model.Transform(f)})
 }
 
 func (o Unique) TraverseValue(j val.Value, f func(val.Value, Model)) {
@@ -461,7 +468,7 @@ func (o Unique) TraverseValue(j val.Value, f func(val.Value, Model)) {
 }
 
 func (o Unique) Copy() Model {
-	return o.Transform(TransformIdentity)
+	return Unique{o.Model.Copy()}
 }
 
 func (r Unique) Traverse(p []string, f func([]string, Model)) {
@@ -487,7 +494,7 @@ func (r DateTime) Zero() val.Value {
 }
 
 func (m DateTime) Transform(f func(Model) Model) Model {
-	return f(DateTime{})
+	return f(m)
 }
 
 func (o DateTime) TraverseValue(j val.Value, f func(val.Value, Model)) {
@@ -522,11 +529,10 @@ func (r Tuple) Zero() val.Value {
 }
 
 func (m Tuple) Transform(f func(Model) Model) Model {
-	c := make(Tuple, len(m), len(m))
-	for k, v := range m {
-		c[k] = v.Transform(f)
+	for i, w := range m {
+		m[i] = w.Transform(f)
 	}
-	return f(c)
+	return f(m)
 }
 
 func (s Tuple) TraverseValue(j val.Value, f func(val.Value, Model)) {
@@ -539,7 +545,11 @@ func (s Tuple) TraverseValue(j val.Value, f func(val.Value, Model)) {
 }
 
 func (s Tuple) Copy() Model {
-	return s.Transform(TransformIdentity)
+	c := make(Tuple, len(s), len(s))
+	for i, w := range s {
+		c[i] = w.Copy()
+	}
+	return c
 }
 
 func (s Tuple) Traverse(p []string, f func([]string, Model)) {
@@ -578,9 +588,7 @@ func (r Annotation) Zero() val.Value {
 }
 
 func (m Annotation) Transform(f func(Model) Model) Model {
-	c := Annotation{Value: m.Value}
-	c.Model = m.Model.Transform(f)
-	return f(c)
+	return f(Annotation{m.Value, m.Model.Transform(f)})
 }
 
 func (w Annotation) TraverseValue(j val.Value, f func(val.Value, Model)) {
@@ -589,7 +597,7 @@ func (w Annotation) TraverseValue(j val.Value, f func(val.Value, Model)) {
 }
 
 func (m Annotation) Copy() Model {
-	return m.Transform(TransformIdentity)
+	return Annotation{m.Value, m.Model.Copy()}
 }
 
 func (w Annotation) Traverse(p []string, f func([]string, Model)) {
@@ -611,14 +619,8 @@ func (m Annotation) Equals(n Model) bool {
 type Or [2]Model
 
 func (m Or) Transform(f func(Model) Model) Model {
-
-	return Or{m[0].Transform(f), m[1].Transform(f)}
-
-	// note: unable to call Either() here, leads to bugs
-	//       due to incomplete *Recursion values in transition
-	//       from being a submodel-less transPointer to becoming
-	//       the return value of Transform
-
+	return f(Either(m[0].Transform(f), m[1].Transform(f), nil))
+	// return f(Or{m[0].Transform(f), m[1].Transform(f)})
 }
 
 func (w Or) TraverseValue(j val.Value, f func(val.Value, Model)) {
@@ -627,7 +629,7 @@ func (w Or) TraverseValue(j val.Value, f func(val.Value, Model)) {
 }
 
 func (m Or) Copy() Model {
-	return m.Transform(TransformIdentity)
+	return Or{m[0].Copy(), m[1].Copy()}
 }
 
 func (w Or) Traverse(p []string, f func([]string, Model)) {
@@ -666,11 +668,7 @@ func (m Enum) Zero() val.Value {
 }
 
 func (m Enum) Transform(f func(Model) Model) Model {
-	c := make(Enum, len(m))
-	for i, s := range m {
-		c[i] = s
-	}
-	return f(c)
+	return f(m)
 }
 
 func (m Enum) TraverseValue(v val.Value, f func(val.Value, Model)) {
@@ -678,7 +676,11 @@ func (m Enum) TraverseValue(v val.Value, f func(val.Value, Model)) {
 }
 
 func (s Enum) Copy() Model {
-	return s.Transform(TransformIdentity)
+	c := make(Enum, len(s))
+	for k, v := range s {
+		c[k] = v
+	}
+	return c
 }
 
 func (s Enum) Traverse(p []string, f func([]string, Model)) {
@@ -709,9 +711,7 @@ type Set struct {
 }
 
 func (m Set) Transform(f func(Model) Model) Model {
-	c := Set{}
-	c.Elements = m.Elements.Transform(f)
-	return f(c)
+	return f(Set{m.Elements.Transform(f)})
 }
 
 func (l Set) TraverseValue(j val.Value, f func(val.Value, Model)) {
@@ -724,7 +724,7 @@ func (l Set) TraverseValue(j val.Value, f func(val.Value, Model)) {
 }
 
 func (l Set) Copy() Model {
-	return l.Transform(TransformIdentity)
+	return Set{l.Elements.Copy()}
 }
 
 func (r Set) Traverse(p []string, f func([]string, Model)) {
@@ -750,7 +750,7 @@ func (m Set) Equals(n Model) bool {
 type Null struct{}
 
 func (m Null) Transform(f func(Model) Model) Model {
-	return f(Null{})
+	return f(m)
 }
 
 func (l Null) TraverseValue(j val.Value, f func(val.Value, Model)) {

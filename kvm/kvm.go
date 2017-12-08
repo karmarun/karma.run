@@ -24,8 +24,6 @@ import (
 	"time"
 )
 
-const ModelCacheCapacity = 512
-
 const SeparatorByte = '~'
 
 type VirtualMachine struct {
@@ -850,13 +848,16 @@ func (vm VirtualMachine) get(mid, oid string) (val.Meta, err.Error) {
 	}
 
 	vl, _ := karma.Decode(dt, vm.WrapModelInMeta(mid, m.Model))
+	mv := DematerializeMeta(vl.(val.Struct))
 
-	return DematerializeMeta(vl.(val.Struct)), nil
+	return mv, nil
 
 }
 
+const ModelCacheCapacity = 512
+
 var ModelCache = cc.NewLru(ModelCacheCapacity)
-var modelCopyMutex = &sync.Mutex{} // temporary fix
+var modelCopyMutex = &sync.Mutex{} // mutex because copying *mdl.Recursion is not thread-safe
 
 func (vm VirtualMachine) Model(mid string) (BucketModel, err.Error) {
 
@@ -864,7 +865,6 @@ func (vm VirtualMachine) Model(mid string) (BucketModel, err.Error) {
 	cacheKey := metaId + "/" + mid // metaId is distinct for every database
 
 	if m, ok := ModelCache.Get(cacheKey); ok {
-		// mutex because copying *mdl.Recursion is not thread-safe
 		modelCopyMutex.Lock()
 		defer modelCopyMutex.Unlock()
 		return BucketModel{Bucket: mid, Model: m.(mdl.Model).Copy()}, nil

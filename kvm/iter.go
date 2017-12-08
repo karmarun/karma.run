@@ -17,8 +17,8 @@ func (iteratorValue) Equals(v val.Value) bool {
 	panic("iteratorValue.Equals called")
 }
 
-func (iteratorValue) Copy() val.Value {
-	panic("iteratorValue.Copy called")
+func (i iteratorValue) Copy() val.Value {
+	return iteratorValue{i.iterator}
 }
 
 func (iteratorValue) Type() val.Type {

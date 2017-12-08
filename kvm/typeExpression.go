@@ -733,7 +733,7 @@ func (vm VirtualMachine) TypeExpression(node xpr.Expression, argument, expected 
 			return arg, e
 		}
 		node.Argument = arg
-		rewritten := arg.Actual.Transform(func(m mdl.Model) mdl.Model {
+		rewritten := arg.Actual.Copy().Transform(func(m mdl.Model) mdl.Model {
 			if e != nil {
 				return m
 			}
@@ -1141,7 +1141,7 @@ func (vm VirtualMachine) TypeExpression(node xpr.Expression, argument, expected 
 		}
 		node.Value = value
 
-		rewritten := value.Actual.Transform(func(m mdl.Model) mdl.Model {
+		rewritten := value.Actual.Copy().Transform(func(m mdl.Model) mdl.Model {
 			if e != nil {
 				return m
 			}

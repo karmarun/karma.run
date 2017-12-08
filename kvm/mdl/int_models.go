@@ -13,7 +13,7 @@ func (r Int8) Zero() val.Value {
 }
 
 func (m Int8) Transform(f func(Model) Model) Model {
-	return f(Int8{})
+	return f(m)
 }
 
 func (i Int8) TraverseValue(j val.Value, f func(val.Value, Model)) {
@@ -42,7 +42,7 @@ func (r Int16) Zero() val.Value {
 }
 
 func (m Int16) Transform(f func(Model) Model) Model {
-	return f(Int16{})
+	return f(m)
 }
 
 func (i Int16) TraverseValue(j val.Value, f func(val.Value, Model)) {
@@ -71,7 +71,7 @@ func (r Int32) Zero() val.Value {
 }
 
 func (m Int32) Transform(f func(Model) Model) Model {
-	return f(Int32{})
+	return f(m)
 }
 
 func (i Int32) TraverseValue(j val.Value, f func(val.Value, Model)) {
@@ -100,7 +100,7 @@ func (r Int64) Zero() val.Value {
 }
 
 func (m Int64) Transform(f func(Model) Model) Model {
-	return f(Int64{})
+	return f(m)
 }
 
 func (i Int64) TraverseValue(j val.Value, f func(val.Value, Model)) {
@@ -129,7 +129,7 @@ func (r Uint8) Zero() val.Value {
 }
 
 func (m Uint8) Transform(f func(Model) Model) Model {
-	return f(Uint8{})
+	return f(m)
 }
 
 func (i Uint8) TraverseValue(j val.Value, f func(val.Value, Model)) {
@@ -158,7 +158,7 @@ func (r Uint16) Zero() val.Value {
 }
 
 func (m Uint16) Transform(f func(Model) Model) Model {
-	return f(Uint16{})
+	return f(m)
 }
 
 func (i Uint16) TraverseValue(j val.Value, f func(val.Value, Model)) {
@@ -187,7 +187,7 @@ func (r Uint32) Zero() val.Value {
 }
 
 func (m Uint32) Transform(f func(Model) Model) Model {
-	return f(Uint32{})
+	return f(m)
 }
 
 func (i Uint32) TraverseValue(j val.Value, f func(val.Value, Model)) {
@@ -216,7 +216,7 @@ func (r Uint64) Zero() val.Value {
 }
 
 func (m Uint64) Transform(f func(Model) Model) Model {
-	return f(Uint64{})
+	return f(m)
 }
 
 func (i Uint64) TraverseValue(j val.Value, f func(val.Value, Model)) {

@@ -275,7 +275,7 @@ func (vm VirtualMachine) Execute(program inst.Sequence, input val.Value) (val.Va
 			}
 
 		case inst.PopToInput:
-			input = stack.Pop()
+			input = stack.Pop().Copy()
 
 		case inst.CreateMultiple:
 
@@ -737,7 +737,7 @@ func (vm VirtualMachine) Execute(program inst.Sequence, input val.Value) (val.Va
 				})
 
 			default:
-				log.Panicf("Execute: Filter: unexpected type on stack: %T.", ls)
+				log.Panicf("unexpected type on stack: %T", ls)
 			}
 
 		case inst.First:

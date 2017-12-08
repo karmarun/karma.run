@@ -51,18 +51,13 @@ type Model interface {
 	Traverse([]string, func([]string, Model))
 
 	// Returns the top-level Type of the Values in the set
-	// of a Model. Returns TypeInvalid in case of any and or.
+	// of a Model. Returns TypeInvalid in case of Any and Or.
 	ValueType() val.Type
 }
 
 const (
 	FormatDateTime = time.RFC3339
 )
-
-// TransformIdentity is the identity function for Models
-func TransformIdentity(m Model) Model {
-	return m
-}
 
 // ValueFromModel returns a Value representation of Model model.
 func ValueFromModel(metaId string, model Model, recursions map[*Recursion]struct{}) val.Value {

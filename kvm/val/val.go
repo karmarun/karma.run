@@ -25,6 +25,9 @@ type Meta struct {
 	Value   Value
 }
 
+// Meta.Transform does NOT call f on itself because
+// after a transformation, the object is not
+// the same as persisted.
 func (v Meta) Transform(f func(Value) Value) Value {
 	return v.Value.Transform(f)
 }
@@ -54,11 +57,10 @@ func (v Meta) Primitive() bool {
 type Tuple []Value
 
 func (v Tuple) Transform(f func(Value) Value) Value {
-	c := make(Tuple, len(v))
 	for i, w := range v {
-		c[i] = w.Transform(f)
+		v[i] = w.Transform(f)
 	}
-	return f(c)
+	return f(v)
 }
 
 func (l Tuple) Equals(v Value) bool {
@@ -77,8 +79,12 @@ func (l Tuple) Equals(v Value) bool {
 	return true
 }
 
-func (t Tuple) Copy() Value {
-	return t.Transform(TransformIdentity)
+func (v Tuple) Copy() Value {
+	c := make(Tuple, len(v), len(v))
+	for i, w := range v {
+		c[i] = w.Copy()
+	}
+	return c
 }
 
 func (l Tuple) OverMap(f func(int, Value) Value) Tuple {
@@ -95,11 +101,10 @@ func (v Tuple) Primitive() bool {
 type List []Value
 
 func (v List) Transform(f func(Value) Value) Value {
-	c := make(List, len(v))
 	for i, w := range v {
-		c[i] = w.Transform(f)
+		v[i] = w.Transform(f)
 	}
-	return f(c)
+	return f(v)
 }
 
 func (l List) Equals(v Value) bool {
@@ -118,8 +123,12 @@ func (l List) Equals(v Value) bool {
 	return true
 }
 
-func (t List) Copy() Value {
-	return t.Transform(TransformIdentity)
+func (v List) Copy() Value {
+	c := make(List, len(v), len(v))
+	for i, w := range v {
+		c[i] = w.Copy()
+	}
+	return c
 }
 
 func (l List) Map(f func(int, Value) Value) List {
@@ -146,13 +155,11 @@ type Union struct {
 }
 
 func (v Union) Transform(f func(Value) Value) Value {
-	c := Union{Case: v.Case}
-	c.Value = v.Value.Transform(f)
-	return f(c)
+	return f(Union{v.Case, v.Value.Transform(f)})
 }
 
-func (u Union) Copy() Value {
-	return u.Transform(TransformIdentity)
+func (v Union) Copy() Value {
+	return Union{v.Case, v.Value.Copy()}
 }
 
 func (u Union) Equals(v Value) bool {
@@ -167,7 +174,7 @@ func (v Union) Primitive() bool {
 type Raw []byte
 
 func (v Raw) Transform(f func(Value) Value) Value {
-	return f(v.Copy())
+	return f(v)
 }
 
 func (a Raw) Copy() Value {
@@ -196,15 +203,18 @@ func (v Raw) Primitive() bool {
 type Struct map[string]Value
 
 func (v Struct) Transform(f func(Value) Value) Value {
-	c := make(Struct, len(v))
 	for k, w := range v {
-		c[k] = w.Transform(f)
+		v[k] = w.Transform(f)
 	}
-	return f(c)
+	return f(v)
 }
 
-func (s Struct) Copy() Value {
-	return s.Transform(TransformIdentity)
+func (v Struct) Copy() Value {
+	c := make(Struct, len(v))
+	for k, w := range v {
+		c[k] = w.Copy()
+	}
+	return c
 }
 
 func (s Struct) Equals(v Value) bool {
@@ -249,15 +259,18 @@ func (v Struct) Primitive() bool {
 type Map map[string]Value
 
 func (v Map) Transform(f func(Value) Value) Value {
-	c := make(Map, len(v))
 	for k, w := range v {
-		c[k] = w.Transform(f)
+		v[k] = w.Transform(f)
 	}
-	return f(c)
+	return f(v)
 }
 
-func (s Map) Copy() Value {
-	return s.Transform(TransformIdentity)
+func (v Map) Copy() Value {
+	c := make(Map, len(v))
+	for k, w := range v {
+		c[k] = w.Copy()
+	}
+	return c
 }
 
 func (s Map) Equals(v Value) bool {
@@ -450,16 +463,21 @@ func (s Set) Keys() []uint64 {
 }
 
 func (x Set) Transform(f func(Value) Value) Value {
-	c := make(Set, len(x))
-	for _, v := range x {
+	for h, v := range x {
 		w := v.Transform(f)
-		c[Hash(w, nil).Sum64()] = w
+		delete(x, h)
+		h = Hash(w, nil).Sum64()
+		x[h] = w
 	}
-	return f(c)
+	return f(x)
 }
 
 func (x Set) Copy() Value {
-	return x.Transform(TransformIdentity)
+	c := make(Set, len(x))
+	for k, v := range x {
+		c[k] = v.Copy()
+	}
+	return c
 }
 
 func (s Set) Equals(v Value) bool {
