@@ -929,7 +929,9 @@ func (vm VirtualMachine) TypeExpression(node xpr.Expression, argument, expected 
 		}
 		node.In = in
 
-		value, e := vm.TypeExpression(node.Value, argument, in.Actual.Concrete().(mdl.List).Elements)
+		subExpect := in.Actual.Concrete().(mdl.List).Elements
+
+		value, e := vm.TypeExpression(node.Value, argument, UnwrapBucket(subExpect))
 		if e != nil {
 			return value, e
 		}

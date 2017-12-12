@@ -8,12 +8,11 @@ import (
 	"strings"
 )
 
-// TODO: make recursion secure
 func ModelToHuman(m mdl.Model) string {
-	return _ModelToHuman(m, nil)
+	return modelToHuman(m, 1, nil)
 }
 
-func _ModelToHuman(m mdl.Model, r map[*mdl.Recursion]struct{}) string {
+func modelToHuman(m mdl.Model, indent int, r map[*mdl.Recursion]struct{}) string {
 	if r == nil {
 		r = make(map[*mdl.Recursion]struct{})
 	}
@@ -23,7 +22,7 @@ func _ModelToHuman(m mdl.Model, r map[*mdl.Recursion]struct{}) string {
 			return `recursion`
 		}
 		r[m] = struct{}{}
-		s := _ModelToHuman(m.Model, r)
+		s := modelToHuman(m.Model, indent, r)
 		delete(r, m)
 		return s
 
@@ -32,42 +31,48 @@ func _ModelToHuman(m mdl.Model, r map[*mdl.Recursion]struct{}) string {
 	case mdl.Annotation:
 		return fmt.Sprintf(`annotation{%s}`, m.Model)
 	case mdl.Or:
-		l, r := _ModelToHuman(m[0], r), _ModelToHuman(m[1], r)
+		l, r := modelToHuman(m[0], indent, r), modelToHuman(m[1], indent, r)
 		return l + " | " + r
 	case mdl.Set:
-		return "set of " + _ModelToHuman(m.Elements, r)
+		return "set of " + modelToHuman(m.Elements, indent, r)
 	case mdl.List:
-		return "list of " + _ModelToHuman(m.Elements, r)
+		return "list of " + modelToHuman(m.Elements, indent, r)
 	case mdl.Map:
-		return "map of " + _ModelToHuman(m.Elements, r)
+		return "map of " + modelToHuman(m.Elements, indent, r)
 	case mdl.Tuple:
 		ss := make([]string, 0, len(m))
 		for _, w := range m {
-			ss = append(ss, _ModelToHuman(w, r))
+			ss = append(ss, modelToHuman(w, indent, r))
 		}
 		return fmt.Sprintf(`tuple(%s)`, strings.Join(ss, ", "))
 	case mdl.Struct:
 		ks := m.Keys()
-		args := ""
+		if len(ks) == 0 {
+			return "struct{}"
+		}
+		args := "\n"
 		for i, l := 0, len(ks); i < l; i++ {
 			k := ks[i]
 			if i > 0 {
-				args += ", "
+				args += ",\n"
 			}
-			args += k + ": " + _ModelToHuman(m[k], r)
+			args += strings.Repeat(" ", indent*2) + k + ": " + modelToHuman(m[k], indent+1, r)
 		}
-		return fmt.Sprintf("struct{%s}", args)
+		return fmt.Sprintf("struct{%s\n%s}", args, strings.Repeat(" ", (indent-1)*2))
 	case mdl.Union:
 		ks := m.Cases()
-		args := ""
+		if len(ks) == 0 {
+			return "union{}"
+		}
+		args := "\n"
 		for i, l := 0, len(ks); i < l; i++ {
 			k := ks[i]
 			if i > 0 {
-				args += ", "
+				args += ",\n"
 			}
-			args += k + ": " + _ModelToHuman(m[k], r)
+			args += strings.Repeat(" ", indent*2) + k + ": " + modelToHuman(m[k], indent+1, r)
 		}
-		return fmt.Sprintf("union{%s}", args)
+		return fmt.Sprintf("union{%s\n%s}", args, strings.Repeat(" ", (indent-1)*2))
 	case mdl.Enum:
 		ss := make([]string, 0, len(m))
 		for k, _ := range m {
