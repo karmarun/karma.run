@@ -27,9 +27,9 @@ func modelToHuman(m mdl.Model, indent int, r map[*mdl.Recursion]struct{}) string
 		return s
 
 	case mdl.Unique:
-		return fmt.Sprintf(`unique{%s}`, modelToHuman(m.Model, indent, r))
+		return fmt.Sprintf(`unique %s`, modelToHuman(m.Model, indent, r))
 	case mdl.Annotation:
-		return fmt.Sprintf(`annotation{%s}`, modelToHuman(m.Model, indent, r))
+		return fmt.Sprintf(`annotation(%s) of %s`, m.Value, modelToHuman(m.Model, indent, r))
 	case mdl.Or:
 		l, r := modelToHuman(m[0], indent, r), modelToHuman(m[1], indent, r)
 		return l + " | " + r
