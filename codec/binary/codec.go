@@ -109,11 +109,10 @@ func Encode(v val.Value) []byte {
 }
 
 func encode(v val.Value, buf []byte) []byte {
-	switch v := v.(type) {
-
-	case val.Null:
+	if v == val.Null {
 		return append(buf, byte(TypeNull))
-
+	}
+	switch v := v.(type) {
 	case val.Meta:
 		return encode(v.Value, buf)
 
@@ -148,11 +147,12 @@ func encode(v val.Value, buf []byte) []byte {
 
 	case val.Struct:
 		buf = append(buf, byte(TypeStruct))
-		buf = writeLength(len(v), buf)
-		for k, w := range v {
+		buf = writeLength(v.Len(), buf)
+		v.ForEach(func(k string, w val.Value) bool {
 			buf = writeString(k, buf)
 			buf = encode(w, buf)
-		}
+			return true
+		})
 		return buf
 
 	case val.Map:
@@ -290,7 +290,7 @@ func decode(data []byte) (val.Value, []byte, err.Error) {
 		if e != nil {
 			return nil, data, e
 		}
-		v := make(val.Struct, l)
+		v := val.NewStruct(l)
 		for i := 0; i < l; i++ {
 			field, d, e := readString(data)
 			if e != nil {
@@ -302,7 +302,7 @@ func decode(data []byte) (val.Value, []byte, err.Error) {
 				return nil, d, e
 			}
 			data = d
-			v[field] = value
+			v.Set(field, value)
 		}
 		return v, data, nil
 
@@ -398,7 +398,7 @@ func decode(data []byte) (val.Value, []byte, err.Error) {
 		return val.DateTime{t}, data, nil
 
 	case TypeNull:
-		return val.Null{}, data, nil
+		return val.Null, data, nil
 
 	case TypeSymbol:
 		s, data, e := readString(data)

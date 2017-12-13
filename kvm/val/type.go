@@ -166,7 +166,7 @@ func (DateTime) Type() Type {
 	return TypeDateTime
 }
 
-func (Null) Type() Type {
+func (null) Type() Type {
 	return TypeNull
 }
 

@@ -49,6 +49,10 @@ func Encode(v val.Value, bs []byte) []byte {
 		bs = make([]byte, 0, 1024)
 	}
 
+	if v == val.Null {
+		return append(bs, byte(TypeNull))
+	}
+
 	switch w := v.(type) {
 
 	case val.Meta:
@@ -89,11 +93,12 @@ func Encode(v val.Value, bs []byte) []byte {
 
 	case val.Struct:
 		bs = append(bs, byte(TypeStruct))
-		bs = encodeUint(uint64(len(w)), bs)
-		for k, x := range w {
+		bs = encodeUint(uint64(w.Len()), bs)
+		w.ForEach(func(k string, x val.Value) bool {
 			bs = encodeString(k, bs)
 			bs = Encode(x, bs)
-		}
+			return true
+		})
 		return bs
 
 	case val.Map:
@@ -131,9 +136,6 @@ func Encode(v val.Value, bs []byte) []byte {
 	case val.DateTime:
 		bs = append(bs, byte(TypeDateTime))
 		return encodeInt(w.UnixNano(), bs)
-
-	case val.Null:
-		return append(bs, byte(TypeNull))
 
 	case val.Int8:
 		bs = append(bs, byte(TypeInt8))
@@ -242,12 +244,12 @@ func Decode(bs []byte) (val.Value, []byte) {
 	case TypeStruct:
 		n, bs := decodeUint(bs)
 		l := int(n)
-		v := make(val.Struct, l)
+		v := val.NewStruct(l)
 		k, w := "", (val.Value)(nil)
 		for i := 0; i < l; i++ {
 			k, bs = decodeString(bs)
 			w, bs = Decode(bs)
-			v[k] = w
+			v.Set(k, w)
 		}
 		return v, bs
 
@@ -291,7 +293,7 @@ func Decode(bs []byte) (val.Value, []byte) {
 		return val.DateTime{t}, bs
 
 	case TypeNull:
-		return val.Null{}, bs
+		return val.Null, bs
 
 	case TypeInt:
 		n, bs := decodeInt(bs)

@@ -69,9 +69,9 @@ func encode(v val.Value, m mdl.Model, bs []byte) []byte {
 		ks := m.Keys()
 		sort.Strings(ks)
 		for _, k := range ks {
-			w, ok := v[k]
+			w, ok := v.Get(k)
 			if !ok {
-				w = val.Null{} // m[k] is (null|something)
+				w = val.Null // m[k] is (null|something)
 			}
 			bs = encode(w, m[k], bs)
 		}
@@ -214,9 +214,11 @@ func decode(bs []byte, m mdl.Model) (val.Value, []byte) {
 	case mdl.Struct:
 		ks := m.Keys()
 		sort.Strings(ks)
-		v := make(val.Struct, len(ks))
+		v := val.NewStruct(len(ks))
+		var w val.Value
 		for _, k := range ks {
-			v[k], bs = decode(bs, m[k])
+			w, bs = decode(bs, m[k])
+			v.Set(k, w)
 		}
 		return v, bs
 
@@ -235,7 +237,7 @@ func decode(bs []byte, m mdl.Model) (val.Value, []byte) {
 		return val.Ref{m.Model, r}, bs
 
 	case mdl.Null:
-		return val.Null{}, bs
+		return val.Null, bs
 
 	case mdl.String:
 		s, bs := readString(bs)

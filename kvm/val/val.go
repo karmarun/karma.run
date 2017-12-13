@@ -3,6 +3,7 @@
 package val
 
 import (
+	"sort"
 	"time"
 )
 
@@ -198,56 +199,80 @@ func (v Raw) Primitive() bool {
 	return false
 }
 
-type Struct map[string]Value
+type Struct struct{ valueMap }
+
+func NewStruct(capacity int) Struct {
+	return Struct{newValueMap(capacity)}
+}
+
+func StructFromMap(m map[string]Value) Struct {
+	v := NewStruct(len(m))
+	for k, w := range m {
+		v.Set(k, w)
+	}
+	return v
+}
+
+func (v Struct) Len() int {
+	return v.valueMap.Len()
+}
+
+func (v Struct) Field(k string) Value {
+	return v.valueMap.Get(k)
+}
+
+func (v Struct) Get(k string) (Value, bool) {
+	w := v.valueMap.Get(k)
+	if w == nil {
+		return nil, false
+	}
+	return w, true
+}
+
+func (v *Struct) Set(k string, w Value) {
+	v.valueMap = v.valueMap.Set(k, w)
+}
+
+func (v *Struct) Delete(k string) {
+	v.valueMap = v.valueMap.Unset(k)
+}
 
 func (v Struct) Transform(f func(Value) Value) Value {
-	for k, w := range v {
-		v[k] = w.Transform(f)
-	}
+	v.valueMap.OverMap(func(k string, v Value) Value {
+		return f(v)
+	})
 	return f(v)
 }
 
-func (v Struct) Copy() Value {
-	c := make(Struct, len(v))
-	for k, w := range v {
-		c[k] = w.Copy()
-	}
-	return c
+func (v Struct) ForEach(f func(string, Value) bool) {
+	v.valueMap.ForEach(f)
 }
 
-func (s Struct) Equals(v Value) bool {
-	q, ok := v.(Struct)
+func (v Struct) Copy() Value {
+	return Struct{v.valueMap.Copy()}
+}
+
+func (v Struct) Equals(w Value) bool {
+	x, ok := w.(Struct)
 	if !ok {
 		return false
 	}
-	if len(q) != len(s) {
-		return false
-	}
-	for k, v := range s {
-		w, ok := q[k]
-		if !ok {
-			return false
-		}
-		if !v.Equals(w) {
-			return false
-		}
-	}
-	return true
+	return v.valueMap.Equals(x.valueMap)
 }
 
-func (s Struct) Keys() []string {
-	keys := make([]string, 0, len(s))
-	for k, _ := range s {
-		keys = append(keys, k)
-	}
-	return keys
+func (v Struct) Keys() []string {
+	return v.valueMap.Keys()
 }
 
-func (l Struct) OverMap(f func(string, Value) Value) Struct {
-	for i, v := range l {
-		l[i] = f(i, v)
-	}
-	return l
+func (v Struct) Map(f func(string, Value) Value) Struct {
+	c := v.valueMap.Copy()
+	c.OverMap(f)
+	return Struct{c}
+}
+
+func (v Struct) OverMap(f func(string, Value) Value) Struct {
+	v.valueMap.OverMap(f)
+	return v
 }
 
 func (v Struct) Primitive() bool {
@@ -412,21 +437,23 @@ func (v DateTime) Primitive() bool {
 	return true
 }
 
-type Null struct{}
+var Null = null{}
 
-func (v Null) Transform(f func(Value) Value) Value {
+type null struct{}
+
+func (v null) Transform(f func(Value) Value) Value {
 	return f(v)
 }
 
-func (x Null) Copy() Value {
+func (x null) Copy() Value {
 	return x
 }
 
-func (s Null) Equals(v Value) bool {
+func (s null) Equals(v Value) bool {
 	return s == v
 }
 
-func (v Null) Primitive() bool {
+func (v null) Primitive() bool {
 	return true
 }
 
@@ -643,4 +670,106 @@ func (Uint64) Primitive() bool {
 
 func TransformIdentity(v Value) Value {
 	return v
+}
+
+type valueMap struct {
+	keys   []string
+	values []Value
+}
+
+func newValueMap(capacity int) valueMap {
+	return valueMap{
+		keys:   make([]string, 0, capacity),
+		values: make([]Value, 0, capacity),
+	}
+}
+
+func (m valueMap) Equals(w valueMap) bool {
+	if len(m.keys) != len(w.keys) {
+		return false
+	}
+	for i, _ := range m.keys {
+		if m.keys[i] != w.keys[i] {
+			return false
+		}
+	}
+	for i, _ := range m.values {
+		if !m.values[i].Equals(w.values[i]) {
+			return false
+		}
+	}
+	return true
+}
+
+func (m valueMap) Keys() []string {
+	keys := make([]string, len(m.keys), len(m.keys))
+	copy(keys, m.keys)
+	return keys
+}
+
+func (m valueMap) OverMap(f func(k string, v Value) Value) {
+	for i, k := range m.keys {
+		m.values[i] = f(k, m.values[i])
+	}
+}
+
+func (m valueMap) Get(k string) Value {
+	i := m.search(k)
+	if i == len(m.keys) || m.keys[i] != k {
+		return nil
+	}
+	return m.values[i]
+}
+
+func (m valueMap) Set(k string, v Value) valueMap {
+	i := m.search(k)
+	m.keys, m.values = append(m.keys, ""), append(m.values, nil)
+	copy(m.keys[i+1:], m.keys[i:])
+	copy(m.values[i+1:], m.values[i:])
+	m.keys[i], m.values[i] = k, v
+	return m
+}
+
+func (m valueMap) Unset(k string) valueMap {
+	i := m.search(k)
+	if i == len(m.keys) || m.keys[i] != k {
+		return m
+	}
+	l := len(m.keys)
+	copy(m.keys[i:l-1], m.keys[i+1:])
+	copy(m.values[i:l-1], m.values[i+1:])
+	m.keys[l-1], m.values[l-1] = "", nil // let them be GC'ed
+	m.keys, m.values = m.keys[:l-1], m.values[:l-1]
+	return m
+}
+
+func (m valueMap) Copy() valueMap {
+	keys, values := ([]string)(nil), ([]Value)(nil)
+	if m.keys != nil {
+		keys = make([]string, len(m.keys), cap(m.keys))
+		copy(keys, m.keys)
+	}
+	if m.values != nil {
+		values = make([]Value, len(m.values), cap(m.values))
+		copy(values, m.values)
+	}
+	return valueMap{keys, values}
+}
+
+func (m valueMap) ForEach(f func(string, Value) bool) {
+	for i, k := range m.keys {
+		if !f(k, m.values[i]) {
+			break
+		}
+	}
+}
+
+func (m valueMap) Len() int {
+	return len(m.keys)
+}
+
+// The return value is the index to insert k
+// if k is not present (it can be len(m.keys)).
+func (m valueMap) search(k string) int {
+	return sort.SearchStrings(m.keys, k)
 }

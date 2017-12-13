@@ -127,11 +127,11 @@ func (vm VirtualMachine) Execute(program inst.Sequence, input val.Value) (val.Va
 			stack.Push(ls)
 
 		case inst.BuildStruct:
-			ls := make(val.Struct, len(it.Keys))
+			v := val.NewStruct(len(it.Keys))
 			for i := len(it.Keys) - 1; i > -1; i-- {
-				ls[it.Keys[i]] = stack.Pop()
+				v.Set(it.Keys[i], stack.Pop())
 			}
-			stack.Push(ls)
+			stack.Push(v)
 
 		case inst.BuildUnion:
 			stack.Push(val.Union{Case: it.Case, Value: stack.Pop()})
@@ -360,22 +360,34 @@ func (vm VirtualMachine) Execute(program inst.Sequence, input val.Value) (val.Va
 
 		case inst.MapStruct:
 			mv := unMeta(stack.Pop()).(val.Struct)
-			cp := make(val.Struct, len(mv))
-			for k, v := range mv {
-				mapped, e := vm.Execute(it.Expression, val.Struct{"field": val.String(k), "value": v})
+			e := (err.Error)(nil)
+			temp := val.NewStruct(2)
+			mapped := mv.Map(func(k string, v val.Value) val.Value {
 				if e != nil {
-					return nil, e
+					return nil
 				}
-				cp[k] = mapped
+				temp.Set("field", val.String(k))
+				temp.Set("value", v)
+				mapped, e_ := vm.Execute(it.Expression, temp)
+				if e_ != nil {
+					e = e_
+				}
+				return mapped
+			})
+			if e != nil {
+				return nil, e
 			}
-			stack.Push(cp)
+			stack.Push(mapped)
 
 		case inst.MapMap:
 
 			mv := unMeta(stack.Pop()).(val.Map)
 			cp := make(val.Map, len(mv))
+			temp := val.NewStruct(2)
 			for k, v := range mv {
-				mapped, e := vm.Execute(it.Expression, val.Struct{"key": val.String(k), "value": v})
+				temp.Set("key", val.String(k))
+				temp.Set("value", v)
+				mapped, e := vm.Execute(it.Expression, temp)
 				if e != nil {
 					return nil, e
 				}
@@ -463,7 +475,7 @@ func (vm VirtualMachine) Execute(program inst.Sequence, input val.Value) (val.Va
 
 		case inst.GraphFlow:
 
-			ov := make(val.Struct, 32)
+			ov := make(map[string]val.Value)
 			in := make([]val.Ref, 0, 1024)
 			sn := make(map[val.Ref]struct{}, 1024)
 			in = append(in, unMeta(stack.Pop()).(val.Ref))
@@ -525,7 +537,7 @@ func (vm VirtualMachine) Execute(program inst.Sequence, input val.Value) (val.Va
 				}
 			}
 
-			stack.Push(ov)
+			stack.Push(val.StructFromMap(ov))
 
 		case inst.ResolveRefs:
 
@@ -850,7 +862,7 @@ func (vm VirtualMachine) Execute(program inst.Sequence, input val.Value) (val.Va
 
 		case inst.PresentOrConstant:
 			v := unMeta(stack.Pop())
-			if v == NullValue {
+			if v == val.Null {
 				stack.Push(it.Constant)
 			} else {
 				stack.Push(v)
@@ -858,7 +870,7 @@ func (vm VirtualMachine) Execute(program inst.Sequence, input val.Value) (val.Va
 
 		case inst.IsPresent:
 			v := unMeta(stack.Pop())
-			stack.Push(val.Bool(v != (val.Null{})))
+			stack.Push(val.Bool(v != val.Null))
 
 		case inst.Slice:
 			length := int(unMeta(stack.Pop()).(val.Int64))
@@ -914,7 +926,7 @@ func (vm VirtualMachine) Execute(program inst.Sequence, input val.Value) (val.Va
 
 		case inst.AssertPresent:
 			v := unMeta(stack.Pop())
-			if v == (val.Null{}) {
+			if v == val.Null {
 				return nil, err.ExecutionError{
 					fmt.Sprintf(`assertPresent: value was absent`),
 					nil,
@@ -926,7 +938,7 @@ func (vm VirtualMachine) Execute(program inst.Sequence, input val.Value) (val.Va
 
 			df := unMeta(stack.Pop())
 			vl := unMeta(stack.Pop())
-			if vl == (val.Null{}) {
+			if vl == val.Null {
 				stack.Push(df)
 			} else {
 				stack.Push(vl)
@@ -1034,7 +1046,7 @@ func (vm VirtualMachine) Execute(program inst.Sequence, input val.Value) (val.Va
 			if v, ok := m[string(k)]; ok {
 				stack.Push(v)
 			} else {
-				stack.Push(val.Null{})
+				stack.Push(val.Null)
 			}
 
 		case inst.Substring:
@@ -1060,7 +1072,7 @@ func (vm VirtualMachine) Execute(program inst.Sequence, input val.Value) (val.Va
 
 		case inst.SetField:
 			in := unMeta(stack.Pop()).(val.Struct)
-			in[it.Field] = unMeta(stack.Pop())
+			in.Set(it.Field, unMeta(stack.Pop()))
 			stack.Push(in)
 
 		case inst.SetKey:
@@ -1069,7 +1081,7 @@ func (vm VirtualMachine) Execute(program inst.Sequence, input val.Value) (val.Va
 			stack.Push(in)
 
 		case inst.Field:
-			stack.Push(unMeta(stack.Pop()).(val.Struct)[it.Key])
+			stack.Push(unMeta(stack.Pop()).(val.Struct).Field(it.Key))
 
 		case inst.Metarialize:
 			stack.Push(MaterializeMeta(stack.Pop().(val.Meta)))
@@ -1262,7 +1274,7 @@ func (vm VirtualMachine) Execute(program inst.Sequence, input val.Value) (val.Va
 			stack.Push(val.Bool(lhs.Time.Before(rhs.Time)))
 
 		case inst.Equal:
-			a, b, null := unMeta(stack.Pop()), unMeta(stack.Pop()), val.Null{}
+			a, b, null := unMeta(stack.Pop()), unMeta(stack.Pop()), val.Null
 			if a == null || b == null {
 				stack.Push(val.Bool(a == null && b == null))
 				continue

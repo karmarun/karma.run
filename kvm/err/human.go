@@ -14,10 +14,10 @@ type HumanReadableError struct {
 }
 
 func (e HumanReadableError) Value() val.Union {
-	return val.Union{"humanReadableError", val.Struct{
+	return val.Union{"humanReadableError", val.StructFromMap(map[string]val.Value{
 		"human":   val.String(e.Error_.String()),
 		"machine": e.Error_.Value(),
-	}}
+	})}
 }
 func (e HumanReadableError) Error() string {
 	return e.String()
@@ -46,13 +46,14 @@ func ProgramToHuman(v val.Value, indent int) string {
 	out := u.Case
 	a := u.Value
 	if s, ok := a.(val.Struct); ok {
-		if len(s) == 0 {
+		if s.Len() == 0 {
 			return out + `()`
 		}
-		as := make([]string, 0, len(s))
-		for k, a := range s {
+		as := make([]string, 0, s.Len())
+		s.ForEach(func(k string, a val.Value) bool {
 			as = append(as, fmt.Sprintf("\n%s%s = %s", indentation+indentUnit, k, ProgramToHuman(a, indent+2)))
-		}
+			return true
+		})
 		return out + fmt.Sprintf("(%s\n%s)", strings.Join(as, ", "), indentation)
 	}
 	if l, ok := a.(val.List); ok {
@@ -79,6 +80,9 @@ func ProgramToHuman(v val.Value, indent int) string {
 
 }
 func ValueToHuman(v val.Value) string {
+	if v == val.Null {
+		return `null`
+	}
 	switch v := v.(type) {
 	case val.Meta:
 		return ValueToHuman(v.Value)
@@ -111,8 +115,6 @@ func ValueToHuman(v val.Value) string {
 		return fmt.Sprintf(`%f`, v)
 	case val.String:
 		return fmt.Sprintf(`"%s"`, v)
-	case val.Null:
-		return `null`
 	case val.Int8:
 		return fmt.Sprintf(`%d`, v)
 	case val.Int16:

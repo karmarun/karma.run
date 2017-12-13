@@ -51,10 +51,10 @@ func Encode(value val.Value) JSON {
 	if value == nil {
 		log.Panicln("json/codec.Encode: value == nil")
 	}
-	switch v := value.(type) {
-	case val.Null:
+	if value == val.Null {
 		return JSON(`null`)
-
+	}
+	switch v := value.(type) {
 	case val.Meta:
 		return Encode(v.Value)
 
@@ -84,13 +84,14 @@ func Encode(value val.Value) JSON {
 		u[v.Case] = Encode(v.Value)
 		return mustMarshal(u)
 	case val.Struct:
-		u := make(map[string]JSON, len(v))
-		for k, q := range v {
-			if q == (val.Null{}) {
-				continue // omit optional null elements in structs
+		u := make(map[string]JSON, v.Len())
+		v.ForEach(func(k string, q val.Value) bool {
+			if q == val.Null {
+				return true // omit optional null elements in structs
 			}
 			u[k] = Encode(q)
-		}
+			return true
+		})
 		return mustMarshal(u)
 	case val.Map:
 		u := make(map[string]JSON, len(v))
@@ -159,7 +160,7 @@ func decode(data JSON, model mdl.Model) (val.Value, err.Error) {
 		if len(data) != 4 || string(data) != "null" {
 			return nil, err.InputParsingError{"expected null", data}
 		}
-		return val.Null{}, nil
+		return val.Null, nil
 
 	case mdl.Or:
 		v, e0 := decode(data, m[0])
@@ -291,17 +292,17 @@ func decode(data JSON, model mdl.Model) (val.Value, err.Error) {
 				return nil, err.InputParsingError{fmt.Sprintf(`unknown key "%s" in object`, k), data}
 			}
 		}
-		v := make(val.Struct, len(u))
+		v := val.NewStruct(len(u))
 		for k, q := range u {
 			w, e := decode(q, m[k])
 			if e != nil {
 				return nil, e
 			}
-			v[k] = w
+			v.Set(k, w)
 		}
 		for k, _ := range m {
-			if _, ok := v[k]; !ok {
-				v[k] = (val.Null{}) // omitted optional elements should be Null in struct val
+			if _, ok := v.Get(k); !ok {
+				v.Set(k, val.Null) // omitted optional elements should be Null in struct val
 			}
 		}
 		return v, nil

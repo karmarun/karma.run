@@ -72,7 +72,7 @@ func AuthHttpHandler(rw http.ResponseWriter, rq *http.Request) {
 	}
 
 	atr := atv.(val.Struct)
-	username, password := string(atr["username"].(val.String)), string(atr["password"].(val.String))
+	username, password := string(atr.Field("username").(val.String)), string(atr.Field("password").(val.String))
 
 	tx, e := dtbs.Begin(false)
 	if e != nil {
@@ -121,15 +121,15 @@ func AuthHttpHandler(rw http.ResponseWriter, rq *http.Request) {
 		return
 	}
 
-	us := mv.(val.Struct)["value"].(val.Struct)
+	us := mv.(val.Struct).Field("value").(val.Struct)
 
-	if e := bcrypt.CompareHashAndPassword([]byte(us["password"].(val.String)), []byte(password)); e != nil {
+	if e := bcrypt.CompareHashAndPassword([]byte(us.Field("password").(val.String)), []byte(password)); e != nil {
 		rw.WriteHeader(http.StatusForbidden)
 		rw.Write(cdc.Encode(err.PermissionDeniedError{}.Value()))
 		return
 	}
 
-	buf := fernet([]byte(mv.(val.Struct)["id"].(val.Ref)[1]), hmacKey)
+	buf := fernet([]byte(mv.(val.Struct).Field("id").(val.Ref)[1]), hmacKey)
 	rw.Write(cdc.Encode(val.String(base64.StdEncoding.EncodeToString(buf))))
 }
 

@@ -16,6 +16,8 @@ func TransformIdentity(m Expression) Expression {
 	return m
 }
 
+var argValue = val.Union{"arg", val.Struct{}}
+
 func ExpressionFromValue(v val.Value) Expression {
 
 	if _, ok := v.(val.Union); !ok {
@@ -82,11 +84,11 @@ func ExpressionFromValue(v val.Value) Expression {
 
 	case "newRef":
 		arg := u.Value.(val.Struct)
-		return NewRef{ExpressionFromValue(arg["model"]), ExpressionFromValue(arg["id"])}
+		return NewRef{ExpressionFromValue(arg.Field("model")), ExpressionFromValue(arg.Field("id"))}
 
 	case "newUnion":
 		arg := u.Value.(val.Struct)
-		return NewUnion{ExpressionFromValue(arg["case"]), ExpressionFromValue(arg["value"])}
+		return NewUnion{ExpressionFromValue(arg.Field("case")), ExpressionFromValue(arg.Field("value"))}
 
 	case "newList":
 		arg := u.Value.(val.List)
@@ -149,28 +151,28 @@ func ExpressionFromValue(v val.Value) Expression {
 
 	case "setField":
 		arg := u.Value.(val.Struct)
-		if _, ok := arg["in"]; !ok {
-			arg["in"] = val.Union{"arg", val.Struct{}}
+		if arg.Field("in") == val.Null {
+			arg.Set("in", argValue)
 		}
-		return SetField{ExpressionFromValue(arg["name"]), ExpressionFromValue(arg["value"]), ExpressionFromValue(arg["in"])}
+		return SetField{ExpressionFromValue(arg.Field("name")), ExpressionFromValue(arg.Field("value")), ExpressionFromValue(arg.Field("in"))}
 
 	case "setKey":
 		arg := u.Value.(val.Struct)
-		if _, ok := arg["in"]; !ok {
-			arg["in"] = val.Union{"arg", val.Struct{}}
+		if arg.Field("in") == val.Null {
+			arg.Set("in", argValue)
 		}
-		return SetKey{ExpressionFromValue(arg["name"]), ExpressionFromValue(arg["value"]), ExpressionFromValue(arg["in"])}
+		return SetKey{ExpressionFromValue(arg.Field("name")), ExpressionFromValue(arg.Field("value")), ExpressionFromValue(arg.Field("in"))}
 
 	case "joinStrings":
 		arg := u.Value.(val.Struct)
-		if _, ok := arg["separator"]; !ok {
-			arg["separator"] = val.String("")
+		if arg.Field("separator") == val.Null {
+			arg.Set("separator", val.String(""))
 		}
-		return JoinStrings{ExpressionFromValue(arg["strings"]), ExpressionFromValue(arg["separator"])}
+		return JoinStrings{ExpressionFromValue(arg.Field("strings")), ExpressionFromValue(arg.Field("separator"))}
 
 	case "relocateRef":
 		arg := u.Value.(val.Struct)
-		return RelocateRef{ExpressionFromValue(arg["ref"]), ExpressionFromValue(arg["model"])}
+		return RelocateRef{ExpressionFromValue(arg.Field("ref")), ExpressionFromValue(arg.Field("model"))}
 
 	case "extractStrings":
 		return ExtractStrings{ExpressionFromValue(u.Value)}
@@ -180,91 +182,91 @@ func ExpressionFromValue(v val.Value) Expression {
 
 	case "createMultiple":
 		arg := u.Value.(val.Struct)
-		vls := arg["values"].(val.Map)
+		vls := arg.Field("values").(val.Map)
 		mvs := make(map[string]Expression, len(vls))
 		for k, sub := range vls {
 			mvs[k] = ExpressionFromValue(sub)
 		}
-		return CreateMultiple{ExpressionFromValue(arg["in"]), mvs}
+		return CreateMultiple{ExpressionFromValue(arg.Field("in")), mvs}
 
 	case "if":
 		arg := u.Value.(val.Struct)
-		return If{ExpressionFromValue(arg["condition"]), ExpressionFromValue(arg["then"]), ExpressionFromValue(arg["else"])}
+		return If{ExpressionFromValue(arg.Field("condition")), ExpressionFromValue(arg.Field("then")), ExpressionFromValue(arg.Field("else"))}
 
 	case "with":
 		arg := u.Value.(val.Struct)
-		return With{ExpressionFromValue(arg["value"]), ExpressionFromValue(arg["return"])}
+		return With{ExpressionFromValue(arg.Field("value")), ExpressionFromValue(arg.Field("return"))}
 
 	case "update":
 		arg := u.Value.(val.Struct)
-		return Update{ExpressionFromValue(arg["ref"]), ExpressionFromValue(arg["value"])}
+		return Update{ExpressionFromValue(arg.Field("ref")), ExpressionFromValue(arg.Field("value"))}
 
 	case "create":
 		arg := u.Value.(val.Struct)
-		return Create{ExpressionFromValue(arg["in"]), ExpressionFromValue(arg["value"])}
+		return Create{ExpressionFromValue(arg.Field("in")), ExpressionFromValue(arg.Field("value"))}
 
 	case "mapMap":
 		arg := u.Value.(val.Struct)
-		return MapMap{ExpressionFromValue(arg["value"]), ExpressionFromValue(arg["expression"])}
+		return MapMap{ExpressionFromValue(arg.Field("value")), ExpressionFromValue(arg.Field("expression"))}
 
 	case "mapList":
 		arg := u.Value.(val.Struct)
-		return MapList{ExpressionFromValue(arg["value"]), ExpressionFromValue(arg["expression"])}
+		return MapList{ExpressionFromValue(arg.Field("value")), ExpressionFromValue(arg.Field("expression"))}
 
 	case "reduceList":
 		arg := u.Value.(val.Struct)
-		return ReduceList{ExpressionFromValue(arg["value"]), ExpressionFromValue(arg["expression"])}
+		return ReduceList{ExpressionFromValue(arg.Field("value")), ExpressionFromValue(arg.Field("expression"))}
 
 	case "graphFlow":
 		arg := u.Value.(val.Struct)
-		flw := arg["flow"].(val.List)
-		nod := GraphFlow{ExpressionFromValue(arg["start"]), make([]GraphFlowParam, len(flw), len(flw))}
+		flw := arg.Field("flow").(val.List)
+		nod := GraphFlow{ExpressionFromValue(arg.Field("start")), make([]GraphFlowParam, len(flw), len(flw))}
 		for i, sub := range flw {
 			subArg := sub.(val.Struct)
 			fwd, bwd := []Expression(nil), []Expression(nil)
-			if fl, ok := subArg["forward"].(val.List); ok {
+			if fl, ok := subArg.Field("forward").(val.List); ok {
 				fwd = make([]Expression, len(fl), len(fl))
 				for i, sub := range fl {
 					fwd[i] = ExpressionFromValue(sub)
 				}
 			}
-			if bl, ok := subArg["backward"].(val.List); ok {
+			if bl, ok := subArg.Field("backward").(val.List); ok {
 				bwd = make([]Expression, len(bl), len(bl))
 				for i, sub := range bl {
 					bwd[i] = ExpressionFromValue(sub)
 				}
 			}
-			nod.Flow[i] = GraphFlowParam{ExpressionFromValue(subArg["from"]), fwd, bwd}
+			nod.Flow[i] = GraphFlowParam{ExpressionFromValue(subArg.Field("from")), fwd, bwd}
 		}
 		return nod
 
 	case "resolveRefs":
 		arg := u.Value.(val.Struct)
-		mla := arg["models"].(val.List)
+		mla := arg.Field("models").(val.List)
 		mns := make([]Expression, len(mla), len(mla))
 		for i, sub := range mla {
 			mns[i] = ExpressionFromValue(sub)
 		}
-		return ResolveRefs{ExpressionFromValue(arg["value"]), mns}
+		return ResolveRefs{ExpressionFromValue(arg.Field("value")), mns}
 
 	case "resolveAllRefs":
 		return ResolveAllRefs{ExpressionFromValue(u.Value)}
 
 	case "referred":
 		arg := u.Value.(val.Struct)
-		return Referred{ExpressionFromValue(arg["from"]), ExpressionFromValue(arg["in"])}
+		return Referred{ExpressionFromValue(arg.Field("from")), ExpressionFromValue(arg.Field("in"))}
 
 	case "referrers":
 		arg := u.Value.(val.Struct)
-		return Referrers{ExpressionFromValue(arg["of"]), ExpressionFromValue(arg["in"])}
+		return Referrers{ExpressionFromValue(arg.Field("of")), ExpressionFromValue(arg.Field("in"))}
 
 	case "inList":
 		arg := u.Value.(val.Struct)
-		return InList{ExpressionFromValue(arg["value"]), ExpressionFromValue(arg["in"])}
+		return InList{ExpressionFromValue(arg.Field("value")), ExpressionFromValue(arg.Field("in"))}
 
 	case "filter":
 		arg := u.Value.(val.Struct)
-		return Filter{ExpressionFromValue(arg["value"]), ExpressionFromValue(arg["expression"])}
+		return Filter{ExpressionFromValue(arg.Field("value")), ExpressionFromValue(arg.Field("expression"))}
 
 	case "first":
 		return First{ExpressionFromValue(u.Value)}
@@ -336,120 +338,120 @@ func ExpressionFromValue(v val.Value) Expression {
 
 	case "assertCase":
 		arg := u.Value.(val.Struct)
-		return AssertCase{ExpressionFromValue(arg["value"]), ExpressionFromValue(arg["case"])}
+		return AssertCase{ExpressionFromValue(arg.Field("value")), ExpressionFromValue(arg.Field("case"))}
 
 	case "isCase":
 		arg := u.Value.(val.Struct)
-		return IsCase{ExpressionFromValue(arg["value"]), ExpressionFromValue(arg["case"])}
+		return IsCase{ExpressionFromValue(arg.Field("value")), ExpressionFromValue(arg.Field("case"))}
 
 	case "assertModelRef":
 		arg, ok := u.Value.(val.Struct)
 		if !ok {
-			arg = val.Struct{
-				"value": val.Null{},
+			arg = val.StructFromMap(map[string]val.Value{
+				"value": val.Null,
 				"ref":   u.Value,
-			}
+			})
 		}
-		if arg["value"] == (val.Null{}) {
-			arg["value"] = val.Union{"arg", val.Struct{}}
+		if arg.Field("value") == val.Null {
+			arg.Set("value", argValue)
 		}
-		return AssertModelRef{ExpressionFromValue(arg["value"]), ExpressionFromValue(arg["ref"])}
+		return AssertModelRef{ExpressionFromValue(arg.Field("value")), ExpressionFromValue(arg.Field("ref"))}
 
 	case "slice":
 		arg := u.Value.(val.Struct)
-		if arg["value"] == (val.Null{}) {
-			arg["value"] = val.Union{"arg", val.Struct{}}
+		if arg.Field("value") == val.Null {
+			arg.Set("value", argValue)
 		}
-		return Slice{ExpressionFromValue(arg["value"]), ExpressionFromValue(arg["offset"]), ExpressionFromValue(arg["length"])}
+		return Slice{ExpressionFromValue(arg.Field("value")), ExpressionFromValue(arg.Field("offset")), ExpressionFromValue(arg.Field("length"))}
 
 	case "searchAllRegex":
 		if sarg, ok := u.Value.(val.String); ok {
-			u.Value = val.Struct{
-				"value":           val.Union{"arg", val.Struct{}},
+			u.Value = val.StructFromMap(map[string]val.Value{
+				"value":           argValue,
 				"regex":           sarg,
 				"multiLine":       val.Bool(false),
 				"caseInsensitive": val.Bool(false),
-			}
+			})
 		}
 		arg := u.Value.(val.Struct)
-		if arg["value"] == (val.Null{}) {
-			arg["value"] = val.Union{"arg", val.Struct{}}
+		if arg.Field("value") == val.Null {
+			arg.Set("value", argValue)
 		}
-		if arg["multiLine"] == (val.Null{}) {
-			arg["multiLine"] = val.Bool(false)
+		if arg.Field("multiLine") == val.Null {
+			arg.Set("multiLine", val.Bool(false))
 		}
-		if arg["caseInsensitive"] == (val.Null{}) {
-			arg["caseInsensitive"] = val.Bool(false)
+		if arg.Field("caseInsensitive") == val.Null {
+			arg.Set("caseInsensitive", val.Bool(false))
 		}
 		return SearchAllRegex{
-			ExpressionFromValue(arg["value"]),
-			ExpressionFromValue(arg["regex"]),
-			ExpressionFromValue(arg["multiLine"]),
-			ExpressionFromValue(arg["caseInsensitive"]),
+			ExpressionFromValue(arg.Field("value")),
+			ExpressionFromValue(arg.Field("regex")),
+			ExpressionFromValue(arg.Field("multiLine")),
+			ExpressionFromValue(arg.Field("caseInsensitive")),
 		}
 
 	case "searchRegex":
 		if sarg, ok := u.Value.(val.String); ok {
-			u.Value = val.Struct{
-				"value":           val.Union{"arg", val.Struct{}},
+			u.Value = val.StructFromMap(map[string]val.Value{
+				"value":           argValue,
 				"regex":           sarg,
 				"multiLine":       val.Bool(false),
 				"caseInsensitive": val.Bool(false),
-			}
+			})
 		}
 		arg := u.Value.(val.Struct)
-		if arg["value"] == (val.Null{}) {
-			arg["value"] = val.Union{"arg", val.Struct{}}
+		if arg.Field("value") == val.Null {
+			arg.Set("value", argValue)
 		}
-		if arg["multiLine"] == (val.Null{}) {
-			arg["multiLine"] = val.Bool(false)
+		if arg.Field("multiLine") == val.Null {
+			arg.Set("multiLine", val.Bool(false))
 		}
-		if arg["caseInsensitive"] == (val.Null{}) {
-			arg["caseInsensitive"] = val.Bool(false)
+		if arg.Field("caseInsensitive") == val.Null {
+			arg.Set("caseInsensitive", val.Bool(false))
 		}
 		return SearchRegex{
-			ExpressionFromValue(arg["value"]),
-			ExpressionFromValue(arg["regex"]),
-			ExpressionFromValue(arg["multiLine"]),
-			ExpressionFromValue(arg["caseInsensitive"]),
+			ExpressionFromValue(arg.Field("value")),
+			ExpressionFromValue(arg.Field("regex")),
+			ExpressionFromValue(arg.Field("multiLine")),
+			ExpressionFromValue(arg.Field("caseInsensitive")),
 		}
 
 	case "matchRegex":
 		if sarg, ok := u.Value.(val.String); ok {
-			u.Value = val.Struct{
-				"value":           val.Union{"arg", val.Struct{}},
+			u.Value = val.StructFromMap(map[string]val.Value{
+				"value":           argValue,
 				"regex":           sarg,
 				"multiLine":       val.Bool(false),
 				"caseInsensitive": val.Bool(false),
-			}
+			})
 		}
 		arg := u.Value.(val.Struct)
-		if arg["value"] == (val.Null{}) {
-			arg["value"] = val.Union{"arg", val.Struct{}}
+		if arg.Field("value") == val.Null {
+			arg.Set("value", argValue)
 		}
-		if arg["multiLine"] == (val.Null{}) {
-			arg["multiLine"] = val.Bool(false)
+		if arg.Field("multiLine") == val.Null {
+			arg.Set("multiLine", val.Bool(false))
 		}
-		if arg["caseInsensitive"] == (val.Null{}) {
-			arg["caseInsensitive"] = val.Bool(false)
+		if arg.Field("caseInsensitive") == val.Null {
+			arg.Set("caseInsensitive", val.Bool(false))
 		}
 		return MatchRegex{
-			ExpressionFromValue(arg["value"]),
-			ExpressionFromValue(arg["regex"]),
-			ExpressionFromValue(arg["multiLine"]),
-			ExpressionFromValue(arg["caseInsensitive"]),
+			ExpressionFromValue(arg.Field("value")),
+			ExpressionFromValue(arg.Field("regex")),
+			ExpressionFromValue(arg.Field("multiLine")),
+			ExpressionFromValue(arg.Field("caseInsensitive")),
 		}
 
 	case "switchModelRef":
 		arg := u.Value.(val.Struct)
-		css := arg["cases"].(val.List)
-		if arg["value"] == (val.Null{}) {
-			arg["value"] = val.Union{"arg", val.Struct{}}
+		css := arg.Field("cases").(val.List)
+		if arg.Field("value") == val.Null {
+			arg.Set("value", argValue)
 		}
-		nod := SwitchModelRef{ExpressionFromValue(arg["value"]), ExpressionFromValue(arg["default"]), make([]SwitchModelRefCase, len(css), len(css))}
+		nod := SwitchModelRef{ExpressionFromValue(arg.Field("value")), ExpressionFromValue(arg.Field("default")), make([]SwitchModelRefCase, len(css), len(css))}
 		for i, sub := range css {
 			subArg := sub.(val.Struct)
-			nod.Cases[i] = SwitchModelRefCase{ExpressionFromValue(subArg["match"]), ExpressionFromValue(subArg["return"])}
+			nod.Cases[i] = SwitchModelRefCase{ExpressionFromValue(subArg.Field("match")), ExpressionFromValue(subArg.Field("return"))}
 		}
 		return nod
 
@@ -458,18 +460,18 @@ func ExpressionFromValue(v val.Value) Expression {
 			return Key{Argument{}, ExpressionFromValue(arg)}
 		}
 		arg := u.Value.(val.Struct)
-		return Key{ExpressionFromValue(arg["value"]), ExpressionFromValue(arg["name"])}
+		return Key{ExpressionFromValue(arg.Field("value")), ExpressionFromValue(arg.Field("name"))}
 
 	case "field":
 		if arg, ok := u.Value.(val.String); ok {
 			return Field{Argument{}, ExpressionFromValue(arg)}
 		}
 		arg := u.Value.(val.Struct)
-		return Field{ExpressionFromValue(arg["value"]), ExpressionFromValue(arg["name"])}
+		return Field{ExpressionFromValue(arg.Field("value")), ExpressionFromValue(arg.Field("name"))}
 
 	case "index":
 		arg := u.Value.(val.Struct)
-		return Index{ExpressionFromValue(arg["value"]), ExpressionFromValue(arg["number"])}
+		return Index{ExpressionFromValue(arg.Field("value")), ExpressionFromValue(arg.Field("number"))}
 
 	case "not":
 		return Not{ExpressionFromValue(u.Value)}
@@ -485,49 +487,50 @@ func ExpressionFromValue(v val.Value) Expression {
 
 	case "switchType":
 		arg := u.Value.(val.Struct)
-		node := SwitchType{nil, make(map[string]Expression, len(arg)-1)}
-		if _, ok := arg["value"]; !ok {
-			arg["value"] = val.Union{"arg", val.Struct{}}
+		node := SwitchType{nil, make(map[string]Expression, arg.Len()-1)}
+		if arg.Field("value") == val.Null {
+			arg.Set("value", argValue)
 		}
-		node.Value = ExpressionFromValue(arg["value"])
-		delete(arg, "value")
-		for k, v := range arg {
+		node.Value = ExpressionFromValue(arg.Field("value"))
+		arg.Delete("value")
+		arg.ForEach(func(k string, v val.Value) bool {
 			node.Cases[k] = ExpressionFromValue(v)
-		}
+			return true
+		})
 		return node
 
 	case "switchCase":
 		arg := u.Value.(val.Struct)
-		if _, ok := arg["value"]; !ok {
-			arg["value"] = val.Union{"arg", val.Struct{}}
+		if arg.Field("value") == val.Null {
+			arg.Set("value", argValue)
 		}
 		cases := make(map[string]Expression)
-		for k, v := range arg["cases"].(val.Map) {
+		for k, v := range arg.Field("cases").(val.Map) {
 			cases[k] = ExpressionFromValue(v)
 		}
 		return SwitchCase{
-			Value: ExpressionFromValue(arg["value"]),
+			Value: ExpressionFromValue(arg.Field("value")),
 			Cases: cases,
 		}
 
 	case "memSort":
 		arg := u.Value.(val.Struct)
-		if _, ok := arg["value"]; !ok {
-			arg["value"] = val.Union{"arg", val.Struct{}}
+		if arg.Field("value") == val.Null {
+			arg.Set("value", argValue)
 		}
 		return MemSort{
-			Value:      ExpressionFromValue(arg["value"]),
-			Expression: ExpressionFromValue(arg["expression"]),
+			Value:      ExpressionFromValue(arg.Field("value")),
+			Expression: ExpressionFromValue(arg.Field("expression")),
 		}
 
 	case "mapSet":
 		arg := u.Value.(val.Struct)
-		if _, ok := arg["value"]; !ok {
-			arg["value"] = val.Union{"arg", val.Struct{}}
+		if arg.Field("value") == val.Null {
+			arg.Set("value", argValue)
 		}
 		return MapSet{
-			Value:      ExpressionFromValue(arg["value"]),
-			Expression: ExpressionFromValue(arg["expression"]),
+			Value:      ExpressionFromValue(arg.Field("value")),
+			Expression: ExpressionFromValue(arg.Field("expression")),
 		}
 
 	default:
@@ -560,17 +563,17 @@ func ValueFromExpression(x Expression) val.Value {
 		return val.Union{"static", node.Value}
 
 	case SetField:
-		return val.Union{"setField", val.Struct{
+		return val.Union{"setField", val.StructFromMap(map[string]val.Value{
 			"name":  ValueFromExpression(node.Name),
 			"value": ValueFromExpression(node.Value),
 			"in":    ValueFromExpression(node.In),
-		}}
+		})}
 	case SetKey:
-		return val.Union{"setKey", val.Struct{
+		return val.Union{"setKey", val.StructFromMap(map[string]val.Value{
 			"name":  ValueFromExpression(node.Name),
 			"value": ValueFromExpression(node.Value),
 			"in":    ValueFromExpression(node.In),
-		}}
+		})}
 
 	case NewBool:
 		arg := ValueFromExpression(node.Argument)
@@ -621,10 +624,10 @@ func ValueFromExpression(x Expression) val.Value {
 		return val.Union{"newDateTime", arg}
 
 	case NewRef:
-		return val.Union{"newRef", val.Struct{
+		return val.Union{"newRef", val.StructFromMap(map[string]val.Value{
 			"model": ValueFromExpression(node.Model),
 			"id":    ValueFromExpression(node.Id),
-		}}
+		})}
 
 	case PresentOrZero:
 		return val.Union{"presentOrZero", ValueFromExpression(node.Argument)}
@@ -645,10 +648,10 @@ func ValueFromExpression(x Expression) val.Value {
 		return val.Union{"all", ValueFromExpression(node.Argument)}
 
 	case JoinStrings:
-		return val.Union{"joinStrings", val.Struct{
+		return val.Union{"joinStrings", val.StructFromMap(map[string]val.Value{
 			"strings":   ValueFromExpression(node.Strings),
 			"separator": ValueFromExpression(node.Separator), // TODO: separator elision in case it's ""
-		}}
+		})}
 
 	case StringToLower:
 		return val.Union{"stringToLower", ValueFromExpression(node.Argument)}
@@ -687,105 +690,105 @@ func ValueFromExpression(x Expression) val.Value {
 		return val.Union{"refTo", ValueFromExpression(node.Argument)}
 
 	case If:
-		return val.Union{"if", val.Struct{
+		return val.Union{"if", val.StructFromMap(map[string]val.Value{
 			"condition": ValueFromExpression(node.Condition),
 			"then":      ValueFromExpression(node.Then),
 			"else":      ValueFromExpression(node.Else),
-		}}
+		})}
 
 	case With:
-		return val.Union{"with", val.Struct{
+		return val.Union{"with", val.StructFromMap(map[string]val.Value{
 			"value":  ValueFromExpression(node.Value),
 			"return": ValueFromExpression(node.Return),
-		}}
+		})}
 
 	case Update:
-		return val.Union{"update", val.Struct{
+		return val.Union{"update", val.StructFromMap(map[string]val.Value{
 			"ref":   ValueFromExpression(node.Ref),
 			"value": ValueFromExpression(node.Value),
-		}}
+		})}
 
 	case Create:
-		return val.Union{"create", val.Struct{
+		return val.Union{"create", val.StructFromMap(map[string]val.Value{
 			"in":    ValueFromExpression(node.In),
 			"value": ValueFromExpression(node.Value),
-		}}
+		})}
 
 	case InList:
-		return val.Union{"inList", val.Struct{
+		return val.Union{"inList", val.StructFromMap(map[string]val.Value{
 			"in":    ValueFromExpression(node.In),
 			"value": ValueFromExpression(node.Value),
-		}}
+		})}
 
 	case Filter:
-		return val.Union{"filter", val.Struct{
+		return val.Union{"filter", val.StructFromMap(map[string]val.Value{
 			"value":      ValueFromExpression(node.Value),
 			"expression": ValueFromExpression(node.Expression),
-		}}
+		})}
 
 	case AssertCase:
-		return val.Union{"assertCase", val.Struct{
+		return val.Union{"assertCase", val.StructFromMap(map[string]val.Value{
 			"case":  ValueFromExpression(node.Case),
 			"value": ValueFromExpression(node.Value),
-		}}
+		})}
 
 	case IsCase:
-		return val.Union{"isCase", val.Struct{
+		return val.Union{"isCase", val.StructFromMap(map[string]val.Value{
 			"case":  ValueFromExpression(node.Case),
 			"value": ValueFromExpression(node.Value),
-		}}
+		})}
 
 	case MapMap:
-		return val.Union{"mapMap", val.Struct{
+		return val.Union{"mapMap", val.StructFromMap(map[string]val.Value{
 			"value":      ValueFromExpression(node.Value),
 			"expression": ValueFromExpression(node.Expression),
-		}}
+		})}
 
 	case MapList:
-		return val.Union{"mapList", val.Struct{
+		return val.Union{"mapList", val.StructFromMap(map[string]val.Value{
 			"value":      ValueFromExpression(node.Value),
 			"expression": ValueFromExpression(node.Expression),
-		}}
+		})}
 
 	case ReduceList:
-		return val.Union{"reduceList", val.Struct{
+		return val.Union{"reduceList", val.StructFromMap(map[string]val.Value{
 			"value":      ValueFromExpression(node.Value),
 			"expression": ValueFromExpression(node.Expression),
-		}}
+		})}
 
 	case ResolveRefs:
 		mls := make(val.List, len(node.Models), len(node.Models))
 		for i, _ := range mls {
 			mls[i] = ValueFromExpression(node.Models[i])
 		}
-		return val.Union{"resolveRefs", val.Struct{
+		return val.Union{"resolveRefs", val.StructFromMap(map[string]val.Value{
 			"value":  ValueFromExpression(node.Value),
 			"models": mls,
-		}}
+		})}
 
 	case Field:
 		if node.Value == (Argument{}) {
 			return val.Union{"field", ValueFromExpression(node.Name)}
 		}
-		return val.Union{"field", val.Struct{
+		return val.Union{"field", val.StructFromMap(map[string]val.Value{
 			"name":  ValueFromExpression(node.Name),
 			"value": ValueFromExpression(node.Value),
-		}}
+		})}
 
 	case Key:
 		if node.Value == (Argument{}) {
 			return val.Union{"key", ValueFromExpression(node.Name)}
 		}
-		return val.Union{"key", val.Struct{
+		return val.Union{"key", val.StructFromMap(map[string]val.Value{
 			"name":  ValueFromExpression(node.Name),
 			"value": ValueFromExpression(node.Value),
-		}}
+		})}
 
 	case Index:
-		return val.Union{"index", val.Struct{
+		return val.Union{"index", val.StructFromMap(map[string]val.Value{
 			"number": ValueFromExpression(node.Number),
 			"value":  ValueFromExpression(node.Value),
-		}}
+		})}
 
 	case NewList:
 		return val.Union{"newList", make(val.List, len(node), len(node)).OverMap(func(i int, _ val.Value) val.Value {
@@ -812,28 +815,28 @@ func ValueFromExpression(x Expression) val.Value {
 		return val.Union{"newStruct", values}
 
 	case NewUnion:
-		return val.Union{"newUnion", val.Struct{
+		return val.Union{"newUnion", val.StructFromMap(map[string]val.Value{
 			"value": ValueFromExpression(node.Value),
 			"case":  ValueFromExpression(node.Case),
-		}}
+		})}
 
 	case Referred:
-		return val.Union{"referred", val.Struct{
+		return val.Union{"referred", val.StructFromMap(map[string]val.Value{
 			"from": ValueFromExpression(node.From),
 			"in":   ValueFromExpression(node.In),
-		}}
+		})}
 
 	case RelocateRef:
-		return val.Union{"relocateRef", val.Struct{
+		return val.Union{"relocateRef", val.StructFromMap(map[string]val.Value{
 			"ref":   ValueFromExpression(node.Ref),
 			"model": ValueFromExpression(node.Model),
-		}}
+		})}
 
 	case Referrers:
-		return val.Union{"referrers", val.Struct{
+		return val.Union{"referrers", val.StructFromMap(map[string]val.Value{
 			"of": ValueFromExpression(node.Of),
 			"in": ValueFromExpression(node.In),
-		}}
+		})}
 
 	case After:
 		return val.Union{"after", val.Tuple{
@@ -904,59 +907,86 @@ func ValueFromExpression(x Expression) val.Value {
 		for k, sub := range node.Values {
 			values[k] = ValueFromExpression(sub)
 		}
-		return val.Union{"createMultiple", val.Struct{
+		return val.Union{"createMultiple", val.StructFromMap(map[string]val.Value{
 			"in":     ValueFromExpression(node.In),
 			"values": values,
-		}}
+		})}
 
 	case Slice:
-		arg := val.Struct{
+		arg := val.StructFromMap(map[string]val.Value{
 			"offset": ValueFromExpression(node.Offset),
 			"length": ValueFromExpression(node.Length),
-		}
+		})
 		if node.Value != (Argument{}) {
-			arg["value"] = ValueFromExpression(node.Value)
+			arg.Set("value", ValueFromExpression(node.Value))
 		}
 		return val.Union{"slice", arg}
 
-	case MatchRegex:
-		arg := val.Struct{
-			"regex": ValueFromExpression(node.Regex),
-		}
+	case SearchRegex:
+		arg := val.NewStruct(4)
+		arg.Set("regex", ValueFromExpression(node.Regex))
 		if node.Value != (Argument{}) {
-			arg["value"] = ValueFromExpression(node.Value)
+			arg.Set("value", ValueFromExpression(node.Value))
 		}
 		if node.MultiLine != (Literal{val.Bool(false)}) {
-			arg["multiLine"] = ValueFromExpression(node.MultiLine)
+			arg.Set("multiLine", ValueFromExpression(node.MultiLine))
 		}
 		if node.CaseInsensitive != (Literal{val.Bool(false)}) {
-			arg["caseInsensitive"] = ValueFromExpression(node.CaseInsensitive)
+			arg.Set("caseInsensitive", ValueFromExpression(node.CaseInsensitive))
+		}
+		return val.Union{"searchRegex", arg}
+
+	case SearchAllRegex:
+		arg := val.NewStruct(4)
+		arg.Set("regex", ValueFromExpression(node.Regex))
+		if node.Value != (Argument{}) {
+			arg.Set("value", ValueFromExpression(node.Value))
+		}
+		if node.MultiLine != (Literal{val.Bool(false)}) {
+			arg.Set("multiLine", ValueFromExpression(node.MultiLine))
+		}
+		if node.CaseInsensitive != (Literal{val.Bool(false)}) {
+			arg.Set("caseInsensitive", ValueFromExpression(node.CaseInsensitive))
+		}
+		return val.Union{"searchAllRegex", arg}
+
+	case MatchRegex:
+		arg := val.NewStruct(4)
+		arg.Set("regex", ValueFromExpression(node.Regex))
+		if node.Value != (Argument{}) {
+			arg.Set("value", ValueFromExpression(node.Value))
+		}
+		if node.MultiLine != (Literal{val.Bool(false)}) {
+			arg.Set("multiLine", ValueFromExpression(node.MultiLine))
+		}
+		if node.CaseInsensitive != (Literal{val.Bool(false)}) {
+			arg.Set("caseInsensitive", ValueFromExpression(node.CaseInsensitive))
 		}
 		return val.Union{"matchRegex", arg}
 
 	case AssertModelRef:
-		return val.Union{"assertModelRef", val.Struct{
+		return val.Union{"assertModelRef", val.StructFromMap(map[string]val.Value{
 			"value": ValueFromExpression(node.Value),
 			"ref":   ValueFromExpression(node.Ref),
-		}}
+		})}
 
 	case SwitchModelRef:
 		cases := make(val.List, len(node.Cases), len(node.Cases))
 		for i, caze := range node.Cases {
-			cases[i] = val.Struct{
+			cases[i] = val.StructFromMap(map[string]val.Value{
 				"match":  ValueFromExpression(caze.Match),
 				"return": ValueFromExpression(caze.Return),
-			}
+			})
 		}
-		return val.Union{"switchModelRef", val.Struct{
+		return val.Union{"switchModelRef", val.StructFromMap(map[string]val.Value{
 			"value":   ValueFromExpression(node.Value),
 			"default": ValueFromExpression(node.Default),
 			"cases":   cases,
-		}}
+		})}
 	case GraphFlow:
 		flow := make(val.List, len(node.Flow), len(node.Flow))
 		for i, sub := range node.Flow {
-			flow[i] = val.Struct{
+			flow[i] = val.StructFromMap(map[string]val.Value{
 				"from": ValueFromExpression(sub.From),
 				"forward": make(val.List, len(sub.Forward), len(sub.Forward)).OverMap(func(i int, _ val.Value) val.Value {
 					return ValueFromExpression(sub.Forward[i])
@@ -964,19 +994,19 @@ func ValueFromExpression(x Expression) val.Value {
 				"backward": make(val.List, len(sub.Backward), len(sub.Backward)).OverMap(func(i int, _ val.Value) val.Value {
 					return ValueFromExpression(sub.Backward[i])
 				}),
-			}
+			})
 		}
-		return val.Union{"graphFlow", val.Struct{
+		return val.Union{"graphFlow", val.StructFromMap(map[string]val.Value{
 			"start": ValueFromExpression(node.Start),
 			"flow":  flow,
-		}}
+		})}
 
 	case SwitchType:
-		args := make(val.Struct, len(node.Cases))
+		args := val.NewStruct(len(node.Cases))
 		for k, subNode := range node.Cases {
-			args[k] = ValueFromExpression(subNode)
+			args.Set(k, ValueFromExpression(subNode))
 		}
-		args["value"] = ValueFromExpression(node.Value)
+		args.Set("value", ValueFromExpression(node.Value))
 		return val.Union{"switchType", args}
 
 	case SwitchCase:
@@ -984,22 +1014,22 @@ func ValueFromExpression(x Expression) val.Value {
 		for k, v := range node.Cases {
 			cases[k] = ValueFromExpression(v)
 		}
-		return val.Union{"switchCase", val.Struct{
+		return val.Union{"switchCase", val.StructFromMap(map[string]val.Value{
 			"value": ValueFromExpression(node.Value),
 			"cases": cases,
-		}}
+		})}
 
 	case MemSort:
-		return val.Union{"memSort", val.Struct{
+		return val.Union{"memSort", val.StructFromMap(map[string]val.Value{
 			"value":      ValueFromExpression(node.Value),
 			"expression": ValueFromExpression(node.Expression),
-		}}
+		})}
 
 	case MapSet:
-		return val.Union{"mapSet", val.Struct{
+		return val.Union{"mapSet", val.StructFromMap(map[string]val.Value{
 			"value":      ValueFromExpression(node.Value),
 			"expression": ValueFromExpression(node.Expression),
-		}}
+		})}
 
 	default:
 		panic(fmt.Sprintf("unhandled case: %T", node))

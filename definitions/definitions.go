@@ -39,7 +39,7 @@ var (
 )
 
 func NewMetaModelValue(metaId string) val.Value {
-	return val.Union{"recursion", val.Struct{
+	return val.Union{"recursion", val.StructFromMap(map[string]val.Value{
 		"label": val.String("x"),
 		"model": val.Union{"union", val.Map{
 			"or": val.Union{"list", val.Union{"recurse", val.String("x")}},
@@ -83,7 +83,7 @@ func NewMetaModelValue(metaId string) val.Value {
 			"uint64":   val.Union{"struct", val.Map{}},
 			"null":     val.Union{"struct", val.Map{}},
 		}},
-	}}
+	})}
 }
 
 func NewTagModelValue(metaId string) val.Value {

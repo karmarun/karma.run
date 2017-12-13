@@ -46,12 +46,11 @@ func Hash(v Value, h hash.Hash64) hash.Hash64 {
 		return h
 	case Struct:
 		h.Write([]byte(`struct`))
-		ks := v.Keys()
-		sort.Strings(ks)
-		for _, k := range ks {
+		v.ForEach(func(k string, v Value) bool {
 			h.Write([]byte(k))
-			h = Hash(v[k], h)
-		}
+			h = Hash(v, h)
+			return true
+		})
 		return h
 	case Map:
 		h.Write([]byte(`map`))
@@ -88,7 +87,7 @@ func Hash(v Value, h hash.Hash64) hash.Hash64 {
 		h.Write([]byte(`datetime`))
 		h.Write([]byte(v.Time.String()))
 		return h
-	case Null:
+	case null:
 		h.Write([]byte(`null`))
 		return h
 	case Symbol:

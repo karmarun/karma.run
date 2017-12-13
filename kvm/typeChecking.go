@@ -28,11 +28,11 @@ func (e TypeCheckingError) AppendPath(a err.ErrorPathElement, b ...err.ErrorPath
 }
 
 func (e TypeCheckingError) Value() val.Union {
-	return val.Union{"typeCheckingError", val.Struct{
-		"want": mdl.ValueFromModel("TODO:metaID", e.Want, nil),
-		"have": mdl.ValueFromModel("TODO:metaID", e.Have, nil),
+	return val.Union{"typeCheckingError", val.StructFromMap(map[string]val.Value{
+		"want": mdl.ValueFromModel("", e.Want, nil), // TODO: metaID
+		"have": mdl.ValueFromModel("", e.Have, nil), // TODO: metaID
 		"path": e.Path.Value(),
-	}}
+	})}
 }
 func (e TypeCheckingError) Error() string {
 	return e.String()

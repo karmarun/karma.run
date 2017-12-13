@@ -25,11 +25,11 @@ func (e TypeInferenceError) AppendPath(a err.ErrorPathElement, b ...err.ErrorPat
 }
 
 func (e TypeInferenceError) Value() val.Union {
-	return val.Union{"typeInferenceError", val.Struct{
+	return val.Union{"typeInferenceError", val.StructFromMap(map[string]val.Value{
 		"want": mdl.ValueFromModel("TODO:metaID", e.Want, nil),
 		"have": e.Have,
 		"path": e.Path.Value(),
-	}}
+	})}
 }
 func (e TypeInferenceError) Error() string {
 	return e.String()
@@ -178,18 +178,25 @@ func _inferType(value val.Value, expected mdl.Model) (mdl.Model, []TypeInference
 		if !ok {
 			return nil, []TypeInferenceError{TypeInferenceError{expected, value, nil}}
 		}
-		out := make(mdl.Struct, len(v))
-		for k, w := range v {
+		out := make(mdl.Struct, v.Len())
+		e := ([]TypeInferenceError)(nil)
+		v.ForEach(func(k string, w val.Value) bool {
 			if _, ok := m[k]; !ok {
-				return nil, []TypeInferenceError{TypeInferenceError{expected, value, nil}}
+				e = []TypeInferenceError{TypeInferenceError{expected, value, nil}}
+				return false
 			}
 			wm, es := _inferType(w, m[k])
 			if len(es) > 0 {
-				return nil, overMapTypeInferenceErrorsPaths(es, func(p err.ErrorPath) err.ErrorPath {
+				e = overMapTypeInferenceErrorsPaths(es, func(p err.ErrorPath) err.ErrorPath {
 					return append(p, err.ErrorPathElementStructField(k))
 				})
+				return false
 			}
 			out[k] = wm
+			return true
+		})
+		if e != nil {
+			return nil, e
 		}
 		return out, nil
 
@@ -234,8 +241,7 @@ func _inferType(value val.Value, expected mdl.Model) (mdl.Model, []TypeInference
 		return mdl.Ref{v[0]}, nil
 
 	case mdl.Null:
-		_, ok := value.(val.Null)
-		if !ok {
+		if value != val.Null {
 			return nil, []TypeInferenceError{TypeInferenceError{expected, value, nil}}
 		}
 		return m, nil

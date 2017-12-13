@@ -79,10 +79,10 @@ func (p FuncArgPathElement) String() string {
 }
 
 func (p FuncArgPathElement) Value() val.Union {
-	return val.Union{"functionArgument", val.Struct{
+	return val.Union{"functionArgument", val.StructFromMap(map[string]val.Value{
 		"function": val.String(p.Function),
 		"argument": p.Argument.Value(),
-	}}
+	})}
 }
 
 type NumericArgPathElement int

@@ -27,10 +27,10 @@ func (e CodecError) Offset() int {
 	return e.Offset_
 }
 func (e CodecError) Value() val.Union {
-	return val.Union{"codecError", val.Struct{
+	return val.Union{"codecError", val.StructFromMap(map[string]val.Value{
 		"name":   val.String(e.Name),
 		"offset": val.Int64(e.Offset_),
-	}}
+	})}
 }
 func (e CodecError) Error() string {
 	return e.String()
@@ -60,10 +60,10 @@ type InputParsingError struct {
 }
 
 func (e InputParsingError) Value() val.Union {
-	return val.Union{"inputParsingError", val.Struct{
+	return val.Union{"inputParsingError", val.StructFromMap(map[string]val.Value{
 		"problem": val.String(e.Problem),
 		"input":   val.String(e.Input),
-	}}
+	})}
 }
 func (e InputParsingError) Error() string {
 	return e.String()

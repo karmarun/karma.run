@@ -10,6 +10,9 @@ import (
 // NOTE: Abstain from using directly!
 //       Consider calling kvm.inferType instead.
 func TightestModelForValue(v val.Value) Model {
+	if v == val.Null {
+		return Null{}
+	}
 	switch v := v.(type) {
 	case val.List:
 		if len(v) == 0 {
@@ -33,10 +36,11 @@ func TightestModelForValue(v val.Value) Model {
 		return Map{UnionOf(ms...)}
 
 	case val.Struct:
-		s := make(Struct, len(v))
-		for k, w := range v {
+		s := make(Struct, v.Len())
+		v.ForEach(func(k string, w val.Value) bool {
 			s[k] = TightestModelForValue(w)
-		}
+			return true
+		})
 		return s
 
 	case val.Set:
@@ -58,8 +62,6 @@ func TightestModelForValue(v val.Value) Model {
 
 	case val.Symbol:
 		return Enum{string(v): struct{}{}}
-	case val.Null:
-		return Null{}
 	case val.Raw:
 		return Any{}
 	case val.Bool:

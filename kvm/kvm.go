@@ -533,23 +533,23 @@ func (vm VirtualMachine) WrapValueInMeta(value val.Value, id, bucket string) val
 // turns structs (from persistence) into meta values for vm
 func DematerializeMeta(s val.Struct) val.Meta {
 	return val.Meta{
-		Id:      s["id"].(val.Ref),
-		Model:   s["model"].(val.Ref),
-		Created: s["created"].(val.DateTime),
-		Updated: s["updated"].(val.DateTime),
-		Value:   s["value"],
+		Id:      s.Field("id").(val.Ref),
+		Model:   s.Field("model").(val.Ref),
+		Created: s.Field("created").(val.DateTime),
+		Updated: s.Field("updated").(val.DateTime),
+		Value:   s.Field("value"),
 	}
 }
 
 // turns meta values into structs for persistence
 func MaterializeMeta(m val.Meta) val.Struct {
-	return val.Struct{
+	return val.StructFromMap(map[string]val.Value{
 		"id":      m.Id,
 		"model":   m.Model,
 		"created": m.Created,
 		"updated": m.Updated,
 		"value":   m.Value,
-	}
+	})
 }
 
 func slurpIterators(v val.Value) (val.Value, err.Error) {
@@ -705,40 +705,40 @@ func (vm VirtualMachine) InitDB() error {
 	{ // create default tags
 		_, e := vm.Execute(inst.Sequence{
 			inst.Constant{val.String("_model")},
-			inst.Constant{val.Struct{
+			inst.Constant{val.StructFromMap(map[string]val.Value{
 				"tag":   val.String("_model"),
 				"model": val.Ref{meta, vm.MetaModelId()},
-			}},
+			})},
 
 			inst.Constant{val.String("_tag")},
-			inst.Constant{val.Struct{
+			inst.Constant{val.StructFromMap(map[string]val.Value{
 				"tag":   val.String("_tag"),
 				"model": val.Ref{meta, vm.TagModelId()},
-			}},
+			})},
 
 			inst.Constant{val.String("_expression")},
-			inst.Constant{val.Struct{
+			inst.Constant{val.StructFromMap(map[string]val.Value{
 				"tag":   val.String("_expression"),
 				"model": val.Ref{meta, vm.ExpressionModelId()},
-			}},
+			})},
 
 			inst.Constant{val.String("_migration")},
-			inst.Constant{val.Struct{
+			inst.Constant{val.StructFromMap(map[string]val.Value{
 				"tag":   val.String("_migration"),
 				"model": val.Ref{meta, vm.MigrationModelId()},
-			}},
+			})},
 
 			inst.Constant{val.String("_role")},
-			inst.Constant{val.Struct{
+			inst.Constant{val.StructFromMap(map[string]val.Value{
 				"tag":   val.String("_role"),
 				"model": val.Ref{meta, vm.RoleModelId()},
-			}},
+			})},
 
 			inst.Constant{val.String("_user")},
-			inst.Constant{val.Struct{
+			inst.Constant{val.StructFromMap(map[string]val.Value{
 				"tag":   val.String("_user"),
 				"model": val.Ref{meta, vm.UserModelId()},
-			}},
+			})},
 
 			inst.BuildMap{6},
 			inst.CreateMultiple{vm.TagModelId()},
@@ -765,15 +765,15 @@ func (vm VirtualMachine) InitDB() error {
 
 		sysRole, e := vm.Execute(inst.Sequence{
 			inst.Constant{val.String("self")},
-			inst.Constant{val.Struct{
+			inst.Constant{val.StructFromMap(map[string]val.Value{
 				"name": val.String("admins"),
-				"permissions": val.Struct{
+				"permissions": val.StructFromMap(map[string]val.Value{
 					"create": trueExpr.(val.Ref),
 					"read":   trueExpr.(val.Ref),
 					"update": trueExpr.(val.Ref),
 					"delete": trueExpr.(val.Ref),
-				},
-			}},
+				}),
+			})},
 			inst.BuildMap{1},
 			inst.CreateMultiple{vm.RoleModelId()},
 			inst.Constant{val.String("self")},
@@ -785,11 +785,11 @@ func (vm VirtualMachine) InitDB() error {
 
 		sysUser, e := vm.Execute(inst.Sequence{
 			inst.Constant{val.String("self")},
-			inst.Constant{val.Struct{
+			inst.Constant{val.StructFromMap(map[string]val.Value{
 				"username": val.String("admin"),
 				"password": val.String(""),
 				"roles":    val.List{sysRole},
-			}},
+			})},
 			inst.BuildMap{1},
 			inst.CreateMultiple{vm.UserModelId()},
 			inst.Constant{val.String("self")},
@@ -1057,7 +1057,7 @@ func (vm VirtualMachine) Delete(mid string, id string) err.Error {
 
 	if mid == vm.TagModelId() {
 
-		tag := v.Value.(val.Struct)["tag"].(val.String)
+		tag := v.Value.(val.Struct).Field("tag").(val.String)
 
 		if e := db.Bucket(definitions.TagBucketBytes).Delete([]byte(tag)); e != nil {
 			log.Panicln(e)
@@ -1078,10 +1078,10 @@ func (vm VirtualMachine) Delete(mid string, id string) err.Error {
 
 			object := mig.(val.Struct)
 
-			source := object["source"].(val.Ref)
+			source := object.Field("source").(val.Ref)
 			sourceMID := source[1]
 
-			target := object["target"].(val.Ref)
+			target := object.Field("target").(val.Ref)
 			targetMID := target[1]
 
 			if e := migs.Bucket([]byte(sourceMID)).Delete([]byte(targetMID)); e != nil {
@@ -1259,7 +1259,7 @@ func (vm VirtualMachine) Write(mid string, values map[string]val.Meta) err.Error
 		if mid == vm.TagModelId() {
 
 			o := v.Value.(val.Struct)
-			tag, model := o["tag"].(val.String), o["model"].(val.Ref)
+			tag, model := o.Field("tag").(val.String), o.Field("model").(val.Ref)
 
 			if e := db.Bucket(definitions.TagBucketBytes).Put([]byte(tag), []byte(model[1])); e != nil {
 				log.Panicln(e)
@@ -1291,10 +1291,10 @@ func (vm VirtualMachine) Write(mid string, values map[string]val.Meta) err.Error
 
 				object := mig.(val.Struct)
 
-				source := object["source"].(val.Ref)
+				source := object.Field("source").(val.Ref)
 				sourceMID := source[1]
 
-				target := object["target"].(val.Ref)
+				target := object.Field("target").(val.Ref)
 				targetMID := target[1]
 
 				if sb := migs.Bucket([]byte(sourceMID)); sb != nil {
@@ -1347,10 +1347,10 @@ func (vm VirtualMachine) Write(mid string, values map[string]val.Meta) err.Error
 
 				object := mig.(val.Struct)
 
-				source := object["source"].(val.Ref)
+				source := object.Field("source").(val.Ref)
 				sourceMID := source[1]
 
-				target := object["target"].(val.Ref)
+				target := object.Field("target").(val.Ref)
 				targetMID := target[1]
 
 				sourceModel, e := vm.Model(sourceMID)
@@ -1366,7 +1366,7 @@ func (vm VirtualMachine) Write(mid string, values map[string]val.Meta) err.Error
 				exprRef := val.Ref{}
 				expr := (val.Value)(nil)
 
-				if expression := object["expression"].(val.Union); expression.Case == "auto" {
+				if expression := object.Field("expression").(val.Union); expression.Case == "auto" {
 
 					transformation, e := findAutoTransformation(sourceModel, targetModel)
 					if e != nil {
@@ -1400,7 +1400,7 @@ func (vm VirtualMachine) Write(mid string, values map[string]val.Meta) err.Error
 					exprRef = val.Ref{vm.ExpressionModelId(), xid}
 					expr = expr
 
-					object["expression"] = val.Union{"manual", exprRef}
+					object.Set("expression", val.Union{"manual", exprRef})
 
 				} else {
 
@@ -1868,10 +1868,10 @@ func (vm *VirtualMachine) permissionsForUserId(uid string) (*permissions, err.Er
 	c, r, u, d := make(val.List, 0, len(l)), make(val.List, 0, len(l)), make(val.List, 0, len(l)), make(val.List, 0, len(l))
 	for _, m := range l {
 		s := m.(val.Struct)
-		c = append(c, unMeta(s["create"]))
-		r = append(r, unMeta(s["read"]))
-		u = append(u, unMeta(s["update"]))
-		d = append(d, unMeta(s["delete"]))
+		c = append(c, unMeta(s.Field("create")))
+		r = append(r, unMeta(s.Field("read")))
+		u = append(u, unMeta(s.Field("update")))
+		d = append(d, unMeta(s.Field("delete")))
 	}
 	im := mdl.Any{}
 	ci, cm, ce := vm.ParseAndCompile(orExpressions(c), im, mdl.Bool{})
@@ -2035,11 +2035,12 @@ func modelTypeKey(m mdl.Model) string {
 }
 
 func valueTypeKey(v val.Value) string {
+	if v == val.Null {
+		return "null"
+	}
 	switch v.(type) {
 	case val.Raw:
 		return "unknown"
-	case val.Null:
-		return "null"
 	case val.Set:
 		return "set"
 	case val.List:

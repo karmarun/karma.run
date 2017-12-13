@@ -50,7 +50,7 @@ func findAutoTransformation(source, target mdl.Model) (xpr.Expression, err.Error
 
 	// only possible target value
 	if _, ok := target.(mdl.Null); ok {
-		return xpr.Literal{NullValue}, nil
+		return xpr.Literal{val.Null}, nil
 	}
 	if target, ok := target.(mdl.Struct); ok && len(target) == 0 {
 		return xpr.NewStruct{}, nil
@@ -67,7 +67,7 @@ func findAutoTransformation(source, target mdl.Model) (xpr.Expression, err.Error
 		if _, ok := target.(mdl.Null); !ok {
 			return nil, newAutoTransformationError(source, target)
 		}
-		return xpr.Literal{NullValue}, nil
+		return xpr.Literal{val.Null}, nil
 
 	case mdl.Set:
 		target, ok := target.(mdl.Set)

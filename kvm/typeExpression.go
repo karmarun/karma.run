@@ -48,7 +48,6 @@ var (
 		Uint64Model,
 	})
 	NullModel     = mdl.Null{}
-	NullValue     = val.Null{}
 	SortableModel = mdl.RollOr([]mdl.Model{
 		FloatModel,
 		BoolModel,
@@ -396,7 +395,7 @@ func (vm VirtualMachine) TypeExpression(node xpr.Expression, argument, expected 
 		}
 		model := mdl.Model(strct)
 		if len(constants) == len(node) {
-			model = ConstantModel{model, val.Struct(constants)}
+			model = ConstantModel{model, val.StructFromMap(constants)}
 		}
 		retNode = xpr.TypedExpression{node, expected, model}
 
@@ -554,7 +553,7 @@ func (vm VirtualMachine) TypeExpression(node xpr.Expression, argument, expected 
 		if deoptionalize(arg.Actual) == NullModel {
 			model = ConstantModel{model, val.Bool(false)}
 		} else if ca, ok := arg.Actual.(ConstantModel); ok {
-			model = ConstantModel{model, val.Bool(ca.Value != NullValue)}
+			model = ConstantModel{model, val.Bool(ca.Value != val.Null)}
 		}
 		retNode = xpr.TypedExpression{node, expected, model}
 
@@ -571,7 +570,7 @@ func (vm VirtualMachine) TypeExpression(node xpr.Expression, argument, expected 
 				Program: xpr.ValueFromExpression(arg),
 			}
 		} else if ca, ok := model.(ConstantModel); ok {
-			if ca.Value == NullValue {
+			if ca.Value == val.Null {
 				return ZeroTypedExpression, err.CompilationError{
 					Problem: `assertPresent: value was absent`,
 					Program: xpr.ValueFromExpression(arg),
@@ -1564,7 +1563,7 @@ func (vm VirtualMachine) TypeExpression(node xpr.Expression, argument, expected 
 		node.Value = value
 		model := value.Actual.Concrete().(mdl.Struct)[field]
 		if cv, ok := value.Actual.(ConstantModel); ok {
-			model = ConstantModel{model, cv.Value.(val.Struct)[field]}
+			model = ConstantModel{model, cv.Value.(val.Struct).Field(field)}
 		}
 		retNode = xpr.TypedExpression{node, expected, model}
 
@@ -1587,7 +1586,7 @@ func (vm VirtualMachine) TypeExpression(node xpr.Expression, argument, expected 
 			if cn, ok := name.Actual.(ConstantModel); ok {
 				ov := cv.Value.(val.Map)[string(cn.Value.(val.String))]
 				if ov == nil {
-					ov = NullValue
+					ov = val.Null
 				}
 				model = ConstantModel{model, ov}
 			}

@@ -217,9 +217,9 @@ func (m Float) Equals(n Model) bool {
 type Struct map[string]Model
 
 func (r Struct) Zero() val.Value {
-	v := make(val.Struct, len(r))
-	for i, m := range r {
-		v[i] = m.Zero()
+	v := val.NewStruct(len(r))
+	for k, m := range r {
+		v.Set(k, m.Zero())
 	}
 	return v
 }
@@ -243,10 +243,11 @@ func (s Struct) TraverseValue(j val.Value, f func(val.Value, Model)) {
 	f(j, s)
 	if u, ok := j.(val.Struct); ok {
 		for k, m := range s {
-			if _, ok := u[k]; !ok {
+			w, ok := u.Get(k)
+			if !ok {
 				continue
 			}
-			m.TraverseValue(u[k], f)
+			m.TraverseValue(w, f)
 		}
 	}
 }
@@ -766,7 +767,7 @@ func (r Null) Traverse(p []string, f func([]string, Model)) {
 }
 
 func (r Null) Zero() val.Value {
-	return val.Null{}
+	return val.Null
 }
 
 func (m Null) Concrete() Model {

@@ -21,11 +21,11 @@ func (e ModelParsingError) AppendPath(a ErrorPathElement, b ...ErrorPathElement)
 }
 
 func (e ModelParsingError) Value() val.Union {
-	return val.Union{"modelParsingError", val.Struct{
+	return val.Union{"modelParsingError", val.StructFromMap(map[string]val.Value{
 		"problem": val.String(e.Problem),
 		"input":   e.Input,
 		"path":    e.Path.Value(),
-	}}
+	})}
 }
 func (e ModelParsingError) Error() string {
 	return e.String()

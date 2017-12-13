@@ -80,10 +80,10 @@ func ValueFromModel(metaId string, model Model, recursions map[*Recursion]struct
 			for r, _ := range recs {
 				mp[r.Label] = ValueFromModel(metaId, r.Model, recs)
 			}
-			return val.Union{"recursive", val.Struct{
+			return val.Union{"recursive", val.StructFromMap(map[string]val.Value{
 				"top":    val.String(top.Label),
 				"models": mp,
-			}}
+			})}
 		}
 	}
 
@@ -110,9 +110,10 @@ func ValueFromModel(metaId string, model Model, recursions map[*Recursion]struct
 			return val.Union{"recurse", val.String(m.Label)}
 		}
 		recursions[m] = struct{}{}
-		o := val.Struct{}
-		o["label"] = val.String(m.Label)
-		o["model"] = ValueFromModel(metaId, m.Model, recursions)
+		o := val.StructFromMap(map[string]val.Value{
+			"label": val.String(m.Label),
+			"model": ValueFromModel(metaId, m.Model, recursions),
+		})
 		delete(recursions, m)
 		return val.Union{"recursion", o}
 
@@ -121,10 +122,10 @@ func ValueFromModel(metaId string, model Model, recursions map[*Recursion]struct
 
 	case Annotation:
 		return val.Union{
-			"annotation", val.Struct{
+			"annotation", val.StructFromMap(map[string]val.Value{
 				"value": val.String(m.Value),
 				"model": ValueFromModel(metaId, m.Model, recursions),
-			},
+			}),
 		}
 
 	case Tuple:
@@ -225,8 +226,8 @@ func ModelFromValue(metaId string, u val.Union, recursions map[string]*Recursion
 	switch u.Case {
 	case "recursive":
 		s := u.Value.(val.Struct)
-		t := string(s["top"].(val.String))
-		a := s["models"].(val.Map)
+		t := string(s.Field("top").(val.String))
+		a := s.Field("models").(val.Map)
 		for l, _ := range a {
 			if _, ok := recursions[l]; ok {
 				return nil, err.ModelParsingError{
@@ -257,8 +258,8 @@ func ModelFromValue(metaId string, u val.Union, recursions map[string]*Recursion
 
 	case "annotation":
 		v := u.Value.(val.Struct)
-		a := string(v["value"].(val.String))
-		m, e := ModelFromValue(metaId, v["model"].(val.Union), recursions)
+		a := string(v.Field("value").(val.String))
+		m, e := ModelFromValue(metaId, v.Field("model").(val.Union), recursions)
 		if e != nil {
 			return nil, e.AppendPath(err.ErrorPathElementUnionCase(u.Case), err.ErrorPathElementStructField("model"))
 		}
@@ -266,13 +267,13 @@ func ModelFromValue(metaId string, u val.Union, recursions map[string]*Recursion
 
 	case "recursion":
 		v := u.Value.(val.Struct)
-		l := string(v["label"].(val.String))
+		l := string(v.Field("label").(val.String))
 		r := &Recursion{Label: l}
 		if _, ok := recursions[l]; ok {
 			return nil, err.ModelParsingError{fmt.Sprintf(`recursion label already defined: %s`, l), u, nil}
 		}
 		recursions[l] = r
-		m, e := ModelFromValue(metaId, v["model"].(val.Union), recursions)
+		m, e := ModelFromValue(metaId, v.Field("model").(val.Union), recursions)
 		if e != nil {
 			return nil, e.AppendPath(err.ErrorPathElementUnionCase(u.Case), err.ErrorPathElementStructField("model"))
 		}

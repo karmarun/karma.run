@@ -117,10 +117,10 @@ func (e CompilationError) Value() val.Union {
 	if e.Program == nil {
 		e.Program = val.String("(unknown)")
 	}
-	return val.Union{"compilationError", val.Struct{
+	return val.Union{"compilationError", val.StructFromMap(map[string]val.Value{
 		"problem": val.String(e.Problem),
 		"program": e.Program,
-	}}
+	})}
 }
 func (e CompilationError) Error() string {
 	return e.String()
@@ -149,9 +149,9 @@ type ExecutionError struct {
 }
 
 func (e ExecutionError) Value() val.Union {
-	return val.Union{"executionError", val.Struct{
+	return val.Union{"executionError", val.StructFromMap(map[string]val.Value{
 		"problem": val.String(e.Problem),
-	}}
+	})}
 }
 func (e ExecutionError) Error() string {
 	return e.String()
