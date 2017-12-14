@@ -4,6 +4,7 @@ package kvm
 
 import (
 	"github.com/boltdb/bolt"
+	"karma.run/cc"
 	"karma.run/codec/karma.v2"
 	"karma.run/kvm/err"
 	"karma.run/kvm/mdl"
@@ -204,6 +205,8 @@ func (i filterIterator) length() int {
 	return -1
 }
 
+var decoderCache = cc.NewLru(1024 * 10)
+
 // bucketDecodingIterator yields val.Refs to the elements in a bucket
 type bucketDecodingIterator struct {
 	bucket *bolt.Bucket
@@ -216,9 +219,17 @@ func newBucketDecodingIterator(bucket *bolt.Bucket, model mdl.Model) bucketDecod
 
 func (i bucketDecodingIterator) forEach(f func(val.Value) err.Error) err.Error {
 	c := i.bucket.Cursor()
+	mv := val.Meta{}
 	for k, bs := c.First(); k != nil; k, bs = c.Next() {
-		v, _ := karma.Decode(bs, i.model)
-		if e := f(DematerializeMeta(v.(val.Struct))); e != nil {
+		cacheKey := string(bs)
+		if c, ok := decoderCache.Get(cacheKey); ok {
+			mv = c.(val.Meta).Copy().(val.Meta)
+		} else {
+			v, _ := karma.Decode(bs, i.model)
+			mv = DematerializeMeta(v.(val.Struct))
+			decoderCache.Set(cacheKey, mv.Copy())
+		}
+		if e := f(mv); e != nil {
 			return e
 		}
 	}

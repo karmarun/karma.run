@@ -365,9 +365,11 @@ func (vm VirtualMachine) Execute(program inst.Sequence, input val.Value) (val.Va
 			}
 			model := vm.WrapModelInMeta(mid, m.Model)
 			bucket := vm.RootBucket.Bucket([]byte(mid))
-			bkir := newBucketDecodingIterator(bucket, model)
-			prir := vm.newReadPermissionFilterIterator(bkir)
-			stack.Push(iteratorValue{prir})
+			iter := iterator(newBucketDecodingIterator(bucket, model))
+			if vm.permissions != nil && vm.permissions.read != nil {
+				iter = vm.newReadPermissionFilterIterator(iter)
+			}
+			stack.Push(iteratorValue{iter})
 
 		case inst.MapStruct:
 			mv := unMeta(stack.Pop()).(val.Struct)
