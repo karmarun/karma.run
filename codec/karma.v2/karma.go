@@ -9,7 +9,6 @@ import (
 	"karma.run/kvm/mdl"
 	"karma.run/kvm/val"
 	"math"
-	"sort"
 	"time"
 )
 
@@ -67,21 +66,20 @@ func encode(v val.Value, m mdl.Model, bs []byte) []byte {
 
 	case mdl.Struct:
 		v := v.(val.Struct)
-		ks := m.Keys()
-		sort.Strings(ks)
-		for _, k := range ks {
+		m.ForEach(func(k string, m mdl.Model) bool {
 			w, ok := v.Get(k)
 			if !ok {
-				w = val.Null // m[k] is (null|something)
+				w = val.Null // m is slided (null|something)
 			}
-			bs = encode(w, m[k], bs)
-		}
+			bs = encode(w, m, bs)
+			return true
+		})
 		return bs
 
 	case mdl.Union:
 		v := v.(val.Union)
 		bs = writeString(v.Case, bs)
-		return encode(v.Value, m[v.Case], bs)
+		return encode(v.Value, m.Case(v.Case), bs)
 
 	case mdl.Enum:
 		v := v.(val.Symbol)
@@ -214,20 +212,19 @@ func decode(bs []byte, m mdl.Model) (val.Value, []byte) {
 		return v, bs
 
 	case mdl.Struct:
-		ks := m.Keys()
-		sort.Strings(ks)
-		v := val.NewStruct(len(ks))
-		var w val.Value
-		for _, k := range ks {
-			w, bs = decode(bs, m[k])
+		v := val.NewStruct(m.Len())
+		m.ForEach(func(k string, m mdl.Model) bool {
+			w, cs := decode(bs, m)
 			v.Set(k, w)
-		}
+			bs = cs
+			return true
+		})
 		return v, bs
 
 	case mdl.Union:
 		c, bs := readString(bs)
 		v := val.Union{Case: c}
-		v.Value, bs = decode(bs, m[c])
+		v.Value, bs = decode(bs, m.Case(c))
 		return v, bs
 
 	case mdl.Enum:

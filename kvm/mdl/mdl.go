@@ -158,17 +158,19 @@ func ValueFromModel(metaId string, model Model, recursions map[*Recursion]struct
 		return val.Union{"string", val.Struct{}}
 
 	case Struct:
-		o := val.NewMap(len(m))
-		for k, v := range m {
-			o.Set(k, ValueFromModel(metaId, v, recursions))
-		}
+		o := val.NewMap(m.Len())
+		m.ForEach(func(k string, m Model) bool {
+			o.Set(k, ValueFromModel(metaId, m, recursions))
+			return true
+		})
 		return val.Union{"struct", o}
 
 	case Union:
-		o := val.NewMap(len(m))
-		for k, v := range m {
+		o := val.NewMap(m.Len())
+		m.ForEach(func(k string, v Model) bool {
 			o.Set(k, ValueFromModel(metaId, v, recursions))
-		}
+			return true
+		})
 		return val.Union{"union", o}
 
 	case Null:
@@ -365,7 +367,7 @@ func ModelFromValue(metaId string, u val.Union, recursions map[string]*Recursion
 				e = e_.AppendPath(err.ErrorPathElementUnionCase(u.Case), err.ErrorPathElementMapKey(k))
 				return false
 			}
-			m[k] = w
+			m.Set(k, w)
 			return true
 		})
 		if e != nil {
@@ -398,7 +400,7 @@ func ModelFromValue(metaId string, u val.Union, recursions map[string]*Recursion
 				e = e_.AppendPath(err.ErrorPathElementUnionCase(u.Case), err.ErrorPathElementMapKey(k))
 				return false
 			}
-			m[k] = w
+			m.Set(k, w)
 			return true
 		})
 		if e != nil {
@@ -697,20 +699,22 @@ func Either(l, r Model, m map[*Recursion]*Recursion) Model {
 		if !ok {
 			return Or{l, r}
 		}
-		s := make(Struct, len(l)+len(q))
-		for k, w := range l {
-			if x, ok := q[k]; ok {
-				s[k] = Either(w, x, m)
+		s := NewStruct(l.Len() + q.Len())
+		l.ForEach(func(k string, w Model) bool {
+			if x, ok := q.Get(k); ok {
+				s.Set(k, Either(w, x, m))
 			} else {
-				s[k] = w
+				s.Set(k, w)
 			}
-		}
-		for k, x := range q {
-			if _, ok := s[k]; ok {
-				continue
+			return true
+		})
+		q.ForEach(func(k string, x Model) bool {
+			if _, ok := s.Get(k); ok {
+				return true
 			}
-			s[k] = x
-		}
+			s.Set(k, x)
+			return true
+		})
 		return s
 
 	case Union:
@@ -718,20 +722,22 @@ func Either(l, r Model, m map[*Recursion]*Recursion) Model {
 		if !ok {
 			return Or{l, r}
 		}
-		u := make(Union, len(l)+len(q))
-		for k, w := range l {
-			if x, ok := q[k]; ok {
-				u[k] = Either(w, x, m)
+		u := NewUnion(l.Len() + q.Len())
+		l.ForEach(func(k string, w Model) bool {
+			if x, ok := q.Get(k); ok {
+				u.Set(k, Either(w, x, m))
 			} else {
-				u[k] = w
+				u.Set(k, w)
 			}
-		}
-		for k, x := range q {
-			if _, ok := u[k]; ok {
-				continue
+			return true
+		})
+		q.ForEach(func(k string, x Model) bool {
+			if _, ok := u.Get(k); ok {
+				return true
 			}
-			u[k] = x
-		}
+			u.Set(k, x)
+			return true
+		})
 		return u
 
 	case Enum:

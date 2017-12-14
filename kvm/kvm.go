@@ -510,13 +510,13 @@ func (vm *VirtualMachine) CheckPermission(p Permission, v val.Meta) err.Error {
 }
 
 func (vm VirtualMachine) WrapModelInMeta(mid string, model mdl.Model) mdl.Model {
-	return mdl.Struct{
+	return mdl.StructFromMap(map[string]mdl.Model{
 		"id":      mdl.Ref{mid},
 		"created": mdl.DateTime{},
 		"updated": mdl.DateTime{},
 		"model":   mdl.Ref{vm.MetaModelId()},
 		"value":   model,
-	}
+	})
 }
 
 func (vm VirtualMachine) WrapValueInMeta(value val.Value, id, bucket string) val.Meta {

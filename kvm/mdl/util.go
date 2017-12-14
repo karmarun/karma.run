@@ -36,9 +36,9 @@ func TightestModelForValue(v val.Value) Model {
 		return Map{UnionOf(ms...)}
 
 	case val.Struct:
-		s := make(Struct, v.Len())
+		s := NewStruct(v.Len())
 		v.ForEach(func(k string, w val.Value) bool {
-			s[k] = TightestModelForValue(w)
+			s.Set(k, TightestModelForValue(w))
 			return true
 		})
 		return s
@@ -73,7 +73,9 @@ func TightestModelForValue(v val.Value) Model {
 	case val.String:
 		return String{}
 	case val.Union:
-		return Union{v.Case: TightestModelForValue(v.Value)}
+		u := NewUnion(1)
+		u.Set(v.Case, TightestModelForValue(v.Value))
+		return u
 	case val.Int8:
 		return Int8{}
 	case val.Int16:

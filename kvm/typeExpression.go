@@ -376,11 +376,12 @@ func (vm VirtualMachine) TypeExpression(node xpr.Expression, argument, expected 
 			subExpect[k] = AnyModel
 		}
 		if sm, ok := expected.Concrete().(mdl.Struct); ok {
-			for k, em := range sm {
+			sm.ForEach(func(k string, em mdl.Model) bool {
 				subExpect[k] = em
-			}
+				return true
+			})
 		}
-		strct, constants := make(mdl.Struct, len(node)), make(map[string]val.Value, len(node))
+		strct, constants := mdl.NewStruct(len(node)), make(map[string]val.Value, len(node))
 		for k, sub := range node {
 			arg, e := vm.TypeExpression(sub, argument, subExpect[k])
 			if e != nil {
@@ -391,7 +392,7 @@ func (vm VirtualMachine) TypeExpression(node xpr.Expression, argument, expected 
 			if ca, ok := arg.Actual.(ConstantModel); ok {
 				constants[k], unwrapped = ca.Value, ca.Model
 			}
-			strct[k] = unwrapped
+			strct.Set(k, unwrapped)
 		}
 		model := mdl.Model(strct)
 		if len(constants) == len(node) {
@@ -415,7 +416,7 @@ func (vm VirtualMachine) TypeExpression(node xpr.Expression, argument, expected 
 		caseString := string(cc.Value.(val.String))
 		subExpect := mdl.Model(AnyModel)
 		if ce, ok := expected.Concrete().(mdl.Union); ok {
-			if sm, ok := ce[caseString]; ok {
+			if sm, ok := ce.Get(caseString); ok {
 				subExpect = sm
 			}
 		}
@@ -425,11 +426,13 @@ func (vm VirtualMachine) TypeExpression(node xpr.Expression, argument, expected 
 		}
 		node.Value = value
 		valModel := UnwrapBucket(value.Actual)
-		unionModel := mdl.Model(mdl.Union{caseString: valModel})
+		unionModel := mdl.NewUnion(1)
+		unionModel.Set(caseString, valModel)
+		model := (mdl.Model)(unionModel)
 		if cv, ok := value.Actual.(ConstantModel); ok {
-			unionModel = ConstantModel{unionModel, val.Union{caseString, cv.Value}}
+			model = ConstantModel{model, val.Union{caseString, cv.Value}}
 		}
-		retNode = xpr.TypedExpression{node, expected, unionModel}
+		retNode = xpr.TypedExpression{node, expected, model}
 
 	case xpr.SetField:
 		name, e := vm.TypeExpression(node.Name, argument, StringModel)
@@ -460,8 +463,8 @@ func (vm VirtualMachine) TypeExpression(node xpr.Expression, argument, expected 
 		}
 		node.In = in
 
-		m := in.Actual.Concrete().(mdl.Struct)
-		m[fieldName] = value.Actual.Unwrap()
+		m := in.Actual.Concrete().Copy().(mdl.Struct)
+		m.Set(fieldName, value.Actual.Unwrap())
 
 		retNode = xpr.TypedExpression{node, expected, m}
 
@@ -471,16 +474,6 @@ func (vm VirtualMachine) TypeExpression(node xpr.Expression, argument, expected 
 			return name, e
 		}
 		node.Name = name
-
-		keyName := ""
-		if cn, ok := name.Actual.(ConstantModel); ok {
-			keyName = string(cn.Value.(val.String))
-		} else {
-			return ZeroTypedExpression, err.CompilationError{
-				Problem: `setKey: name must be constant expression`,
-				Program: xpr.ValueFromExpression(node),
-			}
-		}
 
 		value, e := vm.TypeExpression(node.Value, argument, AnyModel)
 		if e != nil {
@@ -494,10 +487,7 @@ func (vm VirtualMachine) TypeExpression(node xpr.Expression, argument, expected 
 		}
 		node.In = in
 
-		m := in.Actual.Concrete().(mdl.Struct)
-		m[keyName] = value.Actual.Unwrap()
-
-		retNode = xpr.TypedExpression{node, expected, m}
+		retNode = xpr.TypedExpression{node, expected, mdl.Map{value.Actual.Unwrap()}}
 
 	case xpr.PresentOrZero:
 
@@ -1004,7 +994,7 @@ func (vm VirtualMachine) TypeExpression(node xpr.Expression, argument, expected 
 			}
 		}
 
-		model, ok := um[caseString]
+		model, ok := um.Get(caseString)
 		if !ok {
 			return ZeroTypedExpression, err.CompilationError{
 				Problem: fmt.Sprintf(`assertCase: value never has case specified case`),
@@ -1021,7 +1011,7 @@ func (vm VirtualMachine) TypeExpression(node xpr.Expression, argument, expected 
 					// C: val.Map{"case": val.String(caseString)},
 				}
 			}
-			model = ConstantModel{cv.Model.(mdl.Union)[caseString], uv.Value}
+			model = ConstantModel{cv.Model.(mdl.Union).Case(caseString), uv.Value}
 		}
 		retNode = xpr.TypedExpression{node, expected, model}
 
@@ -1052,8 +1042,11 @@ func (vm VirtualMachine) TypeExpression(node xpr.Expression, argument, expected 
 			return value, e
 		}
 		node.Value = value
-		subArg := value.Actual.Concrete().(mdl.Map).Elements
-		expression, e := vm.TypeExpression(node.Expression, mdl.Struct{"key": StringModel, "value": subArg}, AnyModel)
+		subArg := mdl.StructFromMap(map[string]mdl.Model{
+			"key":   StringModel,
+			"value": value.Actual.Concrete().(mdl.Map).Elements,
+		})
+		expression, e := vm.TypeExpression(node.Expression, subArg, AnyModel)
 		if e != nil {
 			return expression, e
 		}
@@ -1215,15 +1208,15 @@ func (vm VirtualMachine) TypeExpression(node xpr.Expression, argument, expected 
 			}
 			node.Flow[i] = flow
 		}
-		strct := make(mdl.Struct, len(mids))
+		strct := mdl.NewStruct(len(mids))
 		for k, _ := range mids {
 			model, e := vm.Model(k)
 			if e != nil {
 				return ZeroTypedExpression, e
 			}
-			strct[k] = mdl.Map{model}
+			strct.Set(k, mdl.Map{model})
 		}
-		retNode = xpr.TypedExpression{node, expected, &strct}
+		retNode = xpr.TypedExpression{node, expected, strct}
 
 	case xpr.Slice:
 
@@ -1556,12 +1549,14 @@ func (vm VirtualMachine) TypeExpression(node xpr.Expression, argument, expected 
 			}
 		}
 		field := string(cn.Value.(val.String))
-		value, e := vm.TypeExpression(node.Value, argument, mdl.Struct{field: expected})
+		subExpect := mdl.NewStruct(1)
+		subExpect.Set(field, expected)
+		value, e := vm.TypeExpression(node.Value, argument, subExpect)
 		if e != nil {
 			return value, e
 		}
 		node.Value = value
-		model := value.Actual.Concrete().(mdl.Struct)[field]
+		model := value.Actual.Concrete().(mdl.Struct).Field(field)
 		if cv, ok := value.Actual.(ConstantModel); ok {
 			model = ConstantModel{model, cv.Value.(val.Struct).Field(field)}
 		}
@@ -2267,9 +2262,9 @@ func (vm VirtualMachine) TypeExpression(node xpr.Expression, argument, expected 
 			}
 		}
 
-		subExpect := make(mdl.Union, len(node.Cases))
+		subExpect := mdl.NewUnion(len(node.Cases))
 		for k, _ := range node.Cases {
-			subExpect[k] = AnyModel
+			subExpect.Set(k, AnyModel)
 		}
 
 		value, e := vm.TypeExpression(node.Value, argument, subExpect)
@@ -2282,7 +2277,7 @@ func (vm VirtualMachine) TypeExpression(node xpr.Expression, argument, expected 
 		model := mdl.Model(nil)
 
 		for k, caze := range node.Cases {
-			subNode, e := vm.TypeExpression(caze, valueModel[k], AnyModel)
+			subNode, e := vm.TypeExpression(caze, valueModel.Case(k), AnyModel)
 			if e != nil {
 				return subNode, e
 			}

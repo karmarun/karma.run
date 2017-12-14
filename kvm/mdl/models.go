@@ -8,6 +8,8 @@ import (
 	"time"
 )
 
+//go:generate go run ../../generate/logmap/main.go --package mdl --key string --value Model --output logmap_generated.go
+
 type Recursion struct {
 	Label        string
 	Model        Model
@@ -215,143 +217,218 @@ func (m Float) Equals(n Model) bool {
 	return ok
 }
 
-type Struct map[string]Model
+type Struct struct{ lm logMapStringModel }
 
-func (r Struct) Zero() val.Value {
-	v := val.NewStruct(len(r))
-	for k, m := range r {
-		v.Set(k, m.Zero())
+func StructFromMap(mp map[string]Model) Struct {
+	m := NewStruct(len(mp))
+	for k, w := range mp {
+		m.Set(k, w)
 	}
+	return m
+}
+
+func NewStruct(capacity int) Struct {
+	return Struct{newlogMapStringModel(capacity)}
+}
+
+func (m *Struct) Set(k string, w Model) {
+	m.lm.set(k, w)
+}
+
+func (m Struct) ForEach(f func(string, Model) bool) {
+	m.lm.forEach(f)
+}
+
+func (m Struct) Len() int {
+	return m.lm.len()
+}
+
+func (m Struct) Get(k string) (Model, bool) {
+	return m.lm.get(k)
+}
+
+func (m Struct) Field(k string) Model {
+	w, ok := m.lm.get(k)
+	if !ok {
+		return nil
+	}
+	return w
+}
+
+func (m Struct) Zero() val.Value {
+	v := val.NewStruct(m.Len())
+	m.ForEach(func(k string, m Model) bool {
+		v.Set(k, m.Zero())
+		return true
+	})
 	return v
 }
 
 func (m Struct) Transform(f func(Model) Model) Model {
-	for k, w := range m {
-		m[k] = w.Transform(f)
-	}
+	m.lm.overMap(func(k string, m Model) Model {
+		return m.Transform(f)
+	})
 	return f(m)
 }
 
-func (s Struct) Keys() []string {
-	keys := make([]string, 0, len(s))
-	for k, _ := range s {
-		keys = append(keys, k)
-	}
-	return keys
+func (m Struct) Keys() []string {
+	return m.lm.keys()
 }
 
 func (s Struct) TraverseValue(j val.Value, f func(val.Value, Model)) {
 	f(j, s)
 	if u, ok := j.(val.Struct); ok {
-		for k, m := range s {
+		s.ForEach(func(k string, m Model) bool {
 			w, ok := u.Get(k)
 			if !ok {
-				continue
+				return true
 			}
 			m.TraverseValue(w, f)
-		}
+			return true
+		})
 	}
 }
 
-func (s Struct) Copy() Model {
-	c := make(Struct, len(s))
-	for k, w := range s {
-		c[k] = w.Copy()
-	}
-	return c
+func (m Struct) Copy() Model {
+	c := m.lm.copyFunc(func(m Model) Model {
+		return m.Copy()
+	})
+	return Struct{c}
 }
 
-func (r Struct) Traverse(p []string, f func([]string, Model)) {
-	f(p, r)
-	z := r
-	for k, m := range z {
+func (m Struct) Traverse(p []string, f func([]string, Model)) {
+	f(p, m)
+	m.ForEach(func(k string, m Model) bool {
 		m.Traverse(append(p, k), f)
-	}
+		return true
+	})
 }
 
 func (m Struct) Concrete() Model {
 	return m
 }
 
-func (m Struct) Equals(n Model) bool {
-	if q, ok := n.(Struct); ok {
-		for k, m := range m {
-			n, ok := q[k]
-			if !ok || !m.Equals(n) {
-				return false
-			}
-		}
-		return true
+func (m Struct) Equals(w Model) bool {
+	x, ok := w.(Struct)
+	if !ok {
+		return false
 	}
-	return false
+	if !m.lm.sameKeys(x.lm) {
+		return false
+	}
+	eq := true
+	m.lm.forEach(func(k string, m Model) bool {
+		w, _ := x.lm.get(k)
+		eq = m.Equals(w)
+		return eq
+	})
+	return eq
 }
 
-type Union map[string]Model
+type Union struct{ lm logMapStringModel }
 
-func (m Union) Zero() val.Value {
-	for k, w := range m {
-		if w.Zeroable() {
-			return val.Union{k, w.Zero()}
-		}
+func UnionFromMap(mp map[string]Model) Union {
+	m := NewUnion(len(mp))
+	for k, w := range mp {
+		m.Set(k, w)
 	}
-	panic("never reached")
+	return m
+}
+
+func NewUnion(capacity int) Union {
+	return Union{newlogMapStringModel(capacity)}
+}
+
+func (m *Union) Set(k string, w Model) {
+	m.lm.set(k, w)
+}
+
+func (m Union) ForEach(f func(string, Model) bool) {
+	m.lm.forEach(f)
+}
+
+func (m Union) Len() int {
+	return m.lm.len()
+}
+
+func (m Union) Get(k string) (Model, bool) {
+	return m.lm.get(k)
+}
+
+func (m Union) Case(k string) Model {
+	w, ok := m.lm.get(k)
+	if !ok {
+		return nil
+	}
+	return w
+}
+
+func (m Union) Cases() []string {
+	return m.lm.keys()
 }
 
 func (m Union) Transform(f func(Model) Model) Model {
-	for k, w := range m {
-		m[k] = w.Transform(f)
-	}
+	m.lm.overMap(func(k string, m Model) Model {
+		return m.Transform(f)
+	})
 	return f(m)
 }
 
-func (s Union) Cases() []string {
-	cases := make([]string, 0, len(s))
-	for k, _ := range s {
-		cases = append(cases, k)
-	}
-	return cases
+func (m Union) Keys() []string {
+	return m.lm.keys()
 }
 
 func (s Union) TraverseValue(j val.Value, f func(val.Value, Model)) {
 	f(j, s)
 	if u, ok := j.(val.Union); ok {
-		if m, ok := s[u.Case]; ok {
-			m.TraverseValue(u.Value, f)
-		}
+		s.Case(u.Case).TraverseValue(u.Value, f)
 	}
 }
 
-func (s Union) Copy() Model {
-	c := make(Union, len(s))
-	for k, w := range s {
-		c[k] = w.Copy()
-	}
-	return c
+func (m Union) Copy() Model {
+	c := m.lm.copyFunc(func(m Model) Model {
+		return m.Copy()
+	})
+	return Union{c}
 }
-
-func (r Union) Traverse(p []string, f func([]string, Model)) {
-	f(p, r)
-	z := r
-	for k, m := range z {
+func (m Union) Traverse(p []string, f func([]string, Model)) {
+	f(p, m)
+	m.ForEach(func(k string, m Model) bool {
 		m.Traverse(append(p, k), f)
+		return true
+	})
+}
+func (m Union) Equals(w Model) bool {
+	x, ok := w.(Union)
+	if !ok {
+		return false
 	}
+	if !m.lm.sameKeys(x.lm) {
+		return false
+	}
+	eq := true
+	m.lm.forEach(func(k string, m Model) bool {
+		w, _ := x.lm.get(k)
+		eq = m.Equals(w)
+		return eq
+	})
+	return eq
+}
+
+func (m Union) Zero() val.Value {
+	zero := (val.Value)(nil)
+	m.ForEach(func(k string, w Model) bool {
+		if w.Zeroable() {
+			zero = val.Union{k, w.Zero()}
+			return false
+		}
+		return true
+	})
+	return zero
 }
 
 func (m Union) Concrete() Model {
 	return m
-}
-
-func (m Union) Equals(n Model) bool {
-	if q, ok := n.(Union); ok {
-		for k, m := range m {
-			n, ok := q[k]
-			if !ok || !m.Equals(n) {
-				return false
-			}
-		}
-		return true
-	}
-	return false
 }
 
 type Bool struct{}
@@ -897,21 +974,21 @@ func (Set) Zeroable() bool {
 }
 
 func (m Union) Zeroable() bool {
-	for _, w := range m {
-		if w.Zeroable() {
-			return true
-		}
-	}
-	return false
+	zeroable := false
+	m.ForEach(func(k string, w Model) bool {
+		zeroable = w.Zeroable()
+		return !zeroable
+	})
+	return zeroable
 }
 
 func (m Struct) Zeroable() bool {
-	for _, w := range m {
-		if !w.Zeroable() {
-			return false
-		}
-	}
-	return true
+	zeroable := true
+	m.ForEach(func(k string, w Model) bool {
+		zeroable = w.Zeroable()
+		return zeroable
+	})
+	return zeroable
 }
 
 func (String) Zeroable() bool {

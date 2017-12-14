@@ -184,21 +184,22 @@ func _inferType(value val.Value, expected mdl.Model) (mdl.Model, []TypeInference
 		if !ok {
 			return nil, []TypeInferenceError{TypeInferenceError{expected, value, nil}}
 		}
-		out := make(mdl.Struct, v.Len())
+		out := mdl.NewStruct(v.Len())
 		e := ([]TypeInferenceError)(nil)
 		v.ForEach(func(k string, w val.Value) bool {
-			if _, ok := m[k]; !ok {
+			mk, ok := m.Get(k)
+			if !ok {
 				e = []TypeInferenceError{TypeInferenceError{expected, value, nil}}
 				return false
 			}
-			wm, es := _inferType(w, m[k])
+			wm, es := _inferType(w, mk)
 			if len(es) > 0 {
 				e = overMapTypeInferenceErrorsPaths(es, func(p err.ErrorPath) err.ErrorPath {
 					return append(p, err.ErrorPathElementStructField(k))
 				})
 				return false
 			}
-			out[k] = wm
+			out.Set(k, wm)
 			return true
 		})
 		if e != nil {
@@ -211,17 +212,18 @@ func _inferType(value val.Value, expected mdl.Model) (mdl.Model, []TypeInference
 		if !ok {
 			return nil, []TypeInferenceError{TypeInferenceError{expected, value, nil}}
 		}
-		if _, ok := m[v.Case]; !ok {
+		mc, ok := m.Get(v.Case)
+		if !ok {
 			return nil, []TypeInferenceError{TypeInferenceError{expected, value, nil}}
 		}
-		out := make(mdl.Union, 1)
-		wm, es := _inferType(v.Value, m[v.Case])
+		out := mdl.NewUnion(1)
+		wm, es := _inferType(v.Value, mc)
 		if len(es) > 0 {
 			return nil, overMapTypeInferenceErrorsPaths(es, func(p err.ErrorPath) err.ErrorPath {
 				return append(p, err.ErrorPathElementUnionCase(v.Case))
 			})
 		}
-		out[v.Case] = wm
+		out.Set(v.Case, wm)
 		return out, nil
 
 	case mdl.Enum:

@@ -6,6 +6,8 @@ import (
 	"time"
 )
 
+//go:generate go run ../../generate/logmap/main.go --package val --key string --value Value --output logmap_generated.go
+
 type Value interface {
 	Copy() Value
 	Equals(Value) bool
@@ -198,8 +200,6 @@ func (v Raw) Primitive() bool {
 	return false
 }
 
-//go:generate go run ../../generate/logmap/main.go --package val --key string --value Value --output logmap_generated.go
-
 type Struct struct{ lm logMapStringValue }
 
 func NewStruct(capacity int) Struct {
@@ -219,15 +219,15 @@ func (v Struct) Len() int {
 }
 
 func (v Struct) Field(k string) Value {
-	return v.lm.get(k)
+	w, ok := v.lm.get(k)
+	if !ok {
+		return nil
+	}
+	return w
 }
 
 func (v Struct) Get(k string) (Value, bool) {
-	w := v.lm.get(k)
-	if w == nil {
-		return nil, false
-	}
-	return w, true
+	return v.lm.get(k)
 }
 
 func (v *Struct) Set(k string, w Value) {
@@ -240,7 +240,7 @@ func (v *Struct) Delete(k string) {
 
 func (v Struct) Transform(f func(Value) Value) Value {
 	v.lm.overMap(func(k string, v Value) Value {
-		return f(v)
+		return v.Transform(f)
 	})
 	return f(v)
 }
@@ -250,7 +250,10 @@ func (v Struct) ForEach(f func(string, Value) bool) {
 }
 
 func (v Struct) Copy() Value {
-	return Struct{v.lm.copy()}
+	c := v.lm.copyFunc(func(v Value) Value {
+		return v.Copy()
+	})
+	return Struct{c}
 }
 
 func (v Struct) Equals(w Value) bool {
@@ -258,7 +261,16 @@ func (v Struct) Equals(w Value) bool {
 	if !ok {
 		return false
 	}
-	return v.lm.equals(x.lm)
+	if !v.lm.sameKeys(x.lm) {
+		return false
+	}
+	eq := true
+	v.lm.forEach(func(k string, v Value) bool {
+		w, _ := x.lm.get(k)
+		eq = v.Equals(w)
+		return eq
+	})
+	return eq
 }
 
 func (v Struct) Keys() []string {
@@ -266,9 +278,9 @@ func (v Struct) Keys() []string {
 }
 
 func (v Struct) Map(f func(string, Value) Value) Struct {
-	c := v.lm.copy()
-	c.overMap(f)
-	return Struct{c}
+	c := v.Copy().(Struct)
+	c.lm.overMap(f)
+	return c
 }
 
 func (v Struct) OverMap(f func(string, Value) Value) {
@@ -298,15 +310,15 @@ func (v Map) Len() int {
 }
 
 func (v Map) Key(k string) Value {
-	return v.lm.get(k)
+	w, ok := v.lm.get(k)
+	if !ok {
+		return nil
+	}
+	return w
 }
 
 func (v Map) Get(k string) (Value, bool) {
-	w := v.lm.get(k)
-	if w == nil {
-		return nil, false
-	}
-	return w, true
+	return v.lm.get(k)
 }
 
 func (v *Map) Set(k string, w Value) {
@@ -319,7 +331,7 @@ func (v *Map) Delete(k string) {
 
 func (v Map) Transform(f func(Value) Value) Value {
 	v.lm.overMap(func(k string, v Value) Value {
-		return f(v)
+		return v.Transform(f)
 	})
 	return f(v)
 }
@@ -329,7 +341,10 @@ func (v Map) ForEach(f func(string, Value) bool) {
 }
 
 func (v Map) Copy() Value {
-	return Map{v.lm.copy()}
+	c := v.lm.copyFunc(func(v Value) Value {
+		return v.Copy()
+	})
+	return Map{c}
 }
 
 func (v Map) Equals(w Value) bool {
@@ -337,7 +352,16 @@ func (v Map) Equals(w Value) bool {
 	if !ok {
 		return false
 	}
-	return v.lm.equals(x.lm)
+	if !v.lm.sameKeys(x.lm) {
+		return false
+	}
+	eq := true
+	v.lm.forEach(func(k string, v Value) bool {
+		w, _ := x.lm.get(k)
+		eq = v.Equals(w)
+		return eq
+	})
+	return eq
 }
 
 func (v Map) Keys() []string {
@@ -345,9 +369,9 @@ func (v Map) Keys() []string {
 }
 
 func (v Map) Map(f func(string, Value) Value) Map {
-	c := v.lm.copy()
-	c.overMap(f)
-	return Map{c}
+	c := v.Copy().(Map)
+	c.lm.overMap(f)
+	return c
 }
 
 func (v Map) OverMap(f func(string, Value) Value) {

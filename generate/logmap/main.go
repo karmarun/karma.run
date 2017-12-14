@@ -33,7 +33,7 @@ func main() {
 	if e != nil {
 		log.Fatalln(e)
 	}
-	f, e := os.OpenFile(out, os.O_CREATE|os.O_WRONLY, 0700)
+	f, e := os.OpenFile(out, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0700)
 	if e != nil {
 		log.Fatalln(e)
 	}
@@ -73,17 +73,24 @@ func new{{.type}}(initialCapacity int) {{.type}} {
     }
 }
 
-func (m {{.type}}) equals(w {{.type}}) bool {
+func (m {{.type}}) sameKeys(w {{.type}}) bool {
     if len(m._keys) != len(w._keys) {
         return false
     }
-    for i, _ := range m._keys {
+    for i, l := 0, len(m._keys); i < l; i++ {
         if m._keys[i] != w._keys[i] {
             return false
         }
     }
-    for i, _ := range m._vals {
-        if !m._vals[i].Equals(w._vals[i]) {
+    return true
+}
+
+func (m {{.type}}) equals(w {{.type}}) bool {
+    if !m.sameKeys(w) {
+        return false
+    }
+    for i, l := 0, len(m._keys); i < l; i++ {
+        if m._vals[i] != w._vals[i] {
             return false
         }
     }
@@ -114,12 +121,12 @@ func (m {{.type}}) overMap(f func(k {{.key}}, v {{.value}}) {{.value}}) {
     }
 }
 
-func (m {{.type}}) get(k {{.key}}) {{.value}} {
+func (m {{.type}}) get(k {{.key}}) ({{.value}}, bool) {
     i := m.search(k)
     if i == len(m._keys) || m._keys[i] != k {
-        return nil
+        return nil, false
     }
-    return m._vals[i]
+    return m._vals[i], true
 }
 
 func (m *{{.type}}) set(k {{.key}}, v {{.value}}) {
@@ -142,15 +149,16 @@ func (m *{{.type}}) unset(k {{.key}}) {
     m._keys, m._vals = m._keys[:l-1], m._vals[:l-1]
 }
 
-func (m {{.type}}) copy() {{.type}} {
-    keys, values := ([]{{.key}})(nil), ([]{{.value}})(nil)
-    if m._keys != nil {
-        keys = make([]{{.key}}, len(m._keys), cap(m._keys))
-        copy(keys, m._keys)
+
+func (m {{.type}}) copyFunc(f func({{.value}}) {{.value}}) {{.type}} {
+    if m._keys == nil {
+        return {{.type}}{}
     }
-    if m._vals != nil {
-        values = make([]{{.value}}, len(m._vals), cap(m._vals))
-        copy(values, m._vals)
+    keys := make([]{{.key}}, len(m._keys), cap(m._keys))
+    copy(keys, m._keys)
+    values := make([]{{.value}}, len(m._vals), cap(m._vals))
+    for i, v := range m._vals {
+        values[i] = f(v)
     }
     return {{.type}}{keys, values}
 }

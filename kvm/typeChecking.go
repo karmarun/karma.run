@@ -238,21 +238,31 @@ func _checkType(actual, expected mdl.Model, recs map[[2]*mdl.Recursion]struct{})
 		if !ok {
 			return []TypeCheckingError{TypeCheckingError{expected, actual, nil}}
 		}
-		for k, m := range expected {
-			ak, ok := a[k]
+		e := ([]TypeCheckingError)(nil)
+		expected.ForEach(func(k string, m mdl.Model) bool {
+			ak, ok := a.Get(k)
 			if !ok {
-				if m.Nullable() {
-					continue
-				}
-				return []TypeCheckingError{TypeCheckingError{expected, actual, nil}}
+				// NOTE: commented out because at this stage, structs should have
+				//       null values wherever they were allowed
+				//       (instead of eliding the key as in some codecs)
+				// if m.Nullable() {
+				// 	return true
+				// }
+				e = []TypeCheckingError{TypeCheckingError{expected, actual, nil}}
+				return false
 			}
 			if es := _checkType(ak, m, recs); len(es) > 0 {
 				for j, e := range es {
 					e.Path = append(e.Path, err.ErrorPathElementStructField(k))
 					es[j] = e
 				}
-				return es
+				e = es
+				return false
 			}
+			return true
+		})
+		if e != nil {
+			return e
 		}
 		return nil
 
@@ -261,17 +271,25 @@ func _checkType(actual, expected mdl.Model, recs map[[2]*mdl.Recursion]struct{})
 		if !ok {
 			return []TypeCheckingError{TypeCheckingError{expected, actual, nil}}
 		}
-		for k, _ := range a {
-			if _, ok := expected[k]; !ok {
-				return []TypeCheckingError{TypeCheckingError{expected, actual, nil}}
+		e := ([]TypeCheckingError)(nil)
+		a.ForEach(func(k string, ak mdl.Model) bool {
+			ek, ok := expected.Get(k)
+			if !ok {
+				e = []TypeCheckingError{TypeCheckingError{expected, actual, nil}}
+				return false
 			}
-			if es := _checkType(a[k], expected[k], recs); len(es) > 0 {
+			if es := _checkType(ak, ek, recs); len(es) > 0 {
 				for j, e := range es {
 					e.Path = append(e.Path, err.ErrorPathElementUnionCase(k))
 					es[j] = e
 				}
-				return es
+				e = es
+				return false
 			}
+			return true
+		})
+		if e != nil {
+			return e
 		}
 		return nil
 

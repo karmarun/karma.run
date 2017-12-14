@@ -276,36 +276,43 @@ func decode(data JSON, model mdl.Model) (val.Value, err.Error) {
 		if isNull(data) {
 			return nil, err.InputParsingError{"unexpected null", data}
 		}
-		u := make(map[string]JSON, len(m))
+		u := make(map[string]JSON, m.Len())
 		if e := json.Unmarshal(data, &u); e != nil {
 			return nil, mapJsonError(e, data)
 		}
-		for k, q := range m {
-			if q.Nullable() {
-				continue // allow optional elements to be omitted
+		e := (err.Error)(nil)
+		m.ForEach(func(k string, m mdl.Model) bool {
+			if m.Nullable() {
+				return true // allow optional elements to be omitted
 			}
 			if _, ok := u[k]; !ok {
-				return nil, err.InputParsingError{fmt.Sprintf(`missing key "%s" in object`, k), data}
+				e = err.InputParsingError{fmt.Sprintf(`missing key "%s" in object`, k), data}
+				return false
 			}
+			return true
+		})
+		if e != nil {
+			return nil, e
 		}
 		for k, _ := range u {
-			if _, ok := m[k]; !ok {
+			if _, ok := m.Get(k); !ok {
 				return nil, err.InputParsingError{fmt.Sprintf(`unknown key "%s" in object`, k), data}
 			}
 		}
 		v := val.NewStruct(len(u))
 		for k, q := range u {
-			w, e := decode(q, m[k])
+			w, e := decode(q, m.Field(k))
 			if e != nil {
 				return nil, e
 			}
 			v.Set(k, w)
 		}
-		for k, _ := range m {
+		m.ForEach(func(k string, _ mdl.Model) bool {
 			if _, ok := v.Get(k); !ok {
 				v.Set(k, val.Null) // omitted optional elements should be Null in struct val
 			}
-		}
+			return true
+		})
 		return v, nil
 
 	case mdl.Union:
@@ -325,10 +332,11 @@ func decode(data JSON, model mdl.Model) (val.Value, err.Error) {
 			k, j = a, b
 			break
 		}
-		if _, ok := s[k]; !ok {
+		sk, ok := s.Get(k)
+		if !ok {
 			return nil, err.InputParsingError{fmt.Sprintf(`unknown union case in object: "%s"`, k), data}
 		}
-		w, e := decode(j, s[k])
+		w, e := decode(j, sk)
 		if e != nil {
 			return nil, e
 		}

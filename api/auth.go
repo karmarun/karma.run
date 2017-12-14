@@ -27,10 +27,10 @@ import (
 	"time"
 )
 
-var AuthRequestModel = mdl.Struct{
+var AuthRequestModel = mdl.StructFromMap(map[string]mdl.Model{
 	"username": mdl.String{},
 	"password": mdl.String{},
-}
+})
 
 const (
 	ivLength       = 32

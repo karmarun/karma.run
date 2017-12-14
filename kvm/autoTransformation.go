@@ -52,7 +52,7 @@ func findAutoTransformation(source, target mdl.Model) (xpr.Expression, err.Error
 	if _, ok := target.(mdl.Null); ok {
 		return xpr.Literal{val.Null}, nil
 	}
-	if target, ok := target.(mdl.Struct); ok && len(target) == 0 {
+	if target, ok := target.(mdl.Struct); ok && target.Len() == 0 {
 		return xpr.NewStruct{}, nil
 	}
 
@@ -132,12 +132,13 @@ func findAutoTransformation(source, target mdl.Model) (xpr.Expression, err.Error
 		if !ok {
 			return nil, newAutoTransformationError(source, target)
 		}
-		args := make(map[string]xpr.Expression, len(target))
-		for k, targetElement := range target {
-			sourceElement := source[k]
+		args := make(map[string]xpr.Expression, target.Len())
+		e := (err.Error)(nil)
+		target.ForEach(func(k string, targetElement mdl.Model) bool {
+			sourceElement := source.Field(k)
 			if sourceElement == nil {
 				if _, ok := targetElement.(mdl.Ref); ok {
-					return nil, err.ExecutionError{
+					e = err.ExecutionError{
 						fmt.Sprintf(`cannot infer mapping to new ref field in struct`),
 						nil,
 						// C: val.Map{
@@ -145,18 +146,24 @@ func findAutoTransformation(source, target mdl.Model) (xpr.Expression, err.Error
 						//  "target": mdl.ValueFromModel("meta", target, nil),
 						// },
 					}
+					return false
 				}
 				args[k] = xpr.Literal{targetElement.Zero()}
 			} else {
-				arg, e := findAutoTransformation(sourceElement, targetElement)
-				if e != nil {
-					return nil, e
+				arg, e_ := findAutoTransformation(sourceElement, targetElement)
+				if e_ != nil {
+					e = e_
+					return false
 				}
 				args[k] = xpr.With{
 					Value:  xpr.Field{Value: xpr.Argument{}, Name: xpr.Literal{val.String(k)}},
 					Return: arg,
 				}
 			}
+			return true
+		})
+		if e != nil {
+			return nil, e
 		}
 		return xpr.NewStruct(args), nil
 
@@ -165,11 +172,12 @@ func findAutoTransformation(source, target mdl.Model) (xpr.Expression, err.Error
 		if !ok {
 			return nil, newAutoTransformationError(source, target)
 		}
-		cases := make(map[string]xpr.Expression, len(source))
-		for k, sourceElement := range source {
-			targetElement := target[k]
+		cases := make(map[string]xpr.Expression, source.Len())
+		e := (err.Error)(nil)
+		source.ForEach(func(k string, sourceElement mdl.Model) bool {
+			targetElement := target.Case(k)
 			if targetElement == nil {
-				return nil, err.ExecutionError{
+				e = err.ExecutionError{
 					fmt.Sprintf(`cannot infer mapping for union case "%s"`, k),
 					nil,
 					// C: val.Map{
@@ -177,15 +185,21 @@ func findAutoTransformation(source, target mdl.Model) (xpr.Expression, err.Error
 					//  "target": mdl.ValueFromModel("meta", target, nil),
 					// },
 				}
+				return false
 			}
-			arg, e := findAutoTransformation(sourceElement, targetElement)
-			if e != nil {
-				return nil, e
+			arg, e_ := findAutoTransformation(sourceElement, targetElement)
+			if e_ != nil {
+				e = e_
+				return false
 			}
 			cases[k] = xpr.NewUnion{
 				Case:  xpr.Literal{val.String(k)},
 				Value: arg,
 			}
+			return true
+		})
+		if e != nil {
+			return nil, e
 		}
 		return xpr.SwitchCase{Value: xpr.Argument{}, Cases: cases}, nil
 
