@@ -54,6 +54,7 @@ func (vm VirtualMachine) Execute(program inst.Sequence, input val.Value) (val.Va
 
 	defer func() {
 		s := *stack
+		s = s[:cap(s)]
 		for i, _ := range s {
 			s[i] = nil
 		}

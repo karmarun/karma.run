@@ -183,8 +183,7 @@ func HttpHandler(rw http.ResponseWriter, rq *http.Request) {
 			case "create",
 				"delete",
 				"update",
-				"createMultiple",
-				"unsafeMutateModel":
+				"createMultiple":
 				txt = TxTypeWrite
 			}
 		}
