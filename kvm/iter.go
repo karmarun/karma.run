@@ -4,7 +4,9 @@ package kvm
 
 import (
 	"github.com/boltdb/bolt"
+	"karma.run/codec/karma.v2"
 	"karma.run/kvm/err"
+	"karma.run/kvm/mdl"
 	"karma.run/kvm/val"
 )
 
@@ -202,26 +204,27 @@ func (i filterIterator) length() int {
 	return -1
 }
 
-// bucketRefIterator yields val.Refs to the elements in a bucket
-type bucketRefIterator struct {
-	mid    string
+// bucketDecodingIterator yields val.Refs to the elements in a bucket
+type bucketDecodingIterator struct {
 	bucket *bolt.Bucket
+	model  mdl.Model
 }
 
-func newBucketRefIterator(mid string, bucket *bolt.Bucket) bucketRefIterator {
-	return bucketRefIterator{mid, bucket}
+func newBucketDecodingIterator(bucket *bolt.Bucket, model mdl.Model) bucketDecodingIterator {
+	return bucketDecodingIterator{bucket, model}
 }
 
-func (i bucketRefIterator) forEach(f func(val.Value) err.Error) err.Error {
+func (i bucketDecodingIterator) forEach(f func(val.Value) err.Error) err.Error {
 	c := i.bucket.Cursor()
-	for k, _ := c.First(); k != nil; k, _ = c.Next() {
-		if e := f(val.Ref{i.mid, string(k)}); e != nil {
+	for k, bs := c.First(); k != nil; k, bs = c.Next() {
+		v, _ := karma.Decode(bs, i.model)
+		if e := f(DematerializeMeta(v.(val.Struct))); e != nil {
 			return e
 		}
 	}
 	return nil
 }
 
-func (i bucketRefIterator) length() int {
+func (i bucketDecodingIterator) length() int {
 	return i.bucket.Stats().KeyN
 }

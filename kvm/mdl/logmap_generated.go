@@ -1,4 +1,3 @@
-
 // Copyright 2017 karma.run AG. All rights reserved.
 // Use of this source code is governed by an AGPL license that can be found in the LICENSE file.
 package mdl
@@ -17,7 +16,7 @@ type logMapStringModel struct {
 
 func newlogMapStringModel(initialCapacity int) logMapStringModel {
     return logMapStringModel{
-        _keys:   make([]string, 0, initialCapacity),
+        _keys: make([]string, 0, initialCapacity),
         _vals: make([]Model, 0, initialCapacity),
     }
 }

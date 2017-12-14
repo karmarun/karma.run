@@ -359,10 +359,14 @@ func (vm VirtualMachine) Execute(program inst.Sequence, input val.Value) (val.Va
 
 		case inst.All:
 			mid := (unMeta(stack.Pop())).(val.Ref)[1]
+			m, e := vm.Model(mid)
+			if e != nil {
+				return nil, e
+			}
+			model := vm.WrapModelInMeta(mid, m.Model)
 			bucket := vm.RootBucket.Bucket([]byte(mid))
-			bkir := newBucketRefIterator(mid, bucket)
-			drir := vm.newDerefMappingIterator(bkir)
-			prir := vm.newReadPermissionFilterIterator(drir)
+			bkir := newBucketDecodingIterator(bucket, model)
+			prir := vm.newReadPermissionFilterIterator(bkir)
 			stack.Push(iteratorValue{prir})
 
 		case inst.MapStruct:

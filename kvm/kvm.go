@@ -519,13 +519,13 @@ func (vm VirtualMachine) WrapModelInMeta(mid string, model mdl.Model) mdl.Model 
 	return m
 }
 
-func (vm VirtualMachine) WrapValueInMeta(value val.Value, id, bucket string) val.Meta {
+func (vm VirtualMachine) WrapValueInMeta(value val.Value, id, mid string) val.Meta {
 	now := time.Now()
 	return val.Meta{
-		Id:      val.Ref{bucket, id},
+		Id:      val.Ref{mid, id},
 		Created: val.DateTime{now},
 		Updated: val.DateTime{now},
-		Model:   val.Ref{vm.MetaModelId(), bucket},
+		Model:   val.Ref{vm.MetaModelId(), mid},
 		Value:   value,
 	}
 }
@@ -593,13 +593,6 @@ func (vm VirtualMachine) newReadPermissionFilterIterator(sub iterator) iterator 
 			}
 		}
 		return true, nil
-	})
-}
-
-func (vm VirtualMachine) newDerefMappingIterator(sub iterator) iterator {
-	return newMappingIterator(sub, func(v val.Value) (val.Value, err.Error) {
-		r := v.(val.Ref)
-		return vm.get(r[0], r[1])
 	})
 }
 

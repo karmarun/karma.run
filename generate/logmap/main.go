@@ -49,8 +49,7 @@ func main() {
 	}
 }
 
-const templateString = `
-// Copyright 2017 karma.run AG. All rights reserved.
+const templateString = `// Copyright 2017 karma.run AG. All rights reserved.
 // Use of this source code is governed by an AGPL license that can be found in the LICENSE file.
 package {{.package}}
 
@@ -68,7 +67,7 @@ type {{.type}} struct {
 
 func new{{.type}}(initialCapacity int) {{.type}} {
     return {{.type}}{
-        _keys:   make([]{{.key}}, 0, initialCapacity),
+        _keys: make([]{{.key}}, 0, initialCapacity),
         _vals: make([]{{.value}}, 0, initialCapacity),
     }
 }

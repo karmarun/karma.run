@@ -1,4 +1,3 @@
-
 // Copyright 2017 karma.run AG. All rights reserved.
 // Use of this source code is governed by an AGPL license that can be found in the LICENSE file.
 package val
@@ -17,7 +16,7 @@ type logMapStringValue struct {
 
 func newlogMapStringValue(initialCapacity int) logMapStringValue {
     return logMapStringValue{
-        _keys:   make([]string, 0, initialCapacity),
+        _keys: make([]string, 0, initialCapacity),
         _vals: make([]Value, 0, initialCapacity),
     }
 }
