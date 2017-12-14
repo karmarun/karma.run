@@ -496,7 +496,7 @@ func (vm VirtualMachine) Execute(program inst.Sequence, input val.Value) (val.Va
 
 			ov := make(map[string]val.Value)
 			in := make([]val.Ref, 0, 1024)
-			sn := make(map[val.Ref]struct{}, 1024)
+			seen := make(map[val.Ref]struct{}, 1024)
 			in = append(in, unMeta(stack.Pop()).(val.Ref))
 
 			for len(in) > 0 {
@@ -515,13 +515,15 @@ func (vm VirtualMachine) Execute(program inst.Sequence, input val.Value) (val.Va
 					}
 				}
 
-				sn[cv] = struct{}{}
+				seen[cv] = struct{}{}
+
 				if ov[cv[0]] == nil {
 					ov[cv[0]] = val.NewMap(32)
 				}
 				{
 					first := ov[cv[0]].(val.Map)
 					first.Set(cv[1], v)
+					ov[cv[0]] = first
 				}
 
 				flow := it.FlowParams[cv[0]]
@@ -532,7 +534,7 @@ func (vm VirtualMachine) Execute(program inst.Sequence, input val.Value) (val.Va
 						if _, ok := flow.Forward[m]; !ok {
 							return nil // skip
 						}
-						if _, ok := sn[val.Ref{m, i}]; !ok {
+						if _, ok := seen[val.Ref{m, i}]; !ok {
 							in = append(in, val.Ref{m, i})
 						}
 						return nil
@@ -548,7 +550,7 @@ func (vm VirtualMachine) Execute(program inst.Sequence, input val.Value) (val.Va
 						if _, ok := flow.Backward[m]; !ok {
 							return nil // skip
 						}
-						if _, ok := sn[val.Ref{m, i}]; !ok {
+						if _, ok := seen[val.Ref{m, i}]; !ok {
 							in = append(in, val.Ref{m, i})
 						}
 						return nil
