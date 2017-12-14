@@ -494,15 +494,15 @@ func (vm VirtualMachine) Execute(program inst.Sequence, input val.Value) (val.Va
 
 		case inst.GraphFlow:
 
-			ov := make(map[string]val.Value)
-			in := make([]val.Ref, 0, 1024)
+			output := make(map[string]val.Value)
 			seen := make(map[val.Ref]struct{}, 1024)
-			in = append(in, unMeta(stack.Pop()).(val.Ref))
+			todo := make([]val.Ref, 0, 1024)
+			todo = append(todo, unMeta(stack.Pop()).(val.Ref))
 
-			for len(in) > 0 {
+			for len(todo) > 0 {
 
-				cv := in[0]
-				in = in[1:]
+				cv := todo[0]
+				todo = todo[1:]
 
 				v, e := vm.Get(cv[0], cv[1])
 				if e != nil {
@@ -517,13 +517,13 @@ func (vm VirtualMachine) Execute(program inst.Sequence, input val.Value) (val.Va
 
 				seen[cv] = struct{}{}
 
-				if ov[cv[0]] == nil {
-					ov[cv[0]] = val.NewMap(32)
+				if output[cv[0]] == nil {
+					output[cv[0]] = val.NewMap(32)
 				}
 				{
-					first := ov[cv[0]].(val.Map)
+					first := output[cv[0]].(val.Map)
 					first.Set(cv[1], v)
-					ov[cv[0]] = first
+					output[cv[0]] = first
 				}
 
 				flow := it.FlowParams[cv[0]]
@@ -535,7 +535,7 @@ func (vm VirtualMachine) Execute(program inst.Sequence, input val.Value) (val.Va
 							return nil // skip
 						}
 						if _, ok := seen[val.Ref{m, i}]; !ok {
-							in = append(in, val.Ref{m, i})
+							todo = append(todo, val.Ref{m, i})
 						}
 						return nil
 					})
@@ -551,7 +551,7 @@ func (vm VirtualMachine) Execute(program inst.Sequence, input val.Value) (val.Va
 							return nil // skip
 						}
 						if _, ok := seen[val.Ref{m, i}]; !ok {
-							in = append(in, val.Ref{m, i})
+							todo = append(todo, val.Ref{m, i})
 						}
 						return nil
 					})
@@ -561,7 +561,7 @@ func (vm VirtualMachine) Execute(program inst.Sequence, input val.Value) (val.Va
 				}
 			}
 
-			stack.Push(val.StructFromMap(ov))
+			stack.Push(val.StructFromMap(output))
 
 		case inst.ResolveRefs:
 
