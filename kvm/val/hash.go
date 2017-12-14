@@ -54,12 +54,11 @@ func Hash(v Value, h hash.Hash64) hash.Hash64 {
 		return h
 	case Map:
 		h.Write([]byte(`map`))
-		ks := v.Keys()
-		sort.Strings(ks)
-		for _, k := range ks {
+		v.ForEach(func(k string, v Value) bool {
 			h.Write([]byte(k))
-			h = Hash(v[k], h)
-		}
+			h = Hash(v, h)
+			return true
+		})
 		return h
 	case Float:
 		h.Write([]byte(`float`))

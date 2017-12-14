@@ -28,10 +28,11 @@ func ExpressionFromValue(v val.Value) Expression {
 
 	case "do":
 		arg := u.Value.(val.Map)
-		bs := make(map[string]Expression, len(arg))
-		for k, v := range arg {
+		bs := make(map[string]Expression, arg.Len())
+		arg.ForEach(func(k string, v val.Value) bool {
 			bs[k] = ExpressionFromValue(v)
-		}
+			return true
+		})
 		return Do(bs)
 
 	case "bind":
@@ -108,18 +109,20 @@ func ExpressionFromValue(v val.Value) Expression {
 
 	case "newMap":
 		arg := u.Value.(val.Map)
-		nod := make(NewMap, len(arg))
-		for k, sub := range arg {
-			nod[k] = ExpressionFromValue(sub)
-		}
+		nod := make(NewMap, arg.Len())
+		arg.ForEach(func(k string, v val.Value) bool {
+			nod[k] = ExpressionFromValue(v)
+			return true
+		})
 		return nod
 
 	case "newStruct":
 		arg := u.Value.(val.Map)
-		nod := make(NewStruct, len(arg))
-		for k, sub := range arg {
-			nod[k] = ExpressionFromValue(sub)
-		}
+		nod := make(NewStruct, arg.Len())
+		arg.ForEach(func(k string, v val.Value) bool {
+			nod[k] = ExpressionFromValue(v)
+			return true
+		})
 		return nod
 
 	case "contextual", "static":
@@ -183,10 +186,11 @@ func ExpressionFromValue(v val.Value) Expression {
 	case "createMultiple":
 		arg := u.Value.(val.Struct)
 		vls := arg.Field("values").(val.Map)
-		mvs := make(map[string]Expression, len(vls))
-		for k, sub := range vls {
-			mvs[k] = ExpressionFromValue(sub)
-		}
+		mvs := make(map[string]Expression, vls.Len())
+		vls.ForEach(func(k string, v val.Value) bool {
+			mvs[k] = ExpressionFromValue(v)
+			return true
+		})
 		return CreateMultiple{ExpressionFromValue(arg.Field("in")), mvs}
 
 	case "if":
@@ -505,9 +509,10 @@ func ExpressionFromValue(v val.Value) Expression {
 			arg.Set("value", argValue)
 		}
 		cases := make(map[string]Expression)
-		for k, v := range arg.Field("cases").(val.Map) {
+		arg.Field("cases").(val.Map).ForEach(func(k string, v val.Value) bool {
 			cases[k] = ExpressionFromValue(v)
-		}
+			return true
+		})
 		return SwitchCase{
 			Value: ExpressionFromValue(arg.Field("value")),
 			Cases: cases,
@@ -801,16 +806,16 @@ func ValueFromExpression(x Expression) val.Value {
 		})}
 
 	case NewMap:
-		values := make(val.Map, len(node))
+		values := val.NewMap(len(node))
 		for k, sub := range node {
-			values[k] = ValueFromExpression(sub)
+			values.Set(k, ValueFromExpression(sub))
 		}
 		return val.Union{"newMap", values}
 
 	case NewStruct:
-		values := make(val.Map, len(node))
+		values := val.NewMap(len(node))
 		for k, sub := range node {
-			values[k] = ValueFromExpression(sub)
+			values.Set(k, ValueFromExpression(sub))
 		}
 		return val.Union{"newStruct", values}
 
@@ -903,9 +908,9 @@ func ValueFromExpression(x Expression) val.Value {
 		})}
 
 	case CreateMultiple:
-		values := make(val.Map, len(node.Values))
+		values := val.NewMap(len(node.Values))
 		for k, sub := range node.Values {
-			values[k] = ValueFromExpression(sub)
+			values.Set(k, ValueFromExpression(sub))
 		}
 		return val.Union{"createMultiple", val.StructFromMap(map[string]val.Value{
 			"in":     ValueFromExpression(node.In),
@@ -1010,9 +1015,9 @@ func ValueFromExpression(x Expression) val.Value {
 		return val.Union{"switchType", args}
 
 	case SwitchCase:
-		cases := make(val.Map, len(node.Cases))
+		cases := val.NewMap(len(node.Cases))
 		for k, v := range node.Cases {
-			cases[k] = ValueFromExpression(v)
+			cases.Set(k, ValueFromExpression(v))
 		}
 		return val.Union{"switchCase", val.StructFromMap(map[string]val.Value{
 			"value": ValueFromExpression(node.Value),

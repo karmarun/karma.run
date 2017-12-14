@@ -76,9 +76,9 @@ func ValueFromModel(metaId string, model Model, recursions map[*Recursion]struct
 			}
 		})
 		if len(recs) > 1 {
-			mp := make(val.Map, len(recs))
+			mp := val.NewMap(len(recs))
 			for r, _ := range recs {
-				mp[r.Label] = ValueFromModel(metaId, r.Model, recs)
+				mp.Set(r.Label, ValueFromModel(metaId, r.Model, recs))
 			}
 			return val.Union{"recursive", val.StructFromMap(map[string]val.Value{
 				"top":    val.String(top.Label),
@@ -158,16 +158,16 @@ func ValueFromModel(metaId string, model Model, recursions map[*Recursion]struct
 		return val.Union{"string", val.Struct{}}
 
 	case Struct:
-		o := val.Map{}
+		o := val.NewMap(len(m))
 		for k, v := range m {
-			o[k] = ValueFromModel(metaId, v, recursions)
+			o.Set(k, ValueFromModel(metaId, v, recursions))
 		}
 		return val.Union{"struct", o}
 
 	case Union:
-		o := val.Map{}
+		o := val.NewMap(len(m))
 		for k, v := range m {
-			o[k] = ValueFromModel(metaId, v, recursions)
+			o.Set(k, ValueFromModel(metaId, v, recursions))
 		}
 		return val.Union{"union", o}
 
@@ -228,31 +228,47 @@ func ModelFromValue(metaId string, u val.Union, recursions map[string]*Recursion
 		s := u.Value.(val.Struct)
 		t := string(s.Field("top").(val.String))
 		a := s.Field("models").(val.Map)
-		for l, _ := range a {
+		e := (err.PathedError)(nil)
+		a.ForEach(func(l string, _ val.Value) bool {
 			if _, ok := recursions[l]; ok {
-				return nil, err.ModelParsingError{
+				e = err.ModelParsingError{
 					fmt.Sprintf(`recursion label already defined: %s`, l), u, nil,
 				}
+				return false
 			}
 			recursions[l] = &Recursion{Label: l}
+			return true
+		})
+		if e != nil {
+			return nil, e
 		}
 		if _, ok := recursions[t]; !ok {
 			return nil, err.ModelParsingError{fmt.Sprintf(`no definition for top label: %s`, t), u, nil}
 		}
-		for l, _ := range a {
-			m, e := ModelFromValue(metaId, a[l].(val.Union), recursions)
-			if e != nil {
-				return nil, e.AppendPath(err.ErrorPathElementUnionCase(u.Case), err.ErrorPathElementStructField("models"), err.ErrorPathElementMapKey(l))
+		a.ForEach(func(l string, v val.Value) bool {
+			m, e_ := ModelFromValue(metaId, v.(val.Union), recursions)
+			if e_ != nil {
+				e = e_.AppendPath(err.ErrorPathElementUnionCase(u.Case), err.ErrorPathElementStructField("models"), err.ErrorPathElementMapKey(l))
+				return false
 			}
 			recursions[l].Model = m
+			return true
+		})
+		if e != nil {
+			return nil, e
 		}
 		r := recursions[t]
-		for l, _ := range a {
+		a.ForEach(func(l string, v val.Value) bool {
 			m := recursions[l]
 			if couldRecurseInfinitely(m, nil) {
-				return nil, err.ModelParsingError{`infinite recursion`, u, nil}
+				e = err.ModelParsingError{`infinite recursion`, u, nil}
+				return false
 			}
 			delete(recursions, l)
+			return true
+		})
+		if e != nil {
+			return nil, e
 		}
 		return r, nil
 
@@ -342,12 +358,18 @@ func ModelFromValue(metaId string, u val.Union, recursions map[string]*Recursion
 	case "struct":
 		v := u.Value.(val.Map)
 		m := Struct{}
-		for k, v := range v {
-			w, e := ModelFromValue(metaId, v.(val.Union), recursions)
-			if e != nil {
-				return nil, e.AppendPath(err.ErrorPathElementUnionCase(u.Case), err.ErrorPathElementMapKey(k))
+		e := (err.PathedError)(nil)
+		v.ForEach(func(k string, v val.Value) bool {
+			w, e_ := ModelFromValue(metaId, v.(val.Union), recursions)
+			if e_ != nil {
+				e = e_.AppendPath(err.ErrorPathElementUnionCase(u.Case), err.ErrorPathElementMapKey(k))
+				return false
 			}
 			m[k] = w
+			return true
+		})
+		if e != nil {
+			return nil, e
 		}
 		return m, nil
 
@@ -369,12 +391,18 @@ func ModelFromValue(metaId string, u val.Union, recursions map[string]*Recursion
 	case "union":
 		v := u.Value.(val.Map)
 		m := Union{}
-		for k, v := range v {
-			w, e := ModelFromValue(metaId, v.(val.Union), recursions)
-			if e != nil {
-				return nil, e.AppendPath(err.ErrorPathElementUnionCase(u.Case), err.ErrorPathElementMapKey(k))
+		e := (err.PathedError)(nil)
+		v.ForEach(func(k string, v val.Value) bool {
+			w, e_ := ModelFromValue(metaId, v.(val.Union), recursions)
+			if e_ != nil {
+				e = e_.AppendPath(err.ErrorPathElementUnionCase(u.Case), err.ErrorPathElementMapKey(k))
+				return false
 			}
 			m[k] = w
+			return true
+		})
+		if e != nil {
+			return nil, e
 		}
 		return m, nil
 

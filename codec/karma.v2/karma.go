@@ -50,11 +50,12 @@ func encode(v val.Value, m mdl.Model, bs []byte) []byte {
 
 	case mdl.Map:
 		v := v.(val.Map)
-		bs = writeUint32(uint32(len(v)), bs)
-		for k, w := range v {
+		bs = writeUint32(uint32(v.Len()), bs)
+		v.ForEach(func(k string, w val.Value) bool {
 			bs = writeString(k, bs)
 			bs = encode(w, m.Elements, bs)
-		}
+			return true
+		})
 		return bs
 
 	case mdl.Tuple:
@@ -195,11 +196,12 @@ func decode(bs []byte, m mdl.Model) (val.Value, []byte) {
 
 	case mdl.Map:
 		l, bs := readUint32(bs)
-		v := make(val.Map, l)
+		v := val.NewMap(int(l))
 		for i, l := 0, int(l); i < l; i++ {
 			k, cs := readString(bs)
 			w, cs := decode(cs, m.Elements)
-			v[k], bs = w, cs
+			v.Set(k, w)
+			bs = cs
 		}
 		return v, bs
 

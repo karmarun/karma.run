@@ -695,10 +695,15 @@ func (vm VirtualMachine) InitDB() error {
 			return e
 		}
 
-		for k, id := range ids.(val.Map) {
-			if e := db.Put([]byte(k), []byte(id.(val.Ref)[1])); e != nil {
-				return e
+		ids.(val.Map).ForEach(func(k string, id val.Value) bool {
+			if e_ := db.Put([]byte(k), []byte(id.(val.Ref)[1])); e_ != nil {
+				e = err.InternalError{Problem: e.Error()}
+				return false
 			}
+			return true
+		})
+		if e != nil {
+			return e
 		}
 	}
 

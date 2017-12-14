@@ -25,14 +25,14 @@ func TightestModelForValue(v val.Value) Model {
 		return List{UnionOf(ms...)}
 
 	case val.Map:
-		if len(v) == 0 {
+		if v.Len() == 0 {
 			return Map{Any{}}
 		}
-		ks := v.Keys()
-		ms := make([]Model, 0, len(v))
-		for _, k := range ks {
-			ms = append(ms, TightestModelForValue(v[k]))
-		}
+		ms := make([]Model, 0, v.Len())
+		v.ForEach(func(k string, v val.Value) bool {
+			ms = append(ms, TightestModelForValue(v))
+			return true
+		})
 		return Map{UnionOf(ms...)}
 
 	case val.Struct:

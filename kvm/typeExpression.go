@@ -337,7 +337,7 @@ func (vm VirtualMachine) TypeExpression(node xpr.Expression, argument, expected 
 		elements = UnwrapBucket(elements)
 		model := mdl.Model(mdl.Map{elements})
 		if len(constants) == len(node) {
-			model = ConstantModel{model, val.Map(constants)}
+			model = ConstantModel{model, val.MapFromMap(constants)}
 		}
 		retNode = xpr.TypedExpression{node, expected, model}
 
@@ -1584,7 +1584,7 @@ func (vm VirtualMachine) TypeExpression(node xpr.Expression, argument, expected 
 		})
 		if cv, ok := value.Actual.(ConstantModel); ok {
 			if cn, ok := name.Actual.(ConstantModel); ok {
-				ov := cv.Value.(val.Map)[string(cn.Value.(val.String))]
+				ov := cv.Value.(val.Map).Key(string(cn.Value.(val.String)))
 				if ov == nil {
 					ov = val.Null
 				}

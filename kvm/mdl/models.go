@@ -122,9 +122,10 @@ func (m Map) Transform(f func(Model) Model) Model {
 func (m Map) TraverseValue(j val.Value, f func(val.Value, Model)) {
 	f(j, m)
 	if u, ok := j.(val.Map); ok {
-		for _, w := range u {
+		u.ForEach(func(_ string, w val.Value) bool {
 			m.Elements.TraverseValue(w, f)
-		}
+			return true
+		})
 	}
 }
 
@@ -138,7 +139,7 @@ func (r Map) Traverse(p []string, f func([]string, Model)) {
 }
 
 func (r Map) Zero() val.Value {
-	return make(val.Map, 0)
+	return val.Map{}
 }
 
 func (m Map) Concrete() Model {

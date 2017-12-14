@@ -138,18 +138,24 @@ func _inferType(value val.Value, expected mdl.Model) (mdl.Model, []TypeInference
 		if !ok {
 			return nil, []TypeInferenceError{TypeInferenceError{expected, value, nil}}
 		}
-		if len(v) == 0 {
+		if v.Len() == 0 {
 			return m, nil
 		}
-		ms := make([]mdl.Model, 0, len(v))
-		for k, w := range v {
+		ms := make([]mdl.Model, 0, v.Len())
+		e := ([]TypeInferenceError)(nil)
+		v.ForEach(func(k string, w val.Value) bool {
 			wm, es := _inferType(w, m.Elements)
 			if len(es) > 0 {
-				return nil, overMapTypeInferenceErrorsPaths(es, func(p err.ErrorPath) err.ErrorPath {
+				e = overMapTypeInferenceErrorsPaths(es, func(p err.ErrorPath) err.ErrorPath {
 					return append(p, err.ErrorPathElementMapKey(k))
 				})
+				return false
 			}
 			ms = append(ms, wm)
+			return true
+		})
+		if e != nil {
+			return nil, e
 		}
 		return mdl.Map{mdl.UnionOf(ms...)}, nil
 

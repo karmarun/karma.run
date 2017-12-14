@@ -118,11 +118,11 @@ func (vm VirtualMachine) Execute(program inst.Sequence, input val.Value) (val.Va
 			stack.Push(ls)
 
 		case inst.BuildMap:
-			ls := make(val.Map, it.Length)
+			ls := val.NewMap(it.Length)
 			for i, l := 0, it.Length; i < l; i++ {
 				v := stack.Pop()
 				k := unMeta(stack.Pop()).(val.String)
-				ls[string(k)] = v
+				ls.Set(string(k), v)
 			}
 			stack.Push(ls)
 
@@ -285,16 +285,18 @@ func (vm VirtualMachine) Execute(program inst.Sequence, input val.Value) (val.Va
 			}
 
 			vs := unMeta(stack.Pop()).(val.Map)        // vm's elements already validated against mm
-			im := make(val.Map, len(vs))               // key -> id as val.Ref
+			im := make(map[string]val.Value, vs.Len()) // key -> id as val.Ref
 			rm := make(map[string]map[string]val.Meta) // mid -> id -> value
 
-			for k, _ := range vs {
+			// allocate some random IDs
+			vs.ForEach(func(k string, v val.Value) bool {
 				im[k] = val.Ref{it.Model, common.RandomId()}
-			}
+				return true
+			})
 
 			migrationTree := vm.migrationTree(it.Model, nil)
 
-			for k, v := range vs {
+			vs.ForEach(func(k string, v val.Value) bool {
 
 				id := string(im[k].(val.Ref)[1])
 
@@ -311,8 +313,8 @@ func (vm VirtualMachine) Execute(program inst.Sequence, input val.Value) (val.Va
 					// in this case validating structure is not enough,
 					// we have to make sure that we can build an actual model
 					// from the given value
-					if _, e := mdl.ModelFromValue(vm.MetaModelId(), v.(val.Union), nil); e != nil {
-						return nil, e
+					if _, e = mdl.ModelFromValue(vm.MetaModelId(), v.(val.Union), nil); e != nil {
+						return false
 					}
 				}
 
@@ -327,14 +329,18 @@ func (vm VirtualMachine) Execute(program inst.Sequence, input val.Value) (val.Va
 
 				for mid, v := range migrationMap {
 					if _, ok := rm[mid]; !ok {
-						rm[mid] = make(map[string]val.Meta, len(vs))
+						rm[mid] = make(map[string]val.Meta, vs.Len())
 					}
 					rm[mid][id] = v
 				}
 
+				return true
+			})
+			if e != nil {
+				return nil, e
 			}
 
-			stack.Push(im)
+			stack.Push(val.MapFromMap(im))
 
 			// TODO: should primary mid go first for more sensible model IDs in errors?
 			for mid, values := range rm {
@@ -382,18 +388,24 @@ func (vm VirtualMachine) Execute(program inst.Sequence, input val.Value) (val.Va
 		case inst.MapMap:
 
 			mv := unMeta(stack.Pop()).(val.Map)
-			cp := make(val.Map, len(mv))
+			e := (err.Error)(nil)
 			temp := val.NewStruct(2)
-			for k, v := range mv {
+			mapped := mv.Map(func(k string, v val.Value) val.Value {
+				if e != nil {
+					return nil
+				}
 				temp.Set("key", val.String(k))
 				temp.Set("value", v)
-				mapped, e := vm.Execute(it.Expression, temp)
-				if e != nil {
-					return nil, e
+				mapped, e_ := vm.Execute(it.Expression, temp)
+				if e_ != nil {
+					e = e_
 				}
-				cp[k] = mapped
+				return mapped
+			})
+			if e != nil {
+				return nil, e
 			}
-			stack.Push(cp)
+			stack.Push(mapped)
 
 		case inst.ReduceList:
 
@@ -498,9 +510,12 @@ func (vm VirtualMachine) Execute(program inst.Sequence, input val.Value) (val.Va
 
 				sn[cv] = struct{}{}
 				if ov[cv[0]] == nil {
-					ov[cv[0]] = make(val.Map, 32)
+					ov[cv[0]] = val.NewMap(32)
 				}
-				ov[cv[0]].(val.Map)[cv[1]] = v
+				{
+					first := ov[cv[0]].(val.Map)
+					first.Set(cv[1], v)
+				}
 
 				flow := it.FlowParams[cv[0]]
 
@@ -1043,7 +1058,7 @@ func (vm VirtualMachine) Execute(program inst.Sequence, input val.Value) (val.Va
 		case inst.Key:
 			k := unMeta(stack.Pop()).(val.String)
 			m := unMeta(stack.Pop()).(val.Map)
-			if v, ok := m[string(k)]; ok {
+			if v, ok := m.Get(string(k)); ok {
 				stack.Push(v)
 			} else {
 				stack.Push(val.Null)
@@ -1077,7 +1092,7 @@ func (vm VirtualMachine) Execute(program inst.Sequence, input val.Value) (val.Va
 
 		case inst.SetKey:
 			in := unMeta(stack.Pop()).(val.Map)
-			in[it.Key] = unMeta(stack.Pop())
+			in.Set(it.Key, unMeta(stack.Pop()))
 			stack.Push(in)
 
 		case inst.Field:

@@ -94,10 +94,11 @@ func Encode(value val.Value) JSON {
 		})
 		return mustMarshal(u)
 	case val.Map:
-		u := make(map[string]JSON, len(v))
-		for k, _ := range v {
-			u[k] = Encode(v[k])
-		}
+		u := make(map[string]JSON, v.Len())
+		v.ForEach(func(k string, w val.Value) bool {
+			u[k] = Encode(w)
+			return true
+		})
 		return mustMarshal(u)
 	case val.Raw:
 		return JSON(v)
@@ -240,13 +241,13 @@ func decode(data JSON, model mdl.Model) (val.Value, err.Error) {
 			}
 			return nil, mapJsonError(e, data)
 		}
-		v := make(val.Map, len(u))
+		v := val.NewMap(len(u))
 		for k, q := range u {
 			w, e := decode(q, m.Elements)
 			if e != nil {
 				return nil, e
 			}
-			v[k] = w
+			v.Set(k, w)
 		}
 		return v, nil
 

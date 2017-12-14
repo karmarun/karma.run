@@ -41,21 +41,21 @@ var (
 func NewMetaModelValue(metaId string) val.Value {
 	return val.Union{"recursion", val.StructFromMap(map[string]val.Value{
 		"label": val.String("x"),
-		"model": val.Union{"union", val.Map{
+		"model": val.Union{"union", val.MapFromMap(map[string]val.Value{
 			"or": val.Union{"list", val.Union{"recurse", val.String("x")}},
-			"recursive": val.Union{"struct", val.Map{
+			"recursive": val.Union{"struct", val.MapFromMap(map[string]val.Value{
 				"top":    val.Union{"string", val.Struct{}},
 				"models": val.Union{"map", val.Union{"recurse", val.String("x")}},
-			}},
-			"recursion": val.Union{"struct", val.Map{
+			})},
+			"recursion": val.Union{"struct", val.MapFromMap(map[string]val.Value{
 				"label": val.Union{"string", val.Struct{}},
 				"model": val.Union{"recurse", val.String("x")},
-			}},
+			})},
 			"recurse": val.Union{"string", val.Struct{}},
-			"annotation": val.Union{"struct", val.Map{
+			"annotation": val.Union{"struct", val.MapFromMap(map[string]val.Value{
 				"value": val.Union{"string", val.Struct{}},
 				"model": val.Union{"recurse", val.String("x")},
-			}},
+			})},
 			"set":      val.Union{"recurse", val.String("x")},
 			"list":     val.Union{"recurse", val.String("x")},
 			"tuple":    val.Union{"list", val.Union{"recurse", val.String("x")}},
@@ -82,44 +82,44 @@ func NewMetaModelValue(metaId string) val.Value {
 			"uint32":   val.Union{"struct", val.Map{}},
 			"uint64":   val.Union{"struct", val.Map{}},
 			"null":     val.Union{"struct", val.Map{}},
-		}},
+		})},
 	})}
 }
 
 func NewTagModelValue(metaId string) val.Value {
-	return val.Union{"struct", val.Map{
+	return val.Union{"struct", val.MapFromMap(map[string]val.Value{
 		"tag":   val.Union{"unique", val.Union{"string", val.Struct{}}},
 		"model": val.Union{"ref", val.Ref{metaId, metaId}},
-	}}
+	})}
 }
 
 func NewUserModelValue(metaId, roleId string) val.Value {
-	return val.Union{"struct", val.Map{
+	return val.Union{"struct", val.MapFromMap(map[string]val.Value{
 		"username": val.Union{"unique", val.Union{"string", val.Struct{}}},
 		"password": val.Union{"string", val.Struct{}},
 		"roles":    val.Union{"list", val.Union{"ref", val.Ref{metaId, roleId}}},
-	}}
+	})}
 }
 
 func NewRoleModelValue(metaId, exprId string) val.Value {
-	return val.Union{"struct", val.Map{
+	return val.Union{"struct", val.MapFromMap(map[string]val.Value{
 		"name": val.Union{"unique", val.Union{"string", val.Struct{}}},
-		"permissions": val.Union{"struct", val.Map{
+		"permissions": val.Union{"struct", val.MapFromMap(map[string]val.Value{
 			"create": val.Union{"ref", val.Ref{metaId, exprId}},
 			"read":   val.Union{"ref", val.Ref{metaId, exprId}},
 			"update": val.Union{"ref", val.Ref{metaId, exprId}},
 			"delete": val.Union{"ref", val.Ref{metaId, exprId}},
-		}},
-	}}
+		})},
+	})}
 }
 
 func NewMigrationModelValue(metaId, exprId string) val.Value {
-	return val.Union{"list", val.Union{"struct", val.Map{
+	return val.Union{"list", val.Union{"struct", val.MapFromMap(map[string]val.Value{
 		"source": val.Union{"ref", val.Ref{metaId, metaId}},
 		"target": val.Union{"ref", val.Ref{metaId, metaId}},
-		"expression": val.Union{"union", val.Map{
-			"auto":   val.Union{"struct", val.Map{}},            // only rewire graph dependents
-			"manual": val.Union{"ref", val.Ref{metaId, exprId}}, // actual transformation
-		}},
-	}}}
+		"expression": val.Union{"union", val.MapFromMap(map[string]val.Value{
+			"auto":   val.Union{"struct", val.Map{}},
+			"manual": val.Union{"ref", val.Ref{metaId, exprId}},
+		})},
+	})}}
 }

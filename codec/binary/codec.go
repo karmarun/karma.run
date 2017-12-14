@@ -157,11 +157,12 @@ func encode(v val.Value, buf []byte) []byte {
 
 	case val.Map:
 		buf = append(buf, byte(TypeMap))
-		buf = writeLength(len(v), buf)
-		for k, w := range v {
+		buf = writeLength(v.Len(), buf)
+		v.ForEach(func(k string, w val.Value) bool {
 			buf = writeString(k, buf)
 			buf = encode(w, buf)
-		}
+			return true
+		})
 		return buf
 
 	case val.Float:
@@ -311,7 +312,7 @@ func decode(data []byte) (val.Value, []byte, err.Error) {
 		if e != nil {
 			return nil, data, e
 		}
-		v := make(val.Map, l)
+		v := val.NewMap(l)
 		for i := 0; i < l; i++ {
 			field, d, e := readString(data)
 			if e != nil {
@@ -323,7 +324,7 @@ func decode(data []byte) (val.Value, []byte, err.Error) {
 				return nil, d, e
 			}
 			data = d
-			v[field] = value
+			v.Set(field, value)
 		}
 		return v, data, nil
 

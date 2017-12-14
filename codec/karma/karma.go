@@ -103,11 +103,12 @@ func Encode(v val.Value, bs []byte) []byte {
 
 	case val.Map:
 		bs = append(bs, byte(TypeMap))
-		bs = encodeUint(uint64(len(w)), bs)
-		for k, x := range w {
+		bs = encodeUint(uint64(w.Len()), bs)
+		w.ForEach(func(k string, x val.Value) bool {
 			bs = encodeString(k, bs)
 			bs = Encode(x, bs)
-		}
+			return true
+		})
 		return bs
 
 	case val.Float:
@@ -256,12 +257,12 @@ func Decode(bs []byte) (val.Value, []byte) {
 	case TypeMap:
 		n, bs := decodeUint(bs)
 		l := int(n)
-		v := make(val.Map, l)
+		v := val.NewMap(l)
 		k, w := "", (val.Value)(nil)
 		for i := 0; i < l; i++ {
 			k, bs = decodeString(bs)
 			w, bs = Decode(bs)
-			v[k] = w
+			v.Set(k, w)
 		}
 		return v, bs
 

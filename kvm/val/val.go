@@ -3,7 +3,6 @@
 package val
 
 import (
-	"sort"
 	"time"
 )
 
@@ -199,10 +198,12 @@ func (v Raw) Primitive() bool {
 	return false
 }
 
-type Struct struct{ valueMap }
+//go:generate go run ../../generate/logmap/main.go --package val --key string --value Value --output logmap_generated.go
+
+type Struct struct{ lm logMapStringValue }
 
 func NewStruct(capacity int) Struct {
-	return Struct{newValueMap(capacity)}
+	return Struct{newlogMapStringValue(capacity)}
 }
 
 func StructFromMap(m map[string]Value) Struct {
@@ -214,15 +215,15 @@ func StructFromMap(m map[string]Value) Struct {
 }
 
 func (v Struct) Len() int {
-	return v.valueMap.Len()
+	return v.lm.len()
 }
 
 func (v Struct) Field(k string) Value {
-	return v.valueMap.Get(k)
+	return v.lm.get(k)
 }
 
 func (v Struct) Get(k string) (Value, bool) {
-	w := v.valueMap.Get(k)
+	w := v.lm.get(k)
 	if w == nil {
 		return nil, false
 	}
@@ -230,26 +231,26 @@ func (v Struct) Get(k string) (Value, bool) {
 }
 
 func (v *Struct) Set(k string, w Value) {
-	v.valueMap = v.valueMap.Set(k, w)
+	v.lm.set(k, w)
 }
 
 func (v *Struct) Delete(k string) {
-	v.valueMap = v.valueMap.Unset(k)
+	v.lm.unset(k)
 }
 
 func (v Struct) Transform(f func(Value) Value) Value {
-	v.valueMap.OverMap(func(k string, v Value) Value {
+	v.lm.overMap(func(k string, v Value) Value {
 		return f(v)
 	})
 	return f(v)
 }
 
 func (v Struct) ForEach(f func(string, Value) bool) {
-	v.valueMap.ForEach(f)
+	v.lm.forEach(f)
 }
 
 func (v Struct) Copy() Value {
-	return Struct{v.valueMap.Copy()}
+	return Struct{v.lm.copy()}
 }
 
 func (v Struct) Equals(w Value) bool {
@@ -257,83 +258,100 @@ func (v Struct) Equals(w Value) bool {
 	if !ok {
 		return false
 	}
-	return v.valueMap.Equals(x.valueMap)
+	return v.lm.equals(x.lm)
 }
 
 func (v Struct) Keys() []string {
-	return v.valueMap.Keys()
+	return v.lm.keys()
 }
 
 func (v Struct) Map(f func(string, Value) Value) Struct {
-	c := v.valueMap.Copy()
-	c.OverMap(f)
+	c := v.lm.copy()
+	c.overMap(f)
 	return Struct{c}
 }
 
-func (v Struct) OverMap(f func(string, Value) Value) Struct {
-	v.valueMap.OverMap(f)
-	return v
+func (v Struct) OverMap(f func(string, Value) Value) {
+	v.lm.overMap(f)
 }
 
 func (v Struct) Primitive() bool {
 	return false
 }
 
-type Map map[string]Value
+type Map struct{ lm logMapStringValue }
+
+func NewMap(capacity int) Map {
+	return Map{newlogMapStringValue(capacity)}
+}
+
+func MapFromMap(m map[string]Value) Map {
+	v := NewMap(len(m))
+	for k, w := range m {
+		v.Set(k, w)
+	}
+	return v
+}
+
+func (v Map) Len() int {
+	return v.lm.len()
+}
+
+func (v Map) Key(k string) Value {
+	return v.lm.get(k)
+}
+
+func (v Map) Get(k string) (Value, bool) {
+	w := v.lm.get(k)
+	if w == nil {
+		return nil, false
+	}
+	return w, true
+}
+
+func (v *Map) Set(k string, w Value) {
+	v.lm.set(k, w)
+}
+
+func (v *Map) Delete(k string) {
+	v.lm.unset(k)
+}
 
 func (v Map) Transform(f func(Value) Value) Value {
-	for k, w := range v {
-		v[k] = w.Transform(f)
-	}
+	v.lm.overMap(func(k string, v Value) Value {
+		return f(v)
+	})
 	return f(v)
 }
 
-func (v Map) Copy() Value {
-	c := make(Map, len(v))
-	for k, w := range v {
-		c[k] = w.Copy()
-	}
-	return c
+func (v Map) ForEach(f func(string, Value) bool) {
+	v.lm.forEach(f)
 }
 
-func (s Map) Equals(v Value) bool {
-	q, ok := v.(Map)
+func (v Map) Copy() Value {
+	return Map{v.lm.copy()}
+}
+
+func (v Map) Equals(w Value) bool {
+	x, ok := w.(Map)
 	if !ok {
 		return false
 	}
-	if len(q) != len(s) {
-		return false
-	}
-	for k, v := range s {
-		w, ok := q[k]
-		if !ok {
-			return false
-		}
-		if !v.Equals(w) {
-			return false
-		}
-	}
-	return true
+	return v.lm.equals(x.lm)
 }
 
-func (m Map) Keys() []string {
-	keys := make([]string, 0, len(m))
-	for k, _ := range m {
-		keys = append(keys, k)
-	}
-	return keys
+func (v Map) Keys() []string {
+	return v.lm.keys()
 }
 
 func (v Map) Map(f func(string, Value) Value) Map {
-	return v.Copy().(Map).OverMap(f)
+	c := v.lm.copy()
+	c.overMap(f)
+	return Map{c}
 }
 
-// Like Map, but overwrites map elements in-place
-func (m Map) OverMap(f func(string, Value) Value) Map {
-	for k, v := range m {
-		m[k] = f(k, v)
-	}
-	return m
+func (v Map) OverMap(f func(string, Value) Value) {
+	v.lm.overMap(f)
 }
 
 func (v Map) Primitive() bool {
@@ -670,106 +688,4 @@ func (Uint64) Primitive() bool {
 
 func TransformIdentity(v Value) Value {
 	return v
-}
-
-type valueMap struct {
-	keys   []string
-	values []Value
-}
-
-func newValueMap(capacity int) valueMap {
-	return valueMap{
-		keys:   make([]string, 0, capacity),
-		values: make([]Value, 0, capacity),
-	}
-}
-
-func (m valueMap) Equals(w valueMap) bool {
-	if len(m.keys) != len(w.keys) {
-		return false
-	}
-	for i, _ := range m.keys {
-		if m.keys[i] != w.keys[i] {
-			return false
-		}
-	}
-	for i, _ := range m.values {
-		if !m.values[i].Equals(w.values[i]) {
-			return false
-		}
-	}
-	return true
-}
-
-func (m valueMap) Keys() []string {
-	keys := make([]string, len(m.keys), len(m.keys))
-	copy(keys, m.keys)
-	return keys
-}
-
-func (m valueMap) OverMap(f func(k string, v Value) Value) {
-	for i, k := range m.keys {
-		m.values[i] = f(k, m.values[i])
-	}
-}
-
-func (m valueMap) Get(k string) Value {
-	i := m.search(k)
-	if i == len(m.keys) || m.keys[i] != k {
-		return nil
-	}
-	return m.values[i]
-}
-
-func (m valueMap) Set(k string, v Value) valueMap {
-	i := m.search(k)
-	m.keys, m.values = append(m.keys, ""), append(m.values, nil)
-	copy(m.keys[i+1:], m.keys[i:])
-	copy(m.values[i+1:], m.values[i:])
-	m.keys[i], m.values[i] = k, v
-	return m
-}
-
-func (m valueMap) Unset(k string) valueMap {
-	i := m.search(k)
-	if i == len(m.keys) || m.keys[i] != k {
-		return m
-	}
-	l := len(m.keys)
-	copy(m.keys[i:l-1], m.keys[i+1:])
-	copy(m.values[i:l-1], m.values[i+1:])
-	m.keys[l-1], m.values[l-1] = "", nil // let them be GC'ed
-	m.keys, m.values = m.keys[:l-1], m.values[:l-1]
-	return m
-}
-
-func (m valueMap) Copy() valueMap {
-	keys, values := ([]string)(nil), ([]Value)(nil)
-	if m.keys != nil {
-		keys = make([]string, len(m.keys), cap(m.keys))
-		copy(keys, m.keys)
-	}
-	if m.values != nil {
-		values = make([]Value, len(m.values), cap(m.values))
-		copy(values, m.values)
-	}
-	return valueMap{keys, values}
-}
-
-func (m valueMap) ForEach(f func(string, Value) bool) {
-	for i, k := range m.keys {
-		if !f(k, m.values[i]) {
-			break
-		}
-	}
-}
-
-func (m valueMap) Len() int {
-	return len(m.keys)
-}
-
-// The return value is the index to insert k
-// if k is not present (it can be len(m.keys)).
-func (m valueMap) search(k string) int {
-	return sort.SearchStrings(m.keys, k)
 }
