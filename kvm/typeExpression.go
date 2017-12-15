@@ -435,15 +435,16 @@ func (vm VirtualMachine) TypeExpression(node xpr.Expression, argument, expected 
 		retNode = xpr.TypedExpression{node, expected, model}
 
 	case xpr.SetField:
+
 		name, e := vm.TypeExpression(node.Name, argument, StringModel)
 		if e != nil {
 			return name, e
 		}
 		node.Name = name
 
-		fieldName := ""
+		field := ""
 		if cn, ok := name.Actual.(ConstantModel); ok {
-			fieldName = string(cn.Value.(val.String))
+			field = string(cn.Value.(val.String))
 		} else {
 			return ZeroTypedExpression, err.CompilationError{
 				Problem: `setField: name must be constant expression`,
@@ -464,7 +465,7 @@ func (vm VirtualMachine) TypeExpression(node xpr.Expression, argument, expected 
 		node.In = in
 
 		m := in.Actual.Concrete().Copy().(mdl.Struct)
-		m.Set(fieldName, value.Actual.Unwrap())
+		m.Set(field, value.Actual.Unwrap())
 
 		retNode = xpr.TypedExpression{node, expected, m}
 
@@ -1054,17 +1055,21 @@ func (vm VirtualMachine) TypeExpression(node xpr.Expression, argument, expected 
 		retNode = xpr.TypedExpression{node, expected, mdl.Map{expression.Actual}}
 
 	case xpr.MapList:
+
 		value, e := vm.TypeExpression(node.Value, argument, mdl.List{AnyModel})
 		if e != nil {
 			return value, e
 		}
 		node.Value = value
+
 		subArg := value.Actual.Concrete().(mdl.List).Elements
+
 		expression, e := vm.TypeExpression(node.Expression, subArg, AnyModel)
 		if e != nil {
 			return expression, e
 		}
 		node.Expression = expression
+
 		retNode = xpr.TypedExpression{node, expected, mdl.List{expression.Actual}}
 
 	case xpr.ReduceList:
@@ -1246,7 +1251,7 @@ func (vm VirtualMachine) TypeExpression(node xpr.Expression, argument, expected 
 			}
 		}
 
-		retNode = xpr.TypedExpression{node, expected, value.Actual.Concrete()} // NOTE: value.Actual could be ConstantModel
+		retNode = xpr.TypedExpression{node, expected, UnwrapConstant(value.Actual)}
 
 	case xpr.SearchAllRegex:
 
@@ -1536,11 +1541,13 @@ func (vm VirtualMachine) TypeExpression(node xpr.Expression, argument, expected 
 		retNode = xpr.TypedExpression{node, expected, model}
 
 	case xpr.Field:
+
 		name, e := vm.TypeExpression(node.Name, argument, StringModel)
 		if e != nil {
 			return name, e
 		}
 		node.Name = name
+
 		cn, ok := name.Actual.(ConstantModel)
 		if !ok {
 			return ZeroTypedExpression, err.CompilationError{
@@ -1548,14 +1555,18 @@ func (vm VirtualMachine) TypeExpression(node xpr.Expression, argument, expected 
 				Program: xpr.ValueFromExpression(name),
 			}
 		}
+
 		field := string(cn.Value.(val.String))
+
 		subExpect := mdl.NewStruct(1)
 		subExpect.Set(field, expected)
+
 		value, e := vm.TypeExpression(node.Value, argument, subExpect)
 		if e != nil {
 			return value, e
 		}
 		node.Value = value
+
 		model := value.Actual.Concrete().(mdl.Struct).Field(field)
 		if cv, ok := value.Actual.(ConstantModel); ok {
 			model = ConstantModel{model, cv.Value.(val.Struct).Field(field)}
@@ -2318,7 +2329,7 @@ func (vm VirtualMachine) TypeExpression(node xpr.Expression, argument, expected 
 			}
 		}
 
-		retNode = xpr.TypedExpression{node, expected, value.Actual.Unwrap()}
+		retNode = xpr.TypedExpression{node, expected, UnwrapConstant(value.Actual)}
 
 	case xpr.MapSet:
 

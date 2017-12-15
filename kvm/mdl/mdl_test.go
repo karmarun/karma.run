@@ -44,9 +44,9 @@ func TestEitherOr(t *testing.T) {
 		}
 	}
 	{
-		l := &Recursion{Label: "l"}
+		l := NewRecursion("l")
 		l.Model = List{l}
-		r := &Recursion{Label: "r"}
+		r := NewRecursion("r")
 		r.Model = List{r}
 		actual, ok := Either(l, r, nil).(*Recursion)
 		if !ok {
@@ -70,10 +70,10 @@ func TestEitherOr(t *testing.T) {
 		}
 	}
 	{
-		l := Union{"left": Struct{}}
-		r := Union{"right": Struct{}}
+		l := UnionFromMap(map[string]Model{"left": Struct{}})
+		r := UnionFromMap(map[string]Model{"right": Struct{}})
 		actual := Either(l, r, nil)
-		expect := Union{"left": Struct{}, "right": Struct{}}
+		expect := UnionFromMap(map[string]Model{"left": Struct{}, "right": Struct{}})
 		if !actual.Equals(expect) {
 			t.Fatalf("case 7: %#v\n", actual)
 		}

@@ -5,6 +5,7 @@ package mdl
 import (
 	"karma.run/kvm/val"
 	"strconv"
+	"sync"
 	"time"
 )
 
@@ -13,9 +14,14 @@ import (
 type Recursion struct {
 	Label        string
 	Model        Model
-	traverseFlag bool       // not thread safe
-	transFlag    bool       // not thread safe
-	copyPtr      *Recursion // not thread safe
+	traverseFlag bool // not thread safe
+	transFlag    bool // not thread safe
+	copyLock     *sync.Mutex
+	copyPtr      *Recursion
+}
+
+func NewRecursion(label string) *Recursion {
+	return &Recursion{Label: label, copyLock: &sync.Mutex{}}
 }
 
 func (r *Recursion) Transform(f func(Model) Model) Model {
@@ -50,7 +56,9 @@ func (r *Recursion) Copy() Model {
 	if r.copyPtr != nil {
 		return r.copyPtr
 	}
-	c := &Recursion{Label: r.Label}
+	r.copyLock.Lock()
+	defer r.copyLock.Unlock()
+	c := NewRecursion(r.Label)
 	r.copyPtr = c
 	c.Model = r.Model.Copy()
 	r.copyPtr = nil
@@ -699,7 +707,6 @@ type Or [2]Model
 
 func (m Or) Transform(f func(Model) Model) Model {
 	return f(Either(m[0].Transform(f), m[1].Transform(f), nil))
-	// return f(Or{m[0].Transform(f), m[1].Transform(f)})
 }
 
 func (w Or) TraverseValue(j val.Value, f func(val.Value, Model)) {

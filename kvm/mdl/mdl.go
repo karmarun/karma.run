@@ -221,6 +221,7 @@ func ValueFromModel(metaId string, model Model, recursions map[*Recursion]struct
 
 // ModelFromValue returns a Model from its Value representation.
 func ModelFromValue(metaId string, u val.Union, recursions map[string]*Recursion) (Model, err.PathedError) {
+
 	// note: ModelFromValue may NOT call Copy or Transform on models.
 	if recursions == nil {
 		recursions = make(map[string]*Recursion)
@@ -238,7 +239,7 @@ func ModelFromValue(metaId string, u val.Union, recursions map[string]*Recursion
 				}
 				return false
 			}
-			recursions[l] = &Recursion{Label: l}
+			recursions[l] = NewRecursion(l)
 			return true
 		})
 		if e != nil {
@@ -286,7 +287,7 @@ func ModelFromValue(metaId string, u val.Union, recursions map[string]*Recursion
 	case "recursion":
 		v := u.Value.(val.Struct)
 		l := string(v.Field("label").(val.String))
-		r := &Recursion{Label: l}
+		r := NewRecursion(l)
 		if _, ok := recursions[l]; ok {
 			return nil, err.ModelParsingError{fmt.Sprintf(`recursion label already defined: %s`, l), u, nil}
 		}
@@ -523,11 +524,6 @@ func Either(l, r Model, m map[*Recursion]*Recursion) Model {
 		return any
 	}
 
-	// TODO: can be super expensive if there's lots of Ors in the model tree
-	// if l.Equals(r) {
-	// 	return l
-	// }
-
 	{ // handle recursions until convergence
 
 		lr, lok := l.(*Recursion)
@@ -540,7 +536,7 @@ func Either(l, r Model, m map[*Recursion]*Recursion) Model {
 			if lp, ok := m[lr]; ok {
 				rp, ok := m[rr]
 				if !ok {
-					c := &Recursion{Label: rr.Label}
+					c := NewRecursion(rr.Label)
 					m[rr] = c
 					c.Model = Either(lr.Model, rr.Model, m)
 					delete(m, rr)
@@ -554,7 +550,7 @@ func Either(l, r Model, m map[*Recursion]*Recursion) Model {
 			if rp, ok := m[rr]; ok {
 				lp, ok := m[lr]
 				if !ok {
-					c := &Recursion{Label: lr.Label}
+					c := NewRecursion(lr.Label)
 					m[lr] = c
 					c.Model = Either(lr.Model, rr.Model, m)
 					delete(m, lr)
@@ -566,7 +562,7 @@ func Either(l, r Model, m map[*Recursion]*Recursion) Model {
 				return Or{lp, rp}
 			}
 			// m[lr] == m[rr] == nil
-			c := &Recursion{Label: labelUnion(lr.Label, rr.Label)}
+			c := NewRecursion(labelUnion(lr.Label, rr.Label))
 			m[lr], m[rr] = c, c
 			c.Model = Either(lr.Model, rr.Model, m)
 			delete(m, lr)
@@ -577,7 +573,7 @@ func Either(l, r Model, m map[*Recursion]*Recursion) Model {
 			if _, ok := m[lr]; ok {
 				return Either(lr.Model, r, m)
 			} else {
-				c := &Recursion{Label: lr.Label}
+				c := NewRecursion(lr.Label)
 				m[lr] = c
 				c.Model = Either(lr.Model, r, m)
 				delete(m, lr)
@@ -588,7 +584,7 @@ func Either(l, r Model, m map[*Recursion]*Recursion) Model {
 			if _, ok := m[rr]; ok {
 				return Either(l, rr.Model, m)
 			} else {
-				c := &Recursion{Label: rr.Label}
+				c := NewRecursion(rr.Label)
 				m[rr] = c
 				c.Model = Either(l, rr.Model, m)
 				delete(m, rr)

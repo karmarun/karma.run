@@ -501,10 +501,10 @@ func (vm VirtualMachine) Execute(program inst.Sequence, input val.Value) (val.Va
 
 			for len(todo) > 0 {
 
-				cv := todo[0]
+				vertex := todo[0]
 				todo = todo[1:]
 
-				v, e := vm.Get(cv[0], cv[1])
+				v, e := vm.Get(vertex[0], vertex[1])
 				if e != nil {
 					return nil, e
 				}
@@ -515,20 +515,20 @@ func (vm VirtualMachine) Execute(program inst.Sequence, input val.Value) (val.Va
 					}
 				}
 
-				seen[cv] = struct{}{}
+				seen[vertex] = struct{}{}
 
-				if output[cv[0]] == nil {
-					output[cv[0]] = val.NewMap(32)
+				if output[vertex[0]] == nil {
+					output[vertex[0]] = val.NewMap(32)
 				}
 				{
-					first := output[cv[0]].(val.Map)
-					first.Set(cv[1], v)
-					output[cv[0]] = first
+					first := output[vertex[0]].(val.Map)
+					first.Set(vertex[1], v)
+					output[vertex[0]] = first
 				}
 
-				flow := it.FlowParams[cv[0]]
+				flow := it.FlowParams[vertex[0]]
 
-				if ob := db.Bucket(definitions.GraphBucketBytes).Bucket(encodeVertex(cv[0], cv[1])); ob != nil {
+				if ob := db.Bucket(definitions.GraphBucketBytes).Bucket(encodeVertex(vertex[0], vertex[1])); ob != nil {
 					e := ob.ForEach(func(k, _ []byte) error {
 						m, i := decodeVertex(k)
 						if _, ok := flow.Forward[m]; !ok {
@@ -544,7 +544,7 @@ func (vm VirtualMachine) Execute(program inst.Sequence, input val.Value) (val.Va
 					}
 				}
 
-				if ib := db.Bucket(definitions.PhargBucketBytes).Bucket(encodeVertex(cv[0], cv[1])); ib != nil {
+				if ib := db.Bucket(definitions.PhargBucketBytes).Bucket(encodeVertex(vertex[0], vertex[1])); ib != nil {
 					e := ib.ForEach(func(k, _ []byte) error {
 						m, i := decodeVertex(k)
 						if _, ok := flow.Backward[m]; !ok {

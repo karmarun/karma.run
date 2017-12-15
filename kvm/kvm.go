@@ -20,7 +20,6 @@ import (
 	"karma.run/kvm/val"
 	"karma.run/kvm/xpr"
 	"log"
-	"sync"
 	"time"
 )
 
@@ -855,7 +854,6 @@ func (vm VirtualMachine) get(mid, oid string) (val.Meta, err.Error) {
 const ModelCacheCapacity = 512
 
 var ModelCache = cc.NewLru(ModelCacheCapacity)
-var modelCopyMutex = &sync.Mutex{} // mutex because copying *mdl.Recursion is not thread-safe
 
 func (vm VirtualMachine) Model(mid string) (BucketModel, err.Error) {
 
@@ -863,9 +861,7 @@ func (vm VirtualMachine) Model(mid string) (BucketModel, err.Error) {
 	cacheKey := metaId + "/" + mid // metaId is distinct for every database
 
 	if m, ok := ModelCache.Get(cacheKey); ok {
-		modelCopyMutex.Lock()
-		defer modelCopyMutex.Unlock()
-		return BucketModel{Bucket: mid, Model: m.(mdl.Model).Copy()}, nil
+		return BucketModel{Bucket: mid, Model: m.(mdl.Model)}, nil
 	}
 
 	bs := vm.RootBucket.Bucket([]byte(metaId)).Get([]byte(mid))
@@ -886,7 +882,7 @@ func (vm VirtualMachine) Model(mid string) (BucketModel, err.Error) {
 
 	ModelCache.Set(cacheKey, m)
 
-	return BucketModel{Model: m.Copy(), Bucket: mid}, nil // note: m.Copy _is_ necessary.
+	return BucketModel{Model: m, Bucket: mid}, nil // note: m.Copy _is_ necessary.
 }
 
 func (vm VirtualMachine) MetaModel() mdl.Model {
