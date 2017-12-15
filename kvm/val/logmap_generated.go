@@ -111,11 +111,14 @@ func (m *logMapStringValue) set(k string, v Value) {
     if m._sharingKeys {
         m._keys, m._sharingKeys = m.keys(), false
     }
+    i := m.search(k)
+    m._keys, m._vals = append(m._keys, k), append(m._vals, v)
+    if i == len(m._keys)-1 {
+        return
+    }
     if m._sharingVals {
         m._vals, m._sharingVals = m.values(), false
     }
-    i := m.search(k)
-    m._keys, m._vals = append(m._keys, zeroKey), append(m._vals, zeroValue)
     copy(m._keys[i+1:], m._keys[i:])
     copy(m._vals[i+1:], m._vals[i:])
     m._keys[i], m._vals[i] = k, v
@@ -125,8 +128,14 @@ func (m *logMapStringValue) unset(k string) {
     if m == nil {
         return
     }
+    l := len(m._keys)
     i := m.search(k)
-    if i == len(m._keys) || m._keys[i] != k {
+    if i == l || m._keys[i] != k {
+        return
+    }
+    if i == l-1 {
+        m._keys[l-1], m._vals[l-1] = zeroKey, zeroValue // let them be GC'ed
+        m._keys, m._vals = m._keys[:l-1], m._vals[:l-1]
         return
     }
     if m._sharingKeys {
@@ -135,7 +144,6 @@ func (m *logMapStringValue) unset(k string) {
     if m._sharingVals {
         m._vals, m._sharingVals = m.values(), false
     }
-    l := len(m._keys)
     copy(m._keys[i:l-1], m._keys[i+1:])
     copy(m._vals[i:l-1], m._vals[i+1:])
     m._keys[l-1], m._vals[l-1] = zeroKey, zeroValue // let them be GC'ed
