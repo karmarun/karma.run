@@ -200,7 +200,7 @@ func (v Raw) Primitive() bool {
 	return false
 }
 
-type Struct struct{ lm logMapStringValue }
+type Struct struct{ lm *logMapStringValue }
 
 func NewStruct(capacity int) Struct {
 	return Struct{newlogMapStringValue(capacity)}
@@ -250,7 +250,8 @@ func (v Struct) ForEach(f func(string, Value) bool) {
 }
 
 func (v Struct) Copy() Value {
-	c := v.lm.copyFunc(func(v Value) Value {
+	c := v.lm.copy()
+	c.overMap(func(k string, v Value) Value {
 		return v.Copy()
 	})
 	return Struct{c}
@@ -291,7 +292,7 @@ func (v Struct) Primitive() bool {
 	return false
 }
 
-type Map struct{ lm logMapStringValue }
+type Map struct{ lm *logMapStringValue }
 
 func NewMap(capacity int) Map {
 	return Map{newlogMapStringValue(capacity)}
@@ -341,7 +342,8 @@ func (v Map) ForEach(f func(string, Value) bool) {
 }
 
 func (v Map) Copy() Value {
-	c := v.lm.copyFunc(func(v Value) Value {
+	c := v.lm.copy()
+	c.overMap(func(k string, v Value) Value {
 		return v.Copy()
 	})
 	return Map{c}

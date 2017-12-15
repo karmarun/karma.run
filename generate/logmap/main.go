@@ -63,6 +63,8 @@ import(
 type {{.type}} struct {
     _keys []{{.key}}
     _vals []{{.value}}
+    _sharingKeys bool
+    _sharingVals bool
 }
 
 var (
@@ -70,14 +72,19 @@ var (
     zeroValue = *new({{.value}})
 )
 
-func new{{.type}}(initialCapacity int) {{.type}} {
-    return {{.type}}{
+func new{{.type}}(initialCapacity int) *{{.type}} {
+    return &{{.type}}{
         _keys: make([]{{.key}}, 0, initialCapacity),
         _vals: make([]{{.value}}, 0, initialCapacity),
+        _sharingKeys: false,
+        _sharingVals: false,
     }
 }
 
-func (m {{.type}}) sameKeys(w {{.type}}) bool {
+func (m *{{.type}}) sameKeys(w *{{.type}}) bool {
+    if m == nil {
+        return w == nil || len(w._keys) == 0
+    }
     if len(m._keys) != len(w._keys) {
         return false
     }
@@ -89,7 +96,13 @@ func (m {{.type}}) sameKeys(w {{.type}}) bool {
     return true
 }
 
-func (m {{.type}}) equals(w {{.type}}) bool {
+func (m *{{.type}}) equals(w *{{.type}}) bool {
+    if m == nil {
+        return w == nil
+    }
+    if m == w {
+        return true
+    }
     if !m.sameKeys(w) {
         return false
     }
@@ -101,31 +114,40 @@ func (m {{.type}}) equals(w {{.type}}) bool {
     return true
 }
 
-func (m {{.type}}) keys() []{{.key}} {
-    if m._keys == nil {
+func (m *{{.type}}) keys() []{{.key}} {
+    if m == nil {
         return nil
     }
-    keys := make([]{{.key}}, len(m._keys), len(m._keys))
+    keys := make([]{{.key}}, len(m._keys), cap(m._keys))
     copy(keys, m._keys)
     return keys
 }
 
-func (m {{.type}}) values() []{{.value}} {
-    if m._vals == nil {
+func (m *{{.type}}) values() []{{.value}} {
+    if m == nil || m._vals == nil {
         return nil
     }
-    values := make([]{{.value}}, len(m._vals), len(m._vals))
+    values := make([]{{.value}}, len(m._vals), cap(m._vals))
     copy(values, m._vals)
     return values
 }
 
-func (m {{.type}}) overMap(f func(k {{.key}}, v {{.value}}) {{.value}}) {
+func (m *{{.type}}) overMap(f func(k {{.key}}, v {{.value}}) {{.value}}) {
+    if m == nil {
+        return
+    }
+    if m._sharingVals {
+        m._vals, m._sharingVals = m.values(), false
+    }
     for i, k := range m._keys {
         m._vals[i] = f(k, m._vals[i])
     }
 }
 
-func (m {{.type}}) get(k {{.key}}) ({{.value}}, bool) {
+func (m *{{.type}}) get(k {{.key}}) ({{.value}}, bool) {
+    if m == nil {
+        return zeroValue, false
+    }
     i := m.search(k)
     if i == len(m._keys) || m._keys[i] != k {
         return zeroValue, false
@@ -134,6 +156,15 @@ func (m {{.type}}) get(k {{.key}}) ({{.value}}, bool) {
 }
 
 func (m *{{.type}}) set(k {{.key}}, v {{.value}}) {
+    if m == nil {
+        panic("set of nil")
+    }
+    if m._sharingKeys {
+        m._keys, m._sharingKeys = m.keys(), false
+    }
+    if m._sharingVals {
+        m._vals, m._sharingVals = m.values(), false
+    }
     i := m.search(k)
     m._keys, m._vals = append(m._keys, zeroKey), append(m._vals, zeroValue)
     copy(m._keys[i+1:], m._keys[i:])
@@ -142,9 +173,18 @@ func (m *{{.type}}) set(k {{.key}}, v {{.value}}) {
 }
 
 func (m *{{.type}}) unset(k {{.key}}) {
+    if m == nil {
+        return
+    }
     i := m.search(k)
     if i == len(m._keys) || m._keys[i] != k {
         return
+    }
+    if m._sharingKeys {
+        m._keys, m._sharingKeys = m.keys(), false
+    }
+    if m._sharingVals {
+        m._vals, m._sharingVals = m.values(), false
     }
     l := len(m._keys)
     copy(m._keys[i:l-1], m._keys[i+1:])
@@ -154,20 +194,18 @@ func (m *{{.type}}) unset(k {{.key}}) {
 }
 
 
-func (m {{.type}}) copyFunc(f func({{.value}}) {{.value}}) {{.type}} {
-    if m._keys == nil {
-        return {{.type}}{}
+func (m *{{.type}}) copy() *{{.type}} {
+    if m == nil {
+        return m
     }
-    keys := make([]{{.key}}, len(m._keys), cap(m._keys))
-    copy(keys, m._keys)
-    values := make([]{{.value}}, len(m._vals), cap(m._vals))
-    for i, v := range m._vals {
-        values[i] = f(v)
-    }
-    return {{.type}}{keys, values}
+    m._sharingKeys, m._sharingVals = true, true
+    return m
 }
 
-func (m {{.type}}) forEach(f func({{.key}}, {{.value}}) bool) {
+func (m *{{.type}}) forEach(f func({{.key}}, {{.value}}) bool) {
+    if m == nil {
+        return
+    }
     for i, k := range m._keys {
         if !f(k, m._vals[i]) {
             break
@@ -175,11 +213,17 @@ func (m {{.type}}) forEach(f func({{.key}}, {{.value}}) bool) {
     }
 }
 
-func (m {{.type}}) len() int {
+func (m *{{.type}}) len() int {
+    if m == nil {
+        return 0
+    }
     return len(m._keys)
 }
 
-func (m {{.type}}) search(k {{.key}}) int {
+func (m *{{.type}}) search(k {{.key}}) int {
+    if m == nil {
+        return -1
+    }
     // binary search, returns index at which to insert k
     return sort.Search(len(m._keys), func(i int) bool {
         return m._keys[i] >= k

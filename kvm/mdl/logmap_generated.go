@@ -12,6 +12,8 @@ import(
 type logMapStringModel struct {
     _keys []string
     _vals []Model
+    _sharingKeys bool
+    _sharingVals bool
 }
 
 var (
@@ -19,14 +21,19 @@ var (
     zeroValue = *new(Model)
 )
 
-func newlogMapStringModel(initialCapacity int) logMapStringModel {
-    return logMapStringModel{
+func newlogMapStringModel(initialCapacity int) *logMapStringModel {
+    return &logMapStringModel{
         _keys: make([]string, 0, initialCapacity),
         _vals: make([]Model, 0, initialCapacity),
+        _sharingKeys: false,
+        _sharingVals: false,
     }
 }
 
-func (m logMapStringModel) sameKeys(w logMapStringModel) bool {
+func (m *logMapStringModel) sameKeys(w *logMapStringModel) bool {
+    if m == nil {
+        return w == nil || len(w._keys) == 0
+    }
     if len(m._keys) != len(w._keys) {
         return false
     }
@@ -38,7 +45,13 @@ func (m logMapStringModel) sameKeys(w logMapStringModel) bool {
     return true
 }
 
-func (m logMapStringModel) equals(w logMapStringModel) bool {
+func (m *logMapStringModel) equals(w *logMapStringModel) bool {
+    if m == nil {
+        return w == nil
+    }
+    if m == w {
+        return true
+    }
     if !m.sameKeys(w) {
         return false
     }
@@ -50,31 +63,40 @@ func (m logMapStringModel) equals(w logMapStringModel) bool {
     return true
 }
 
-func (m logMapStringModel) keys() []string {
-    if m._keys == nil {
+func (m *logMapStringModel) keys() []string {
+    if m == nil {
         return nil
     }
-    keys := make([]string, len(m._keys), len(m._keys))
+    keys := make([]string, len(m._keys), cap(m._keys))
     copy(keys, m._keys)
     return keys
 }
 
-func (m logMapStringModel) values() []Model {
-    if m._vals == nil {
+func (m *logMapStringModel) values() []Model {
+    if m == nil || m._vals == nil {
         return nil
     }
-    values := make([]Model, len(m._vals), len(m._vals))
+    values := make([]Model, len(m._vals), cap(m._vals))
     copy(values, m._vals)
     return values
 }
 
-func (m logMapStringModel) overMap(f func(k string, v Model) Model) {
+func (m *logMapStringModel) overMap(f func(k string, v Model) Model) {
+    if m == nil {
+        return
+    }
+    if m._sharingVals {
+        m._vals, m._sharingVals = m.values(), false
+    }
     for i, k := range m._keys {
         m._vals[i] = f(k, m._vals[i])
     }
 }
 
-func (m logMapStringModel) get(k string) (Model, bool) {
+func (m *logMapStringModel) get(k string) (Model, bool) {
+    if m == nil {
+        return zeroValue, false
+    }
     i := m.search(k)
     if i == len(m._keys) || m._keys[i] != k {
         return zeroValue, false
@@ -83,6 +105,15 @@ func (m logMapStringModel) get(k string) (Model, bool) {
 }
 
 func (m *logMapStringModel) set(k string, v Model) {
+    if m == nil {
+        panic("set of nil")
+    }
+    if m._sharingKeys {
+        m._keys, m._sharingKeys = m.keys(), false
+    }
+    if m._sharingVals {
+        m._vals, m._sharingVals = m.values(), false
+    }
     i := m.search(k)
     m._keys, m._vals = append(m._keys, zeroKey), append(m._vals, zeroValue)
     copy(m._keys[i+1:], m._keys[i:])
@@ -91,9 +122,18 @@ func (m *logMapStringModel) set(k string, v Model) {
 }
 
 func (m *logMapStringModel) unset(k string) {
+    if m == nil {
+        return
+    }
     i := m.search(k)
     if i == len(m._keys) || m._keys[i] != k {
         return
+    }
+    if m._sharingKeys {
+        m._keys, m._sharingKeys = m.keys(), false
+    }
+    if m._sharingVals {
+        m._vals, m._sharingVals = m.values(), false
     }
     l := len(m._keys)
     copy(m._keys[i:l-1], m._keys[i+1:])
@@ -103,20 +143,18 @@ func (m *logMapStringModel) unset(k string) {
 }
 
 
-func (m logMapStringModel) copyFunc(f func(Model) Model) logMapStringModel {
-    if m._keys == nil {
-        return logMapStringModel{}
+func (m *logMapStringModel) copy() *logMapStringModel {
+    if m == nil {
+        return m
     }
-    keys := make([]string, len(m._keys), cap(m._keys))
-    copy(keys, m._keys)
-    values := make([]Model, len(m._vals), cap(m._vals))
-    for i, v := range m._vals {
-        values[i] = f(v)
-    }
-    return logMapStringModel{keys, values}
+    m._sharingKeys, m._sharingVals = true, true
+    return m
 }
 
-func (m logMapStringModel) forEach(f func(string, Model) bool) {
+func (m *logMapStringModel) forEach(f func(string, Model) bool) {
+    if m == nil {
+        return
+    }
     for i, k := range m._keys {
         if !f(k, m._vals[i]) {
             break
@@ -124,11 +162,17 @@ func (m logMapStringModel) forEach(f func(string, Model) bool) {
     }
 }
 
-func (m logMapStringModel) len() int {
+func (m *logMapStringModel) len() int {
+    if m == nil {
+        return 0
+    }
     return len(m._keys)
 }
 
-func (m logMapStringModel) search(k string) int {
+func (m *logMapStringModel) search(k string) int {
+    if m == nil {
+        return -1
+    }
     // binary search, returns index at which to insert k
     return sort.Search(len(m._keys), func(i int) bool {
         return m._keys[i] >= k

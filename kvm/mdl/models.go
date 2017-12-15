@@ -225,7 +225,7 @@ func (m Float) Equals(n Model) bool {
 	return ok
 }
 
-type Struct struct{ lm logMapStringModel }
+type Struct struct{ lm *logMapStringModel }
 
 func StructFromMap(mp map[string]Model) Struct {
 	m := NewStruct(len(mp))
@@ -298,7 +298,8 @@ func (s Struct) TraverseValue(j val.Value, f func(val.Value, Model)) {
 }
 
 func (m Struct) Copy() Model {
-	c := m.lm.copyFunc(func(m Model) Model {
+	c := m.lm.copy()
+	c.overMap(func(k string, m Model) Model {
 		return m.Copy()
 	})
 	return Struct{c}
@@ -333,7 +334,7 @@ func (m Struct) Equals(w Model) bool {
 	return eq
 }
 
-type Union struct{ lm logMapStringModel }
+type Union struct{ lm *logMapStringModel }
 
 func UnionFromMap(mp map[string]Model) Union {
 	m := NewUnion(len(mp))
@@ -394,7 +395,8 @@ func (s Union) TraverseValue(j val.Value, f func(val.Value, Model)) {
 }
 
 func (m Union) Copy() Model {
-	c := m.lm.copyFunc(func(m Model) Model {
+	c := m.lm.copy()
+	c.overMap(func(k string, m Model) Model {
 		return m.Copy()
 	})
 	return Union{c}

@@ -360,7 +360,7 @@ func ModelFromValue(metaId string, u val.Union, recursions map[string]*Recursion
 
 	case "struct":
 		v := u.Value.(val.Map)
-		m := Struct{}
+		m := NewStruct(v.Len())
 		e := (err.PathedError)(nil)
 		v.ForEach(func(k string, v val.Value) bool {
 			w, e_ := ModelFromValue(metaId, v.(val.Union), recursions)
@@ -393,7 +393,7 @@ func ModelFromValue(metaId string, u val.Union, recursions map[string]*Recursion
 
 	case "union":
 		v := u.Value.(val.Map)
-		m := Union{}
+		m := NewUnion(v.Len())
 		e := (err.PathedError)(nil)
 		v.ForEach(func(k string, v val.Value) bool {
 			w, e_ := ModelFromValue(metaId, v.(val.Union), recursions)
