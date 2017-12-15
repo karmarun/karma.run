@@ -239,7 +239,7 @@ func NewStruct(capacity int) Struct {
 	return Struct{newlogMapStringModel(capacity)}
 }
 
-func (m *Struct) Set(k string, w Model) {
+func (m Struct) Set(k string, w Model) {
 	m.lm.set(k, w)
 }
 
@@ -348,7 +348,7 @@ func NewUnion(capacity int) Union {
 	return Union{newlogMapStringModel(capacity)}
 }
 
-func (m *Union) Set(k string, w Model) {
+func (m Union) Set(k string, w Model) {
 	m.lm.set(k, w)
 }
 

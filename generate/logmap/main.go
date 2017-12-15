@@ -184,19 +184,16 @@ func (m *{{.type}}) unset(k {{.key}}) {
     if i == l || m._keys[i] != k {
         return
     }
-    if i == l-1 {
-        m._keys[l-1], m._vals[l-1] = zeroKey, zeroValue // let them be GC'ed
-        m._keys, m._vals = m._keys[:l-1], m._vals[:l-1]
-        return
+    if i != l-1 {
+        if m._sharingKeys {
+            m._keys, m._sharingKeys = m.keys(), false
+        }
+        if m._sharingVals {
+            m._vals, m._sharingVals = m.values(), false
+        }
+        copy(m._keys[i:l-1], m._keys[i+1:])
+        copy(m._vals[i:l-1], m._vals[i+1:])
     }
-    if m._sharingKeys {
-        m._keys, m._sharingKeys = m.keys(), false
-    }
-    if m._sharingVals {
-        m._vals, m._sharingVals = m.values(), false
-    }
-    copy(m._keys[i:l-1], m._keys[i+1:])
-    copy(m._vals[i:l-1], m._vals[i+1:])
     m._keys[l-1], m._vals[l-1] = zeroKey, zeroValue // let them be GC'ed
     m._keys, m._vals = m._keys[:l-1], m._vals[:l-1]
 }

@@ -521,11 +521,7 @@ func (vm VirtualMachine) Execute(program inst.Sequence, input val.Value) (val.Va
 					output[vertex[0]] = val.NewMap(32)
 				}
 
-				{ // record vertex
-					result := output[vertex[0]].(val.Map)
-					result.Set(vertex[1], v)
-					output[vertex[0]] = result
-				}
+				output[vertex[0]].(val.Map).Set(vertex[1], v)
 
 				flow := it.FlowParams[vertex[0]]
 

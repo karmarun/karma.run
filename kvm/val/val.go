@@ -230,11 +230,11 @@ func (v Struct) Get(k string) (Value, bool) {
 	return v.lm.get(k)
 }
 
-func (v *Struct) Set(k string, w Value) {
+func (v Struct) Set(k string, w Value) {
 	v.lm.set(k, w)
 }
 
-func (v *Struct) Delete(k string) {
+func (v Struct) Delete(k string) {
 	v.lm.unset(k)
 }
 
@@ -322,11 +322,11 @@ func (v Map) Get(k string) (Value, bool) {
 	return v.lm.get(k)
 }
 
-func (v *Map) Set(k string, w Value) {
+func (v Map) Set(k string, w Value) {
 	v.lm.set(k, w)
 }
 
-func (v *Map) Delete(k string) {
+func (v Map) Delete(k string) {
 	v.lm.unset(k)
 }
 
