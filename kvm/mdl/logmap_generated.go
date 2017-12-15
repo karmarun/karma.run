@@ -142,8 +142,8 @@ func (m *logMapStringModel) unset(k string) {
         }
         copy(m._keys[i:l-1], m._keys[i+1:])
         copy(m._vals[i:l-1], m._vals[i+1:])
+        m._keys[l-1], m._vals[l-1] = zeroKey, zeroValue // let them be GC'ed
     }
-    m._keys[l-1], m._vals[l-1] = zeroKey, zeroValue // let them be GC'ed
     m._keys, m._vals = m._keys[:l-1], m._vals[:l-1]
 }
 
@@ -153,7 +153,7 @@ func (m *logMapStringModel) copy() *logMapStringModel {
         return m
     }
     m._sharingKeys, m._sharingVals = true, true
-    return m
+    return &logMapStringModel{m._keys, m._vals, true, true}
 }
 
 func (m *logMapStringModel) forEach(f func(string, Model) bool) {

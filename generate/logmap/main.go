@@ -193,8 +193,8 @@ func (m *{{.type}}) unset(k {{.key}}) {
         }
         copy(m._keys[i:l-1], m._keys[i+1:])
         copy(m._vals[i:l-1], m._vals[i+1:])
+        m._keys[l-1], m._vals[l-1] = zeroKey, zeroValue // let them be GC'ed
     }
-    m._keys[l-1], m._vals[l-1] = zeroKey, zeroValue // let them be GC'ed
     m._keys, m._vals = m._keys[:l-1], m._vals[:l-1]
 }
 
@@ -204,7 +204,7 @@ func (m *{{.type}}) copy() *{{.type}} {
         return m
     }
     m._sharingKeys, m._sharingVals = true, true
-    return m
+    return &{{.type}}{m._keys, m._vals, true, true}
 }
 
 func (m *{{.type}}) forEach(f func({{.key}}, {{.value}}) bool) {
