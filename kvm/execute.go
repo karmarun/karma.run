@@ -520,10 +520,11 @@ func (vm VirtualMachine) Execute(program inst.Sequence, input val.Value) (val.Va
 				if output[vertex[0]] == nil {
 					output[vertex[0]] = val.NewMap(32)
 				}
-				{
-					first := output[vertex[0]].(val.Map)
-					first.Set(vertex[1], v)
-					output[vertex[0]] = first
+
+				{ // record vertex
+					result := output[vertex[0]].(val.Map)
+					result.Set(vertex[1], v)
+					output[vertex[0]] = result
 				}
 
 				flow := it.FlowParams[vertex[0]]

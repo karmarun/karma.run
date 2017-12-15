@@ -14,6 +14,11 @@ type logMapStringModel struct {
     _vals []Model
 }
 
+var (
+    zeroKey = *new(string)
+    zeroValue = *new(Model)
+)
+
 func newlogMapStringModel(initialCapacity int) logMapStringModel {
     return logMapStringModel{
         _keys: make([]string, 0, initialCapacity),
@@ -72,14 +77,14 @@ func (m logMapStringModel) overMap(f func(k string, v Model) Model) {
 func (m logMapStringModel) get(k string) (Model, bool) {
     i := m.search(k)
     if i == len(m._keys) || m._keys[i] != k {
-        return nil, false
+        return zeroValue, false
     }
     return m._vals[i], true
 }
 
 func (m *logMapStringModel) set(k string, v Model) {
     i := m.search(k)
-    m._keys, m._vals = append(m._keys, k), append(m._vals, v)
+    m._keys, m._vals = append(m._keys, zeroKey), append(m._vals, zeroValue)
     copy(m._keys[i+1:], m._keys[i:])
     copy(m._vals[i+1:], m._vals[i:])
     m._keys[i], m._vals[i] = k, v
@@ -93,7 +98,7 @@ func (m *logMapStringModel) unset(k string) {
     l := len(m._keys)
     copy(m._keys[i:l-1], m._keys[i+1:])
     copy(m._vals[i:l-1], m._vals[i+1:])
-    m._keys[l-1], m._vals[l-1] = "", nil // let them be GC'ed
+    m._keys[l-1], m._vals[l-1] = zeroKey, zeroValue // let them be GC'ed
     m._keys, m._vals = m._keys[:l-1], m._vals[:l-1]
 }
 
