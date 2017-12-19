@@ -42,7 +42,7 @@ func Open() (*bolt.DB, error) {
 	return database, nil
 }
 
-func WhileClosed(f func()) error {
+func WhileClosed(f func() error) error {
 
 	mutex.Lock()
 	defer mutex.Unlock()
@@ -57,9 +57,8 @@ func WhileClosed(f func()) error {
 	}
 	database = nil
 
-	f()
+	return f()
 
-	return nil
 }
 
 // reloads the underlying database from file

@@ -38,23 +38,22 @@ func ExportHttpHandler(rw http.ResponseWriter, rq *http.Request) {
 		return
 	}
 
-	e := db.WhileClosed(func() {
-
-		f, e := os.Open(os.Getenv("DATA_FILE"))
+	e := func() error {
+		ow, e := gzip.NewWriterLevel(rw, gzip.BestCompression)
 		if e != nil {
-			rw.WriteHeader(http.StatusNotFound)
-			// ?
-			return
+			return e
 		}
-		ow := gzip.NewWriter(rw)
-		_, e = io.Copy(ow, f)
+		tx, e := dtbs.Begin(false)
 		if e != nil {
-			log.Panicln(e.Error())
+			return e
 		}
-		ow.Close()
-		f.Close()
-
-	})
+		defer tx.Rollback()
+		rw.Header().Set(`Content-Type`, `application/octet-stream`)
+		rw.Header().Set(`Content-Disposition`, `attachment; filename="`+os.Getenv("DATA_FILE")+`"`)
+		rw.Header().Set(`Content-Encoding`, `gzip`)
+		_, e = tx.WriteTo(ow)
+		return e
+	}()
 
 	if e != nil {
 		log.Println(e)
@@ -83,28 +82,25 @@ func ImportHttpHandler(rw http.ResponseWriter, rq *http.Request) {
 		return
 	}
 
-	e := db.WhileClosed(func() {
+	e := db.WhileClosed(func() error {
 
 		f, e := os.OpenFile(os.Getenv("DATA_FILE"), os.O_RDWR|os.O_TRUNC|os.O_CREATE, db.Perm)
 		if e != nil {
-			rw.WriteHeader(http.StatusNotFound)
-			// ?
-			return
+			return e
 		}
 		ir, e := gzip.NewReader(rq.Body)
 		if e != nil {
-			rw.WriteHeader(http.StatusBadRequest)
-			// ?
-			return
+			return e
 		}
 		_, e = io.Copy(f, ir)
 		if e != nil {
 			log.Panicln(e.Error())
 		}
-		ir.Close()
-		f.Close()
-		rq.Body.Close()
+		_ = ir.Close()
+		_ = f.Close()
+		_ = rq.Body.Close()
 		kvm.ClearCompilerCache()
+		return nil
 	})
 
 	if e != nil {
