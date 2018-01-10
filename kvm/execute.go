@@ -83,7 +83,7 @@ func (vm VirtualMachine) Execute(program inst.Sequence, input val.Value) (val.Va
 					nil,
 				}
 			}
-			stack.Push(input)
+			stack.Push(input.Copy())
 
 		case inst.CurrentUser:
 			stack.Push(val.Ref{vm.UserModelId(), vm.UserID})
