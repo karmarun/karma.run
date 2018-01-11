@@ -41,6 +41,8 @@ To install karma.run you need the [Go toolchain](https://golang.org):
     
 Stable tags will have binary releases.
 
+[![asciicast](https://asciinema.org/a/156598.png)](https://asciinema.org/a/156598)
+
 ## Dependencies & Licenses
 
 karma.run depends on three external software packages:
