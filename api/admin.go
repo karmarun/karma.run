@@ -52,6 +52,10 @@ func ExportHttpHandler(rw http.ResponseWriter, rq *http.Request) {
 		rw.Header().Set(`Content-Disposition`, `attachment; filename="`+os.Getenv("DATA_FILE")+`"`)
 		rw.Header().Set(`Content-Encoding`, `gzip`)
 		_, e = tx.WriteTo(ow)
+		if e != nil {
+			return e
+		}
+		e = ow.Close()
 		return e
 	}()
 
