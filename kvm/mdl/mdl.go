@@ -594,40 +594,10 @@ func Either(l, r Model, m map[*Recursion]*Recursion) Model {
 	}
 
 	{ // handle "or" cases
-		lo, lok := l.(Or)
-		ro, rok := r.(Or)
-		switch {
-		case lok && rok: // both ors
-			out := (Model)(ro)
-			for _, w := range UnrollOr(lo, nil) {
-				out = Either(w, out, m)
-			}
-			return out
-
-		case lok && !rok: // left is "or", right not
-			unrolled := UnrollOr(lo, nil)
-			for i, w := range unrolled {
-				either := Either(w, r, m)
-				if _, ok := either.(Or); ok {
-					continue
-				}
-				unrolled[i] = either
-				return Either(unrolled[0], RollOr(unrolled[1:]), m) // minimize
-			}
-			return RollOr(append(unrolled, r))
-
-		case !lok && rok: // left not "or", right is
-			unrolled := UnrollOr(ro, nil)
-			for i, w := range unrolled {
-				either := Either(l, w, m)
-				if _, ok := either.(Or); ok {
-					continue
-				}
-				unrolled[i] = either
-				return Either(unrolled[0], RollOr(unrolled[1:]), m) // minimize
-			}
-			return RollOr(append([]Model{l}, unrolled...))
-
+		_, lok := l.(Or)
+		_, rok := r.(Or)
+		if lok || rok {
+			return eitherOr(l, r, m)
 		}
 	}
 
@@ -695,23 +665,8 @@ func Either(l, r Model, m map[*Recursion]*Recursion) Model {
 		if !ok {
 			return Or{l, r}
 		}
-		s := NewStruct(l.Len() + q.Len())
-		l.ForEach(func(k string, w Model) bool {
-			if x, ok := q.Get(k); ok {
-				s.Set(k, Either(w, x, m))
-			} else {
-				s.Set(k, w)
-			}
-			return true
-		})
-		q.ForEach(func(k string, x Model) bool {
-			if _, ok := s.Get(k); ok {
-				return true
-			}
-			s.Set(k, x)
-			return true
-		})
-		return s
+		_ = q
+		return Or{l, r}
 
 	case Union:
 		q, ok := r.(Union)
@@ -870,4 +825,35 @@ func couldRecurseInfinitely(m Model, seen map[*Recursion]struct{}) bool {
 		return couldRecurseInfinitely(m[0], seen) || couldRecurseInfinitely(m[1], seen)
 	}
 	return false
+}
+
+func eitherOr(a, b Model, recs map[*Recursion]*Recursion) Model {
+	inputs := make([]Model, 0, 16)
+	for _, m := range UnrollOr(a, nil) {
+		inputs = append(inputs, m)
+	}
+	for _, m := range UnrollOr(b, nil) {
+		inputs = append(inputs, m)
+	}
+	outputs := inputs[:0]
+	for _, m := range inputs {
+		alreadyInSet := false
+		for _, w := range outputs {
+			if m.Equals(w) {
+				alreadyInSet = true
+				break
+			}
+		}
+		if !alreadyInSet {
+			outputs = append(outputs, m)
+		}
+	}
+	if len(outputs) == 1 {
+		return outputs[0]
+	}
+	bottom := outputs[0]
+	for _, m := range outputs[1:] {
+		bottom = Either(m, bottom, recs)
+	}
+	return bottom
 }
