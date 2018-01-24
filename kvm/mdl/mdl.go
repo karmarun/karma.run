@@ -665,8 +665,19 @@ func Either(l, r Model, m map[*Recursion]*Recursion) Model {
 		if !ok {
 			return Or{l, r}
 		}
-		_ = q
-		return Or{l, r}
+		out := NewStruct(minInt(q.Len(), l.Len()))
+		ks := make([]string, 0, minInt(q.Len(), l.Len()))
+		for _, k := range l.Keys() {
+			if _, ok := q.Get(k); ok {
+				ks = append(ks, k)
+			}
+		}
+		for _, k := range ks {
+			a, _ := l.Get(k)
+			b, _ := l.Get(k)
+			out.Set(k, Either(a, b, m))
+		}
+		return out
 
 	case Union:
 		q, ok := r.(Union)
