@@ -1098,7 +1098,6 @@ func (vm VirtualMachine) TypeExpression(node xpr.Expression, argument, expected 
 				bottom = subType
 			} else {
 				bottom = mdl.Either(bottom, subType, nil)
-				// bottom = bottom.Union(subType)
 			}
 			if e := checkType(subType, bottom); e == nil {
 				node.Expression = expression
@@ -1613,7 +1612,11 @@ func (vm VirtualMachine) TypeExpression(node xpr.Expression, argument, expected 
 			}
 		}
 		index := int(cn.Value.(val.Int64))
-		subExpect := make(mdl.Tuple, index+1, index+1)
+		arity := index + 1
+		if at, ok := argument.(mdl.Tuple); ok {
+			arity = len(at)
+		}
+		subExpect := make(mdl.Tuple, arity, arity)
 		for i, _ := range subExpect {
 			subExpect[i] = AnyModel
 		}
