@@ -250,6 +250,12 @@ func (vm VirtualMachine) Execute(program inst.Sequence, input val.Value) (val.Va
 
 			for mid, v := range migrationMap {
 
+				if mid == vm.MetaModelId() {
+					return nil, &err.ExecutionError{
+						`update: would lead to model mutation through migration tree.`, nil,
+					}
+				}
+
 				ov, e := vm.Get(mid, rf[1])
 				if e != nil {
 					if _, ok := e.(err.ObjectNotFoundError); ok {

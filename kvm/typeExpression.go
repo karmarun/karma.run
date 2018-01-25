@@ -875,6 +875,12 @@ func (vm VirtualMachine) TypeExpression(node xpr.Expression, argument, expected 
 		}
 		node.Ref = ref
 		mid := ref.Actual.Concrete().(mdl.Ref).Model
+		if mid == vm.MetaModelId() {
+			return ZeroTypedExpression, err.CompilationError{
+				Problem: `update: models are immutable`,
+				Program: xpr.ValueFromExpression(ref),
+			}
+		}
 		subExpect, e := vm.Model(mid)
 		if e != nil {
 			return ZeroTypedExpression, e
