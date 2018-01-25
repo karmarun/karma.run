@@ -328,6 +328,10 @@ type MemSort struct {
 	Expression Sequence
 }
 
+type With struct {
+	Expression Sequence
+}
+
 func (Identity) _inst()          {}
 func (AddFloats) _inst()         {}
 func (AddInts) _inst()           {}
@@ -484,3 +488,4 @@ func (ConcatLists) _inst()       {}
 func (SearchAllRegex) _inst()    {}
 func (SearchRegex) _inst()       {}
 func (ToString) _inst()          {}
+func (With) _inst()              {}

@@ -156,7 +156,7 @@ func (vm VirtualMachine) Compile(typed xpr.TypedExpression) inst.Instruction {
 	case xpr.With:
 		value := vm.Compile(node.Value.(xpr.TypedExpression))
 		retrn := vm.Compile(node.Return.(xpr.TypedExpression))
-		return inst.Sequence{value, inst.PopToInput{}, retrn}
+		return inst.Sequence{value, inst.With{flattenSequences(retrn, nil)}}
 
 	case xpr.Update:
 		ref := vm.Compile(node.Ref.(xpr.TypedExpression))

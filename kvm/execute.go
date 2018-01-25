@@ -467,6 +467,14 @@ func (vm VirtualMachine) Execute(program inst.Sequence, input val.Value) (val.Va
 
 			stack.Push(out)
 
+		case inst.With:
+			v := stack.Pop()
+			w, e := vm.Execute(it.Expression, v)
+			if e != nil {
+				return nil, e
+			}
+			stack.Push(w)
+
 		case inst.MapList:
 
 			switch ls := unMeta(stack.Pop()).(type) {

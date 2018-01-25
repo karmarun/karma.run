@@ -108,17 +108,22 @@ func (m *logMapStringModel) set(k string, v Model) {
     if m == nil {
         panic("set of nil")
     }
+    i := m.search(k)
+    if i == len(m._keys) {
+        m._keys, m._vals = append(m._keys, k), append(m._vals, v)
+        return
+    }
     if m._sharingKeys {
         m._keys, m._sharingKeys = m.keys(), false
-    }
-    i := m.search(k)
-    m._keys, m._vals = append(m._keys, k), append(m._vals, v)
-    if i == len(m._keys)-1 {
-        return
     }
     if m._sharingVals {
         m._vals, m._sharingVals = m.values(), false
     }
+    if m._keys[i] == k {
+        m._vals[i] = v
+        return
+    }
+    m._keys, m._vals = append(m._keys, k), append(m._vals, v)
     copy(m._keys[i+1:], m._keys[i:])
     copy(m._vals[i+1:], m._vals[i:])
     m._keys[i], m._vals[i] = k, v
