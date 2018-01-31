@@ -28,13 +28,6 @@ func (r Int8) Traverse(p []string, f func([]string, Model)) {
 	f(p, r)
 }
 
-func (m Int8) Union(w Model) Model {
-	if _, ok := w.(Int8); ok {
-		return Int8{} // e.g. int8 | int8 = int8
-	}
-	return Or{m, w}
-}
-
 type Int16 struct{}
 
 func (r Int16) Zero() val.Value {
@@ -55,13 +48,6 @@ func (i Int16) Copy() Model {
 
 func (r Int16) Traverse(p []string, f func([]string, Model)) {
 	f(p, r)
-}
-
-func (m Int16) Union(w Model) Model {
-	if _, ok := w.(Int16); ok {
-		return Int16{} // e.g. int16 | int16 = int16
-	}
-	return Or{m, w}
 }
 
 type Int32 struct{}
@@ -86,13 +72,6 @@ func (r Int32) Traverse(p []string, f func([]string, Model)) {
 	f(p, r)
 }
 
-func (m Int32) Union(w Model) Model {
-	if _, ok := w.(Int32); ok {
-		return Int32{} // e.g. int32 | int32 = int32
-	}
-	return Or{m, w}
-}
-
 type Int64 struct{}
 
 func (r Int64) Zero() val.Value {
@@ -113,13 +92,6 @@ func (i Int64) Copy() Model {
 
 func (r Int64) Traverse(p []string, f func([]string, Model)) {
 	f(p, r)
-}
-
-func (m Int64) Union(w Model) Model {
-	if _, ok := w.(Int64); ok {
-		return Int64{} // e.g. int64 | int64 = int64
-	}
-	return Or{m, w}
 }
 
 type Uint8 struct{}
@@ -144,13 +116,6 @@ func (r Uint8) Traverse(p []string, f func([]string, Model)) {
 	f(p, r)
 }
 
-func (m Uint8) Union(w Model) Model {
-	if _, ok := w.(Uint8); ok {
-		return Uint8{} // e.g. uint8 | uint8 = uint8
-	}
-	return Or{m, w}
-}
-
 type Uint16 struct{}
 
 func (r Uint16) Zero() val.Value {
@@ -171,13 +136,6 @@ func (i Uint16) Copy() Model {
 
 func (r Uint16) Traverse(p []string, f func([]string, Model)) {
 	f(p, r)
-}
-
-func (m Uint16) Union(w Model) Model {
-	if _, ok := w.(Uint16); ok {
-		return Uint16{} // e.g. uint16 | uint16 = uint16
-	}
-	return Or{m, w}
 }
 
 type Uint32 struct{}
@@ -202,13 +160,6 @@ func (r Uint32) Traverse(p []string, f func([]string, Model)) {
 	f(p, r)
 }
 
-func (m Uint32) Union(w Model) Model {
-	if _, ok := w.(Uint32); ok {
-		return Uint32{} // e.g. uint32 | uint32 = uint32
-	}
-	return Or{m, w}
-}
-
 type Uint64 struct{}
 
 func (r Uint64) Zero() val.Value {
@@ -229,13 +180,6 @@ func (i Uint64) Copy() Model {
 
 func (r Uint64) Traverse(p []string, f func([]string, Model)) {
 	f(p, r)
-}
-
-func (m Uint64) Union(w Model) Model {
-	if _, ok := w.(Uint64); ok {
-		return Uint64{} // e.g. uint64 | uint64 = uint64
-	}
-	return Or{m, w}
 }
 
 func (m Int8) Concrete() Model {

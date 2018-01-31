@@ -1731,25 +1731,6 @@ func (vm VirtualMachine) Execute(program inst.Sequence, input val.Value) (val.Va
 			lhs := stack.Pop().(val.Uint64)
 			stack.Push(lhs / rhs)
 
-		case inst.SwitchType:
-			v := unMeta(stack.Pop())
-			k := valueTypeKey(v)
-			c, ok := it[k]
-			if !ok {
-				return nil, err.ExecutionError{
-					fmt.Sprintf(`switchType: unexpected type: %s`, k),
-					nil,
-					// C: val.Map{
-					//  "value": v,
-					// },
-				}
-			}
-			v, e := vm.Execute(c, v)
-			if e != nil {
-				return nil, e
-			}
-			stack.Push(v)
-
 		case inst.SwitchCase:
 			v := unMeta(stack.Pop())
 			u := v.(val.Union)

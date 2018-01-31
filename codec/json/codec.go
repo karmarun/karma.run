@@ -6,15 +6,16 @@
 package json
 
 import (
-	"encoding/json"
+	"bytes"
+	ej "encoding/json"
 	"fmt"
 	"karma.run/codec"
 	"karma.run/kvm/err"
 	"karma.run/kvm/mdl"
 	"karma.run/kvm/val"
 	"log"
-	"reflect"
 	"sort"
+	"strconv"
 	"time"
 )
 
@@ -24,8 +25,8 @@ func init() {
 
 type JsonCodec struct{}
 
-func (dec JsonCodec) Decode(data []byte, model mdl.Model) (val.Value, err.Error) {
-	return Decode(data, model, nil)
+func (dec JsonCodec) Decode(json []byte, model mdl.Model) (val.Value, err.Error) {
+	return Decode(json, model, nil)
 }
 
 func (dec JsonCodec) Encode(v val.Value) []byte {
@@ -38,8 +39,8 @@ func (j JSON) MarshalJSON() ([]byte, error) {
 	return []byte(j), nil
 }
 
-func (j *JSON) UnmarshalJSON(data []byte) error {
-	(*j) = append((*j)[:0], data...)
+func (j *JSON) UnmarshalJSON(json []byte) error {
+	(*j) = append((*j)[:0], json...)
 	return nil
 }
 
@@ -48,6 +49,10 @@ func (j JSON) String() string {
 }
 
 func Encode(value val.Value) JSON {
+	return encode(value, make(JSON, 0, 1024*4))
+}
+
+func encode(value val.Value, cache JSON) JSON {
 	if value == nil {
 		log.Panicln("json/codec.Encode: value == nil")
 	}
@@ -56,86 +61,143 @@ func Encode(value val.Value) JSON {
 	}
 	switch v := value.(type) {
 	case val.Meta:
-		return Encode(v.Value)
+		return encode(v.Value, cache)
 
 	case val.Tuple:
-		u := make([]JSON, len(v), len(v))
-		for i, _ := range v {
-			u[i] = Encode(v[i])
+		bs := cache
+		bs = append(bs, '[')
+		for i, w := range v {
+			if i > 0 {
+				bs = append(bs, ',')
+			}
+			bs = encode(w, bs)
 		}
-		return mustMarshal(u)
+		bs = append(bs, ']')
+		return bs
 
 	case val.Set:
-		u := make([]JSON, 0, len(v))
-		for _, w := range v {
-			u = append(u, Encode(w))
+		bs := cache
+		bs = append(bs, '[')
+		for i, w := range v {
+			if i > 0 {
+				bs = append(bs, ',')
+			}
+			bs = encode(w, bs)
 		}
-		return mustMarshal(u)
+		bs = append(bs, ']')
+		return bs
 
 	case val.List:
-		u := make([]JSON, len(v), len(v))
-		for i, _ := range v {
-			u[i] = Encode(v[i])
+		bs := cache
+		bs = append(bs, '[')
+		for i, w := range v {
+			if i > 0 {
+				bs = append(bs, ',')
+			}
+			bs = encode(w, bs)
 		}
-		return mustMarshal(u)
+		bs = append(bs, ']')
+		return bs
 
 	case val.Union:
-		u := make(map[string]JSON, 1)
-		u[v.Case] = Encode(v.Value)
-		return mustMarshal(u)
+		bs := cache
+		bs = append(bs, '[')
+		cs, _ := ej.Marshal(v.Case)
+		bs = append(bs, cs...)
+		bs = append(bs, ',')
+		bs = encode(v.Value, bs)
+		bs = append(bs, ']')
+		return bs
+
 	case val.Struct:
-		u := make(map[string]JSON, v.Len())
-		v.ForEach(func(k string, q val.Value) bool {
-			if q == val.Null {
-				return true // omit optional null elements in structs
+		bs := cache
+		bs = append(bs, '{')
+		first := true
+		v.ForEach(func(k string, v val.Value) bool {
+			if !first {
+				bs = append(bs, ',')
 			}
-			u[k] = Encode(q)
+			cs, _ := ej.Marshal(k)
+			bs = append(bs, cs...)
+			bs = append(bs, ':')
+			bs = encode(v, bs)
+			first = false
 			return true
 		})
-		return mustMarshal(u)
+		bs = append(bs, '}')
+		return bs
+
 	case val.Map:
-		u := make(map[string]JSON, v.Len())
-		v.ForEach(func(k string, w val.Value) bool {
-			u[k] = Encode(w)
+		bs := cache
+		bs = append(bs, '{')
+		first := true
+		v.ForEach(func(k string, v val.Value) bool {
+			if !first {
+				bs = append(bs, ',')
+			}
+			cs, _ := ej.Marshal(k)
+			bs = append(bs, cs...)
+			bs = append(bs, ':')
+			bs = encode(v, bs)
+			first = false
 			return true
 		})
-		return mustMarshal(u)
-	case val.Raw:
-		return JSON(v)
-	case val.Float:
-		return mustMarshal(v)
-	case val.Bool:
-		return mustMarshal(v)
-	case val.Symbol:
-		return mustMarshal(v)
+		bs = append(bs, '}')
+		return bs
+
 	case val.String:
-		return mustMarshal(v)
+		bs, _ := ej.Marshal(v)
+		return append(cache, bs...)
+
 	case val.Ref:
-		return mustMarshal(v[1])
+		bs, _ := ej.Marshal(v[1])
+		return append(cache, bs...)
+
 	case val.DateTime:
-		return mustMarshal(v.Format(mdl.FormatDateTime))
+
 	case val.Int8:
-		return mustMarshal(v)
+		return append(cache, JSON(strconv.FormatInt(int64(v), 10))...)
+
 	case val.Int16:
-		return mustMarshal(v)
+		return append(cache, JSON(strconv.FormatInt(int64(v), 10))...)
+
 	case val.Int32:
-		return mustMarshal(v)
+		return append(cache, JSON(strconv.FormatInt(int64(v), 10))...)
+
 	case val.Int64:
-		return mustMarshal(v)
+		return append(cache, JSON(strconv.FormatInt(int64(v), 10))...)
+
 	case val.Uint8:
-		return mustMarshal(v)
+		return append(cache, JSON(strconv.FormatUint(uint64(v), 10))...)
+
 	case val.Uint16:
-		return mustMarshal(v)
+		return append(cache, JSON(strconv.FormatUint(uint64(v), 10))...)
+
 	case val.Uint32:
-		return mustMarshal(v)
+		return append(cache, JSON(strconv.FormatUint(uint64(v), 10))...)
+
 	case val.Uint64:
-		return mustMarshal(v)
+		return append(cache, JSON(strconv.FormatUint(uint64(v), 10))...)
+
+	case val.Float:
+		return append(cache, strconv.FormatFloat(float64(v), 'g', -1, 64)...)
+
+	case val.Bool:
+		if v {
+			return append(cache, "true"...)
+		}
+		return append(cache, "false"...)
+
+	case val.Symbol:
+		bs, _ := ej.Marshal(v)
+		return append(cache, bs...)
+
 	}
 	panic(fmt.Sprintf(`JSON encoding unimplemented for type: %T`, value))
 }
 
-func Decode(data JSON, model mdl.Model, path []string) (val.Value, err.OffsetError) {
-	v, e := decode(data, model)
+func Decode(json JSON, model mdl.Model, path []string) (val.Value, err.OffsetError) {
+	v, _, e := decode(json, model)
 	if e != nil {
 		if es, ok := e.(err.ErrorList); ok {
 			// following approach pretty good for most cases
@@ -146,406 +208,651 @@ func Decode(data JSON, model mdl.Model, path []string) (val.Value, err.OffsetErr
 			e = es[0]
 		}
 		e := e.(err.InputParsingError)
-		return nil, err.CodecError{"json", len(data) - len(e.Input), e}
+		return nil, err.CodecError{"json", len(json) - len(e.Input), e}
 	}
 	return v, nil
 }
 
-func decode(data JSON, model mdl.Model) (val.Value, err.Error) {
-	if data == nil {
-		log.Panicln("data == nil")
+func decode(json JSON, model mdl.Model) (val.Value, JSON, err.Error) {
+	if json == nil {
+		log.Panicln("json == nil")
 	}
+	json = skipWhiteSpace(json)
 	switch m := model.(type) {
-
 	case mdl.Null:
-		if len(data) != 4 || string(data) != "null" {
-			return nil, err.InputParsingError{"expected null", data}
+		json, e := readLiteral("null", json)
+		if e != nil {
+			return nil, json, e
 		}
-		return val.Null, nil
-
-	case mdl.Or:
-		v, e0 := decode(data, m[0])
-		if e0 == nil {
-			return v, nil
-		}
-		v, e1 := decode(data, m[1])
-		if e1 == nil {
-			return v, nil
-		}
-		es := make(err.ErrorList, 0, 32)
-		if es0, ok := e0.(err.ErrorList); ok {
-			es = append(es, es0...)
-		} else {
-			es = append(es, e0.(err.InputParsingError))
-		}
-		if es1, ok := e1.(err.ErrorList); ok {
-			es = append(es, es1...)
-		} else {
-			es = append(es, e1.(err.InputParsingError))
-		}
-		return nil, es
+		return val.Null, json, nil
 
 	case mdl.Annotation:
-		return decode(data, m.Model)
+		return decode(json, m.Model)
 
 	case *mdl.Recursion:
-		return decode(data, m.Model)
+		return decode(json, m.Model)
 
 	case mdl.Unique:
-		return decode(data, m.Model)
+		return decode(json, m.Model)
 
 	case mdl.Set:
-		if isNull(data) {
-			return nil, err.InputParsingError{"unexpected null", data}
+		vs, json, e := decodeArray(json, m.Elements)
+		if e != nil {
+			return nil, json, e
 		}
-		u := ([]JSON)(nil)
-		if e := json.Unmarshal(data, &u); e != nil {
-			return nil, mapJsonError(e, data)
+		w := make(val.Set, len(vs))
+		for _, v := range vs {
+			w[val.Hash(v, nil).Sum64()] = v
 		}
-		v := make(val.Set, len(u))
-		for _, q := range u {
-			w, e := decode(q, m.Elements)
-			if e != nil {
-				return nil, e
-			}
-			v[val.Hash(w, nil).Sum64()] = w
-		}
-		return v, nil
+		return w, json, nil
 
 	case mdl.List:
-		if isNull(data) {
-			return nil, err.InputParsingError{"unexpected null", data}
+		vs, json, e := decodeArray(json, m.Elements)
+		if e != nil {
+			return nil, json, e
 		}
-		u := ([]JSON)(nil)
-		if e := json.Unmarshal(data, &u); e != nil {
-			return nil, mapJsonError(e, data)
-		}
-		v := make(val.List, len(u), len(u))
-		for i, q := range u {
-			w, e := decode(q, m.Elements)
-			if e != nil {
-				return nil, e
-			}
-			v[i] = w
-		}
-		return v, nil
-
-	case mdl.Map:
-		if isNull(data) {
-			return nil, err.InputParsingError{"unexpected null", data}
-		}
-		u := (map[string]JSON)(nil)
-		if e := json.Unmarshal(data, &u); e != nil {
-			if e := mapJsonError(e, data); e != nil {
-				return nil, e
-			}
-			return nil, mapJsonError(e, data)
-		}
-		v := val.NewMap(len(u))
-		for k, q := range u {
-			w, e := decode(q, m.Elements)
-			if e != nil {
-				return nil, e
-			}
-			v.Set(k, w)
-		}
-		return v, nil
+		return val.List(vs), json, e
 
 	case mdl.Tuple:
-		if isNull(data) {
-			return nil, err.InputParsingError{"unexpected null", data}
-		}
-		u := ([]JSON)(nil)
-		if e := json.Unmarshal(data, &u); e != nil {
-			return nil, mapJsonError(e, data)
-		}
-		if len(u) != len(m) {
-			return nil, err.InputParsingError{fmt.Sprintf(`expected array of length %d, have %d`, len(m), len(u)), data}
-		}
-		v := make(val.Tuple, len(u), len(u))
-		for i, q := range u {
-			w, e := decode(q, m[i])
-			if e != nil {
-				return nil, e
-			}
-			v[i] = w
-		}
-		return v, nil
-
-	case mdl.Struct:
-		if isNull(data) {
-			return nil, err.InputParsingError{"unexpected null", data}
-		}
-		u := make(map[string]JSON, m.Len())
-		if e := json.Unmarshal(data, &u); e != nil {
-			return nil, mapJsonError(e, data)
-		}
-		e := (err.Error)(nil)
-		m.ForEach(func(k string, m mdl.Model) bool {
-			if m.Nullable() {
-				return true // allow optional elements to be omitted
-			}
-			if _, ok := u[k]; !ok {
-				e = err.InputParsingError{fmt.Sprintf(`missing key "%s" in object`, k), data}
-				return false
-			}
-			return true
-		})
+		vs, json, e := decodeTuple(json, m)
 		if e != nil {
-			return nil, e
+			return nil, json, e
 		}
-		for k, _ := range u {
-			if _, ok := m.Get(k); !ok {
-				return nil, err.InputParsingError{fmt.Sprintf(`unknown key "%s" in object`, k), data}
-			}
-		}
-		v := val.NewStruct(len(u))
-		for k, q := range u {
-			w, e := decode(q, m.Field(k))
-			if e != nil {
-				return nil, e
-			}
-			v.Set(k, w)
-		}
-		m.ForEach(func(k string, _ mdl.Model) bool {
-			if _, ok := v.Get(k); !ok {
-				v.Set(k, val.Null) // omitted optional elements should be Null in struct val
-			}
-			return true
-		})
-		return v, nil
+		return vs, json, nil
 
 	case mdl.Union:
-		if isNull(data) {
-			return nil, err.InputParsingError{"unexpected null", data}
-		}
-		s := m
-		u := make(map[string]JSON, 1)
-		if e := json.Unmarshal(data, &u); e != nil {
-			return nil, mapJsonError(e, data)
-		}
-		if len(u) != 1 {
-			return nil, err.InputParsingError{fmt.Sprintf(`expected 1 key in object, have %d`, len(u)), data}
-		}
-		k, j := "", JSON(nil)
-		for a, b := range u {
-			k, j = a, b
-			break
-		}
-		sk, ok := s.Get(k)
-		if !ok {
-			return nil, err.InputParsingError{fmt.Sprintf(`unknown union case in object: "%s"`, k), data}
-		}
-		w, e := decode(j, sk)
+		json, e := readLiteral(`[`, json)
 		if e != nil {
-			return nil, e
+			return nil, json, e
 		}
-		v := val.Union{Case: k, Value: w}
-		return v, nil
+		caze, json, e := readString(skipWhiteSpace(json))
+		if e != nil {
+			return nil, json, e
+		}
+		element, ok := m.Get(caze)
+		if !ok {
+			return nil, json, err.InputParsingError{
+				Problem: fmt.Sprintf(`undefined union case "%s"`, caze),
+				Input:   json,
+			}
+		}
+		json, e = readLiteral(`,`, skipWhiteSpace(json))
+		if e != nil {
+			return nil, json, e
+		}
+		value, json, e := decode(json, element)
+		if e != nil {
+			return nil, json, e
+		}
+		json, _ = readLiteral(`,`, skipWhiteSpace(json)) // optional trailing comma
+		json, e = readLiteral(`]`, skipWhiteSpace(json))
+		if e != nil {
+			return nil, json, e
+		}
+		return val.Union{Case: caze, Value: value}, json, nil
 
 	case mdl.String:
-		if isNull(data) {
-			return nil, err.InputParsingError{"unexpected null", data}
+		str, json, e := readString(json)
+		if e != nil {
+			return nil, json, e
 		}
-		v := val.String("")
-		if e := json.Unmarshal(data, &v); e != nil {
-			return nil, mapJsonError(e, data)
-		}
-		return v, nil
+		return val.String(str), json, nil
 
 	case mdl.Enum:
-		if isNull(data) {
-			return nil, err.InputParsingError{"unexpected null", data}
+		str, json, e := readString(json)
+		if e != nil {
+			return nil, json, e
 		}
-		v := ""
-		if e := json.Unmarshal(data, &v); e != nil {
-			return nil, mapJsonError(e, data)
+		if _, ok := m[str]; !ok {
+			return nil, json, err.InputParsingError{
+				Problem: fmt.Sprintf(`undefined enum case "%s"`, str),
+				Input:   json,
+			}
 		}
-		if _, ok := m[v]; ok {
-			return val.Symbol(v), nil
-		}
-		return nil, err.InputParsingError{fmt.Sprintf(`unknown enum symbol: "%s"`, v), data}
-
-	case mdl.Float:
-		if isNull(data) {
-			return nil, err.InputParsingError{"unexpected null", data}
-		}
-		v := val.Float(0)
-		if e := json.Unmarshal(data, &v); e != nil {
-			return nil, mapJsonError(e, data)
-		}
-		return v, nil
+		return val.Symbol(str), json, e
 
 	case mdl.Bool:
-		if isNull(data) {
-			return nil, err.InputParsingError{"unexpected null", data}
+		json, e := readLiteral("true", json)
+		if e == nil {
+			return val.Bool(true), json, nil
 		}
-		v := val.Bool(false)
-		if e := json.Unmarshal(data, &v); e != nil {
-			return nil, mapJsonError(e, data)
+		json, e = readLiteral("false", json)
+		if e == nil {
+			return val.Bool(false), json, nil
 		}
-		return v, nil
+		return nil, json, err.InputParsingError{
+			Problem: `expected boolean true or false`,
+			Input:   json,
+		}
 
-	case mdl.Any:
-		return val.Raw(data), nil
+	case mdl.Map:
+		vs, json, e := decodeObject(json, m.Elements)
+		if e != nil {
+			return nil, json, e
+		}
+		w := val.NewMap(len(vs))
+		for k, v := range vs {
+			w.Set(k, v)
+		}
+		return w, json, nil
+
+	case mdl.Struct:
+		vs, json, e := decodeStruct(json, m)
+		if e != nil {
+			return nil, json, e
+		}
+		return vs, json, nil
 
 	case mdl.Ref:
-		if isNull(data) {
-			return nil, err.InputParsingError{"unexpected null", data}
+		str, json, e := readString(json)
+		if e != nil {
+			return nil, json, e
 		}
-		v := ""
-		if e := json.Unmarshal(data, &v); e != nil {
-			return nil, mapJsonError(e, data)
-		}
-		return val.Ref{m.Model, v}, nil
+		return val.Ref{m.Model, str}, json, nil
 
 	case mdl.DateTime:
-		if isNull(data) {
-			return nil, err.InputParsingError{"unexpected null", data}
-		}
-		v := ""
-		if e := json.Unmarshal(data, &v); e != nil {
-			return nil, mapJsonError(e, data)
-		}
-		t, e := time.Parse(mdl.FormatDateTime, v)
+		str, json, e := readString(json)
 		if e != nil {
-			return nil, err.InputParsingError{fmt.Sprintf(`invalid dateTime string: %s`, v), data}
+			return nil, json, e
 		}
-		return val.DateTime{t}, nil
+		t, e_ := time.Parse(time.RFC3339, str)
+		if e_ != nil {
+			return nil, json, err.InputParsingError{
+				Problem: `malformed datetime format (must follow RFC3339)`,
+				Input:   json,
+			}
+		}
+		return val.DateTime{t}, json, nil
 
 	case mdl.Int8:
-		if isNull(data) {
-			return nil, err.InputParsingError{"unexpected null", data}
+		n, json, e := readJsonNumber(json)
+		if e != nil {
+			return nil, json, e
 		}
-		v := val.Int8(0)
-		if e := json.Unmarshal(data, &v); e != nil {
-			return nil, mapJsonError(e, data)
+		x, e_ := strconv.ParseInt(string(n), 10, 8)
+		if e_ != nil {
+			ne := e_.(*strconv.NumError)
+			if ne.Err == strconv.ErrRange {
+				return nil, json, err.InputParsingError{
+					Problem: `integer too large for type int8`,
+					Input:   json,
+				}
+			}
+			return nil, json, err.InputParsingError{
+				Problem: `malformed integer`,
+				Input:   json,
+			}
 		}
-		return v, nil
+		return val.Int8(x), json, nil
 
 	case mdl.Int16:
-		if isNull(data) {
-			return nil, err.InputParsingError{"unexpected null", data}
+		n, json, e := readJsonNumber(json)
+		if e != nil {
+			return nil, json, e
 		}
-		v := val.Int16(0)
-		if e := json.Unmarshal(data, &v); e != nil {
-			return nil, mapJsonError(e, data)
+		x, e_ := strconv.ParseInt(string(n), 10, 16)
+		if e_ != nil {
+			ne := e_.(*strconv.NumError)
+			if ne.Err == strconv.ErrRange {
+				return nil, json, err.InputParsingError{
+					Problem: `integer too large for type int16`,
+					Input:   json,
+				}
+			}
+			return nil, json, err.InputParsingError{
+				Problem: `malformed integer`,
+				Input:   json,
+			}
 		}
-		return v, nil
+		return val.Int16(x), json, nil
 
 	case mdl.Int32:
-		if isNull(data) {
-			return nil, err.InputParsingError{"unexpected null", data}
+		n, json, e := readJsonNumber(json)
+		if e != nil {
+			return nil, json, e
 		}
-		v := val.Int32(0)
-		if e := json.Unmarshal(data, &v); e != nil {
-			return nil, mapJsonError(e, data)
+		x, e_ := strconv.ParseInt(string(n), 10, 32)
+		if e_ != nil {
+			ne := e_.(*strconv.NumError)
+			if ne.Err == strconv.ErrRange {
+				return nil, json, err.InputParsingError{
+					Problem: `integer too large for type int32`,
+					Input:   json,
+				}
+			}
+			return nil, json, err.InputParsingError{
+				Problem: `malformed integer`,
+				Input:   json,
+			}
 		}
-		return v, nil
+		return val.Int32(x), json, nil
 
 	case mdl.Int64:
-		if isNull(data) {
-			return nil, err.InputParsingError{"unexpected null", data}
+		n, json, e := readJsonNumber(json)
+		if e != nil {
+			return nil, json, e
 		}
-		v := val.Int64(0)
-		if e := json.Unmarshal(data, &v); e != nil {
-			return nil, mapJsonError(e, data)
+		x, e_ := strconv.ParseInt(string(n), 10, 64)
+		if e_ != nil {
+			ne := e_.(*strconv.NumError)
+			if ne.Err == strconv.ErrRange {
+				return nil, json, err.InputParsingError{
+					Problem: `integer too large for type int64`,
+					Input:   json,
+				}
+			}
+			return nil, json, err.InputParsingError{
+				Problem: `malformed integer`,
+				Input:   json,
+			}
 		}
-		return v, nil
+		return val.Int64(x), json, nil
 
 	case mdl.Uint8:
-		if isNull(data) {
-			return nil, err.InputParsingError{"unexpected null", data}
+		n, json, e := readJsonNumber(json)
+		if e != nil {
+			return nil, json, e
 		}
-		v := val.Uint8(0)
-		if e := json.Unmarshal(data, &v); e != nil {
-			return nil, mapJsonError(e, data)
+		x, e_ := strconv.ParseUint(string(n), 10, 8)
+		if e_ != nil {
+			ne := e_.(*strconv.NumError)
+			if ne.Err == strconv.ErrRange {
+				return nil, json, err.InputParsingError{
+					Problem: `integer too large for type uint8`,
+					Input:   json,
+				}
+			}
+			return nil, json, err.InputParsingError{
+				Problem: `malformed integer`,
+				Input:   json,
+			}
 		}
-		return v, nil
+		return val.Uint8(x), json, nil
 
 	case mdl.Uint16:
-		if isNull(data) {
-			return nil, err.InputParsingError{"unexpected null", data}
+		n, json, e := readJsonNumber(json)
+		if e != nil {
+			return nil, json, e
 		}
-		v := val.Uint16(0)
-		if e := json.Unmarshal(data, &v); e != nil {
-			return nil, mapJsonError(e, data)
+		x, e_ := strconv.ParseUint(string(n), 10, 16)
+		if e_ != nil {
+			ne := e_.(*strconv.NumError)
+			if ne.Err == strconv.ErrRange {
+				return nil, json, err.InputParsingError{
+					Problem: `integer too large for type uint16`,
+					Input:   json,
+				}
+			}
+			return nil, json, err.InputParsingError{
+				Problem: `malformed integer`,
+				Input:   json,
+			}
 		}
-		return v, nil
+		return val.Uint16(x), json, nil
 
 	case mdl.Uint32:
-		if isNull(data) {
-			return nil, err.InputParsingError{"unexpected null", data}
+		n, json, e := readJsonNumber(json)
+		if e != nil {
+			return nil, json, e
 		}
-		v := val.Uint32(0)
-		if e := json.Unmarshal(data, &v); e != nil {
-			return nil, mapJsonError(e, data)
+		x, e_ := strconv.ParseUint(string(n), 10, 32)
+		if e_ != nil {
+			ne := e_.(*strconv.NumError)
+			if ne.Err == strconv.ErrRange {
+				return nil, json, err.InputParsingError{
+					Problem: `integer too large for type uint32`,
+					Input:   json,
+				}
+			}
+			return nil, json, err.InputParsingError{
+				Problem: `malformed integer`,
+				Input:   json,
+			}
 		}
-		return v, nil
+		return val.Uint32(x), json, nil
 
 	case mdl.Uint64:
-		if isNull(data) {
-			return nil, err.InputParsingError{"unexpected null", data}
+		n, json, e := readJsonNumber(json)
+		if e != nil {
+			return nil, json, e
 		}
-		v := val.Uint64(0)
-		if e := json.Unmarshal(data, &v); e != nil {
-			return nil, mapJsonError(e, data)
+		x, e_ := strconv.ParseUint(string(n), 10, 64)
+		if e_ != nil {
+			ne := e_.(*strconv.NumError)
+			if ne.Err == strconv.ErrRange {
+				return nil, json, err.InputParsingError{
+					Problem: `integer too large for type uint64`,
+					Input:   json,
+				}
+			}
+			return nil, json, err.InputParsingError{
+				Problem: `malformed integer`,
+				Input:   json,
+			}
 		}
-		return v, nil
+		return val.Uint64(x), json, nil
+
+	case mdl.Float:
+		n, json, e := readJsonNumber(json)
+		if e != nil {
+			return nil, json, e
+		}
+		x, e_ := strconv.ParseFloat(string(n), 64)
+		if e_ != nil {
+			return nil, json, err.InputParsingError{
+				Problem: `malformed float`,
+				Input:   json,
+			}
+		}
+		return val.Float(x), json, nil
+
+	case mdl.Any:
+		return nil, json, err.InputParsingError{
+			Problem: `decoding typeless value not possible. This is a bug, please report it.`,
+			Input:   json,
+		}
 
 	}
 	panic(fmt.Sprintf(`JSON parsing unimplemented for model %T `, model))
 }
 
+// postcondition: returns intact JSON on error
+func readJsonNumber(json JSON) (JSON, JSON, err.Error) {
+	input := json
+	if e := assertNonEmpty(json); e != nil {
+		return nil, input, e
+	}
+	if json[0] == '-' {
+		json = json[1:]
+		if e := assertNonEmpty(json); e != nil {
+			return nil, input, e
+		}
+	}
+	if json[0] == '0' {
+		json = json[1:]
+		if len(json) == 0 {
+			return input[:len(input)-len(json)], json, nil
+		}
+		goto dotDecimals
+	}
+	if json[0] < '1' || json[0] > '9' {
+		return nil, input, err.InputParsingError{
+			Problem: fmt.Sprintf(`expected digit between 1 and 9, found "%s"`, json[0]),
+			Input:   json,
+		}
+	}
+	json = json[1:]
+	if len(json) == 0 {
+		return input[:len(input)-len(json)], json, nil
+	}
+	for json[0] >= '0' && json[0] <= '9' {
+		json = json[1:]
+		if len(json) == 0 {
+			return input[:len(input)-len(json)], json, nil
+		}
+	}
+dotDecimals:
+	if json[0] != '.' {
+		goto exponent
+	}
+	json = json[1:]
+	if len(json) == 0 {
+		return input[:len(input)-len(json)], json, nil
+	}
+	for json[0] >= '0' && json[0] <= '9' {
+		json = json[1:]
+		if len(json) == 0 {
+			return input[:len(input)-len(json)], json, nil
+		}
+	}
+exponent:
+	if json[0] != 'e' && json[0] != 'E' {
+		return input[:len(input)-len(json)], json, nil
+	}
+	json = json[1:]
+	if len(json) == 0 {
+		return input[:len(input)-len(json)], json, nil
+	}
+	if json[0] == '-' || json[0] == '+' {
+		json = json[1:]
+		if len(json) == 0 {
+			return input[:len(input)-len(json)], json, nil
+		}
+	}
+	for json[0] >= '0' && json[0] <= '9' {
+		json = json[1:]
+		if len(json) == 0 {
+			return input[:len(input)-len(json)], json, nil
+		}
+	}
+	return input[:len(input)-len(json)], json, nil
+}
+
+// postcondition: returns intact JSON on error
+func readString(json JSON) (string, JSON, err.Error) {
+	input := json
+	jstr, json, e := readJsonString(json)
+	if e != nil {
+		return "", input, e
+	}
+	value := ""
+	if e := ej.Unmarshal(jstr, &value); e != nil {
+		return "", input, err.InputParsingError{
+			Problem: `malformed string`,
+			Input:   input,
+		}
+	}
+	return value, json, nil
+}
+
+// postcondition: returns intact JSON on error
+func readJsonString(json JSON) (JSON, JSON, err.Error) {
+	input := json
+	json, e := readLiteral(`"`, json)
+	if e != nil {
+		return nil, input, e
+	}
+	escape := false
+	for {
+		if e := assertNonEmpty(json); e != nil {
+			return nil, input, e
+		}
+		if json[0] == '"' && !escape {
+			json = json[1:]
+			break
+		}
+		if json[0] == '\\' && !escape {
+			escape = true
+			json = json[1:]
+			continue
+		}
+		escape = false
+		json = json[1:]
+	}
+	return input[:len(input)-len(json)], json, nil
+}
+
+// allows trailing commas
+func decodeTuple(json JSON, tuple mdl.Tuple) (val.Tuple, JSON, err.Error) {
+	json, e := readLiteral(`[`, json)
+	if e != nil {
+		return nil, json, e
+	}
+	vs := make(val.Tuple, 0, len(tuple))
+	for i, l := 0, len(tuple); i < l; i++ {
+		v, temp, e := decode(json, tuple[i])
+		if e != nil {
+			return nil, temp, e
+		}
+		vs, json = append(vs, v), temp
+		if i == (l - 1) {
+			json, _ = readLiteral(`,`, skipWhiteSpace(json)) // allow optional trailing comma
+			break
+		}
+		json, e = readLiteral(`,`, skipWhiteSpace(json))
+		if e != nil {
+			return nil, json, e
+		}
+	}
+	// closing bracket
+	json, e = readLiteral(`]`, skipWhiteSpace(json))
+	if e != nil {
+		return nil, json, e
+	}
+	return vs, json, nil
+}
+
+// allows trailing commas
+func decodeArray(json JSON, model mdl.Model) ([]val.Value, JSON, err.Error) {
+	json, e := readLiteral(`[`, json)
+	if e != nil {
+		return nil, json, e
+	}
+	vs := make([]val.Value, 0, 16)
+	for {
+		if json, e := readLiteral(`]`, skipWhiteSpace(json)); e == nil {
+			return vs, json, nil
+		}
+		v, temp, e := decode(json, model)
+		if e != nil {
+			return nil, temp, e
+		}
+		vs, json = append(vs, v), temp
+		if temp, e := readLiteral(`,`, skipWhiteSpace(json)); e == nil {
+			json = temp
+			continue
+		}
+		json, e = readLiteral(`]`, skipWhiteSpace(json))
+		if e != nil {
+			return nil, json, e
+		}
+		return vs, json, nil
+	}
+	panic("never reached")
+}
+
+// allows trailing commas
+func decodeStruct(json JSON, strct mdl.Struct) (val.Value, JSON, err.Error) {
+	json, e := readLiteral(`{`, json)
+	if e != nil {
+		return nil, json, e
+	}
+	vs := val.NewStruct(strct.Len())
+	for i, l := 0, strct.Len(); i < l; i++ {
+		str, temp, e := readString(skipWhiteSpace(json))
+		if e != nil {
+			return nil, temp, e
+		}
+		element, ok := strct.Get(str)
+		if !ok {
+			return nil, json, err.InputParsingError{
+				Problem: fmt.Sprintf(`undefined struct field "%s"`, str),
+				Input:   json,
+			}
+		}
+		json, e = readLiteral(`:`, skipWhiteSpace(temp))
+		if e != nil {
+			return nil, json, e
+		}
+		v, temp, e := decode(json, element)
+		if e != nil {
+			return nil, temp, e
+		}
+		vs.Set(str, v)
+		json = temp
+		if i == (l - 1) {
+			// allow optional trailing comma
+			json, _ = readLiteral(`,`, skipWhiteSpace(json))
+			break
+		}
+		json, e = readLiteral(`,`, skipWhiteSpace(json))
+		if e != nil {
+			return nil, json, e
+		}
+	}
+	// closing curly brace
+	json, e = readLiteral(`}`, skipWhiteSpace(json))
+	if e != nil {
+		return nil, json, e
+	}
+	return vs, json, nil
+}
+
+// allows trailing commas
+func decodeObject(json JSON, model mdl.Model) (map[string]val.Value, JSON, err.Error) {
+	json, e := readLiteral(`{`, json)
+	if e != nil {
+		return nil, json, e
+	}
+	vs := make(map[string]val.Value, 16)
+	for {
+		if json, e := readLiteral(`}`, skipWhiteSpace(json)); e == nil {
+			return vs, json, nil
+		}
+		str, temp, e := readString(skipWhiteSpace(json))
+		if e != nil {
+			return nil, temp, e
+		}
+		json, e = readLiteral(`:`, skipWhiteSpace(temp))
+		if e != nil {
+			return nil, json, e
+		}
+		v, temp, e := decode(json, model)
+		if e != nil {
+			return nil, temp, e
+		}
+		vs[str], json = v, temp
+		if temp, e := readLiteral(`,`, skipWhiteSpace(json)); e == nil {
+			json = temp
+			continue
+		}
+		json, e = readLiteral(`}`, skipWhiteSpace(json))
+		if e != nil {
+			return nil, json, e
+		}
+		return vs, json, nil
+	}
+	panic("never reached")
+}
+
+func skipWhiteSpace(json JSON) JSON {
+	for len(json) > 0 && (json[0] == '\t' || json[0] == '\n' || json[0] == '\r' || json[0] == ' ') {
+		json = json[1:]
+	}
+	return json
+}
+
+// postcondition: returns intact JSON on error
+func readLiteral(lit string, json JSON) (JSON, err.Error) {
+	bs := JSON(lit)
+	if len(bs) > len(json) {
+		return json, err.InputParsingError{
+			Problem: fmt.Sprintf(`expected "%s", input too short`, bs),
+			Input:   []byte(json),
+		}
+	}
+	cs := json[:len(bs)]
+	if !bytes.Equal(bs, cs) {
+		return json, err.InputParsingError{
+			Problem: fmt.Sprintf(`expected "%s" but found "%s"`, bs, cs),
+			Input:   []byte(json),
+		}
+	}
+	return json[len(bs):], nil
+}
+
+func assertNonEmpty(json JSON) err.Error {
+	if len(json) == 0 {
+		return err.InputParsingError{
+			Problem: `unexpected end of input`,
+			Input:   []byte(json),
+		}
+	}
+	return nil
+}
+
 func isNull(x JSON) bool {
 	return x == nil || (len(x) == 4 && (x[0] == 'n' && x[1] == 'u' && x[2] == 'l' && x[3] == 'l'))
-}
-
-func mustMarshal(v interface{}) []byte {
-	bs, e := json.Marshal(v)
-	if e != nil {
-		log.Panicln(e.Error())
-	}
-	return bs
-}
-
-func mapJsonError(e error, bs []byte) err.Error {
-	switch e := e.(type) {
-	case *json.SyntaxError:
-		return err.InputParsingError{e.Error(), bs[e.Offset:]}
-	case *json.UnmarshalTypeError:
-		expected := "?"
-		switch e.Type.Kind() {
-		case reflect.Map:
-			expected = "object"
-		case reflect.Slice:
-			expected = "array"
-		case reflect.Bool:
-			expected = "boolean"
-		case reflect.String:
-			expected = "string"
-		case reflect.Float64:
-			expected = "number"
-		case reflect.Int8:
-			expected = "number (that fits int8)"
-		case reflect.Int16:
-			expected = "number (that fits int16)"
-		case reflect.Int32:
-			expected = "number (that fits int32)"
-		case reflect.Int64:
-			expected = "number (that fits int64)"
-		case reflect.Uint8:
-			expected = "number (that fits uint8)"
-		case reflect.Uint16:
-			expected = "number (that fits uint16)"
-		case reflect.Uint32:
-			expected = "number (that fits uint32)"
-		case reflect.Uint64:
-			expected = "number (that fits uint64)"
-		}
-		return err.InputParsingError{fmt.Sprintf(`expected %s, have %s`, expected, e.Value), bs[e.Offset-1:]}
-	}
-	return err.InputParsingError{`error parsing json`, bs}
 }
 
 func reduceInputParsingErrorList(es err.ErrorList) err.ErrorList {

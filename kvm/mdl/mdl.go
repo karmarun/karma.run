@@ -89,22 +89,6 @@ func ValueFromModel(metaId string, model Model, recursions map[*Recursion]struct
 
 	switch m := model.(type) {
 
-	case Or:
-		list := make(val.List, 0, 8)
-		left := ValueFromModel(metaId, m[0], recursions)
-		if u, ok := left.(val.Union); ok && u.Case == "or" {
-			list = append(list, u.Value.(val.List)...)
-		} else {
-			list = append(list, left)
-		}
-		right := ValueFromModel(metaId, m[1], recursions)
-		if u, ok := right.(val.Union); ok && u.Case == "or" {
-			list = append(list, u.Value.(val.List)...)
-		} else {
-			list = append(list, right)
-		}
-		return val.Union{"or", list}
-
 	case *Recursion:
 		if _, ok := recursions[m]; ok {
 			return val.Union{"recurse", val.String(m.Label)}
@@ -376,21 +360,6 @@ func ModelFromValue(metaId string, u val.Union, recursions map[string]*Recursion
 		}
 		return m, nil
 
-	case "or":
-		v := u.Value.(val.List)
-		if len(v) == 0 {
-			return nil, err.ModelParsingError{`empty "or"`, u, nil}
-		}
-		ms := make([]Model, len(v), len(v))
-		for i, w := range v {
-			m, e := ModelFromValue(metaId, w.(val.Union), recursions)
-			if e != nil {
-				return nil, e.AppendPath(err.ErrorPathElementUnionCase(u.Case), err.ErrorPathElementListIndex(i))
-			}
-			ms[i] = m
-		}
-		return RollOr(ms), nil // NOTE: can't use Either/UnionOf here because we have half-finished *Recursions
-
 	case "union":
 		v := u.Value.(val.Map)
 		m := NewUnion(v.Len())
@@ -414,7 +383,7 @@ func ModelFromValue(metaId string, u val.Union, recursions map[string]*Recursion
 		if e != nil {
 			return nil, e.AppendPath(err.ErrorPathElementUnionCase(u.Case))
 		}
-		return Or{m, Null{}}, nil // NOTE: can't use Either/UnionOf here because we have half-finished *Recursions
+		return Optional{m}, nil
 
 	case "unique":
 		m, e := ModelFromValue(metaId, u.Value.(val.Union), recursions)
@@ -471,42 +440,10 @@ func ModelFromValue(metaId string, u val.Union, recursions map[string]*Recursion
 	case "bool":
 		return Bool{}, nil
 
-	case "any":
-		return Any{}, nil
-
 	case "ref":
 		return Ref{string(u.Value.(val.Ref)[1])}, nil
 	}
 	panic(fmt.Sprintf(`undefined model constructor: %s`, u.Case))
-}
-
-// RollOr left-reduces its argument list into an Or tree.
-func RollOr(ms []Model) Model {
-	if len(ms) == 0 {
-		panic("mdl.RollOr of zero models")
-	}
-	if len(ms) == 1 {
-		return ms[0]
-	}
-	return Or{ms[0], RollOr(ms[1:])}
-}
-
-// UnrollOr returns all individual submodels in an Or tree as a list.
-func UnrollOr(m Model, c []Model) []Model {
-	if o, ok := m.(Or); ok {
-		return UnrollOr(o[1], UnrollOr(o[0], c))
-	}
-	return append(c, m)
-}
-
-func UnionOf(ms ...Model) Model {
-	if len(ms) == 0 {
-		panic("mdl.UnionOf zero arguments")
-	}
-	if len(ms) == 1 {
-		return ms[0]
-	}
-	return Either(ms[0], RollOr(ms[1:]), nil)
 }
 
 var any = Any{}
@@ -524,290 +461,11 @@ func Either(l, r Model, m map[*Recursion]*Recursion) Model {
 		return any
 	}
 
-	{ // handle recursions until convergence
-
-		lr, lok := l.(*Recursion)
-		rr, rok := r.(*Recursion)
-		if (lok || rok) && m == nil {
-			m = make(map[*Recursion]*Recursion, 8)
-		}
-		switch {
-		case lok && rok: // both recursions
-			if lp, ok := m[lr]; ok {
-				rp, ok := m[rr]
-				if !ok {
-					c := NewRecursion(rr.Label)
-					m[rr] = c
-					c.Model = Either(lr.Model, rr.Model, m)
-					delete(m, rr)
-					return c
-				}
-				if lp == rp {
-					return lp
-				}
-				return Or{lp, rp}
-			}
-			if rp, ok := m[rr]; ok {
-				lp, ok := m[lr]
-				if !ok {
-					c := NewRecursion(lr.Label)
-					m[lr] = c
-					c.Model = Either(lr.Model, rr.Model, m)
-					delete(m, lr)
-					return c
-				}
-				if lp == rp {
-					return lp
-				}
-				return Or{lp, rp}
-			}
-			// m[lr] == m[rr] == nil
-			c := NewRecursion(labelUnion(lr.Label, rr.Label))
-			m[lr], m[rr] = c, c
-			c.Model = Either(lr.Model, rr.Model, m)
-			delete(m, lr)
-			delete(m, rr)
-			return c
-
-		case lok && !rok: // left is recursive, right not
-			if _, ok := m[lr]; ok {
-				return Either(lr.Model, r, m)
-			} else {
-				c := NewRecursion(lr.Label)
-				m[lr] = c
-				c.Model = Either(lr.Model, r, m)
-				delete(m, lr)
-				return c
-			}
-
-		case !lok && rok: // left not recursive, right is
-			if _, ok := m[rr]; ok {
-				return Either(l, rr.Model, m)
-			} else {
-				c := NewRecursion(rr.Label)
-				m[rr] = c
-				c.Model = Either(l, rr.Model, m)
-				delete(m, rr)
-				return c
-			}
-		}
-	}
-
-	{ // handle "or" cases
-		_, lok := l.(Or)
-		_, rok := r.(Or)
-		if lok || rok {
-			return eitherOr(l, r, m)
-		}
-	}
-
-	{ // handle unique
-		lu, lok := l.(Unique)
-		ru, rok := r.(Unique)
-		switch {
-		case lok && rok: // both uniques
-			return Either(lu.Model, ru.Model, m)
-		case lok && !rok: // left is unique, right not
-			return Either(lu.Model, r, m)
-		case !lok && rok: // left not unique, right is
-			return Either(l, ru.Model, m)
-		}
-	}
-
-	{ // handle annotations
-		la, lok := l.(Annotation)
-		ra, rok := r.(Annotation)
-		switch {
-		case lok && rok: // both annotations
-			return Annotation{la.Value, Annotation{ra.Value, Either(la.Model, ra.Model, m)}}
-		case lok && !rok: // left is annotation, right not
-			return Annotation{la.Value, Either(la.Model, r, m)}
-		case !lok && rok: // left not annotation, right is
-			return Annotation{ra.Value, Either(l, ra.Model, m)}
-		}
-	}
-
-	switch l := l.(type) {
-	case Set:
-		q, ok := r.(Set)
-		if !ok {
-			return Or{l, r}
-		}
-		return Set{Either(l.Elements, q.Elements, m)}
-	case List:
-		q, ok := r.(List)
-		if !ok {
-			return Or{l, r}
-		}
-		return List{Either(l.Elements, q.Elements, m)}
-	case Map:
-		q, ok := r.(Map)
-		if !ok {
-			return Or{l, r}
-		}
-		return Map{Either(l.Elements, q.Elements, m)}
-	case Tuple:
-		q, ok := r.(Tuple)
-		if !ok {
-			return Or{l, r}
-		}
-		if len(l) == len(q) {
-			t := make(Tuple, len(q), len(q))
-			for i, _ := range l {
-				t[i] = Either(l[i], q[i], m)
-			}
-			return t
-		}
-		return Or{l, r}
-
-	case Struct:
-		q, ok := r.(Struct)
-		if !ok {
-			return Or{l, r}
-		}
-		out := NewStruct(minInt(q.Len(), l.Len()))
-		ks := make([]string, 0, minInt(q.Len(), l.Len()))
-		for _, k := range l.Keys() {
-			if _, ok := q.Get(k); ok {
-				ks = append(ks, k)
-			}
-		}
-		for _, k := range ks {
-			a, _ := l.Get(k)
-			b, _ := l.Get(k)
-			out.Set(k, Either(a, b, m))
-		}
-		return out
-
-	case Union:
-		q, ok := r.(Union)
-		if !ok {
-			return Or{l, r}
-		}
-		u := NewUnion(l.Len() + q.Len())
-		l.ForEach(func(k string, w Model) bool {
-			if x, ok := q.Get(k); ok {
-				u.Set(k, Either(w, x, m))
-			} else {
-				u.Set(k, w)
-			}
-			return true
-		})
-		q.ForEach(func(k string, x Model) bool {
-			if _, ok := u.Get(k); ok {
-				return true
-			}
-			u.Set(k, x)
-			return true
-		})
-		return u
-
-	case Enum:
-		q, ok := r.(Enum)
-		if !ok {
-			return Or{l, r}
-		}
-		e := make(Enum, len(l)+len(q))
-		for k, _ := range l {
-			e[k] = struct{}{}
-		}
-		for k, _ := range q {
-			e[k] = struct{}{}
-		}
-		return e
-
-	case Ref:
-		q, ok := r.(Ref)
-		if !ok {
-			return Or{l, r}
-		}
-		if l.Model == "" || q.Model == "" {
-			return Ref{""}
-		}
-		if l.Model == q.Model {
-			return l
-		}
-		return Or{l, r}
-	case Null:
-		_, ok := r.(Null)
-		if !ok {
-			return Or{l, r}
-		}
-		return l
-	case String:
-		_, ok := r.(String)
-		if !ok {
-			return Or{l, r}
-		}
-		return l
-	case Float:
-		_, ok := r.(Float)
-		if !ok {
-			return Or{l, r}
-		}
-		return l
-	case Bool:
-		_, ok := r.(Bool)
-		if !ok {
-			return Or{l, r}
-		}
-		return l
-	case DateTime:
-		_, ok := r.(DateTime)
-		if !ok {
-			return Or{l, r}
-		}
-		return l
-	case Int8:
-		_, ok := r.(Int8)
-		if !ok {
-			return Or{l, r}
-		}
-		return l
-	case Int16:
-		_, ok := r.(Int16)
-		if !ok {
-			return Or{l, r}
-		}
-		return l
-	case Int32:
-		_, ok := r.(Int32)
-		if !ok {
-			return Or{l, r}
-		}
-		return l
-	case Int64:
-		_, ok := r.(Int64)
-		if !ok {
-			return Or{l, r}
-		}
-		return l
-	case Uint8:
-		_, ok := r.(Uint8)
-		if !ok {
-			return Or{l, r}
-		}
-		return l
-	case Uint16:
-		_, ok := r.(Uint16)
-		if !ok {
-			return Or{l, r}
-		}
-		return l
-	case Uint32:
-		_, ok := r.(Uint32)
-		if !ok {
-			return Or{l, r}
-		}
-		return l
-	case Uint64:
-		_, ok := r.(Uint64)
-		if !ok {
-			return Or{l, r}
-		}
+	if l == r {
 		return l
 	}
-	panic(fmt.Sprintf("unhandled model type: %T\n", l))
+
+	return any
 }
 
 func labelUnion(a, b string) string {
@@ -832,39 +490,14 @@ func couldRecurseInfinitely(m Model, seen map[*Recursion]struct{}) bool {
 		return couldRecurseInfinitely(m.Model, seen)
 	case Annotation:
 		return couldRecurseInfinitely(m.Model, seen)
-	case Or:
-		return couldRecurseInfinitely(m[0], seen) || couldRecurseInfinitely(m[1], seen)
 	}
 	return false
 }
 
-func eitherOr(a, b Model, recs map[*Recursion]*Recursion) Model {
-	inputs := make([]Model, 0, 16)
-	for _, m := range UnrollOr(a, nil) {
-		inputs = append(inputs, m)
+func UnionOf(ms ...Model) Model {
+	base := ms[0]
+	for _, m := range ms[1:] {
+		base = Either(base, m, nil)
 	}
-	for _, m := range UnrollOr(b, nil) {
-		inputs = append(inputs, m)
-	}
-	outputs := inputs[:0]
-	for _, m := range inputs {
-		alreadyInSet := false
-		for _, w := range outputs {
-			if m.Equals(w) {
-				alreadyInSet = true
-				break
-			}
-		}
-		if !alreadyInSet {
-			outputs = append(outputs, m)
-		}
-	}
-	if len(outputs) == 1 {
-		return outputs[0]
-	}
-	bottom := outputs[0]
-	for _, m := range outputs[1:] {
-		bottom = Either(m, bottom, recs)
-	}
-	return bottom
+	return base
 }

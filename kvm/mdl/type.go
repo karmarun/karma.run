@@ -18,8 +18,8 @@ func (m Unique) ValueType() val.Type {
 	return m.Model.ValueType()
 }
 
-func (m Or) ValueType() val.Type {
-	return m[0].ValueType() | m[1].ValueType()
+func (m Optional) ValueType() val.Type {
+	return m.Model.ValueType()
 }
 
 func (Any) ValueType() val.Type {

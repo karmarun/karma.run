@@ -80,6 +80,48 @@ func (m *Recursion) Equals(n Model) bool {
 	return false
 }
 
+type Optional struct {
+	Model Model
+}
+
+func (m Optional) Transform(f func(Model) Model) Model {
+	return f(List{m.Model.Transform(f)})
+}
+
+func (m Optional) TraverseValue(j val.Value, f func(val.Value, Model)) {
+	f(j, m)
+	if j != val.Null {
+		m.Model.TraverseValue(j, f)
+	}
+}
+
+func (m Optional) Copy() Model {
+	return Optional{m.Model.Copy()}
+}
+
+func (m Optional) Traverse(p []string, f func([]string, Model)) {
+	f(p, m)
+	m.Model.Traverse(append(p, "model"), f)
+}
+
+func (m Optional) Zero() val.Value {
+	if m.Model.Zeroable() {
+		return m.Model.Zero()
+	}
+	return val.Null
+}
+
+func (m Optional) Concrete() Model {
+	return m
+}
+
+func (m Optional) Equals(n Model) bool {
+	if q, ok := n.(Optional); ok {
+		return m.Model.Equals(q.Model)
+	}
+	return false
+}
+
 type List struct {
 	Elements Model
 }
@@ -705,45 +747,6 @@ func (m Annotation) Equals(n Model) bool {
 	return false
 }
 
-type Or [2]Model
-
-func (m Or) Transform(f func(Model) Model) Model {
-	return f(Either(m[0].Transform(f), m[1].Transform(f), nil))
-}
-
-func (w Or) TraverseValue(j val.Value, f func(val.Value, Model)) {
-	w[0].TraverseValue(j, f)
-	w[1].TraverseValue(j, f)
-}
-
-func (m Or) Copy() Model {
-	return Or{m[0].Copy(), m[1].Copy()}
-}
-
-func (w Or) Traverse(p []string, f func([]string, Model)) {
-	f(p, w)
-	w[0].Traverse(append(p, "0"), f)
-	w[1].Traverse(append(p, "1"), f)
-}
-
-func (r Or) Zero() val.Value {
-	if r[0].Zeroable() {
-		return r[0].Zero()
-	}
-	return r[1].Zero()
-}
-
-func (m Or) Concrete() Model {
-	return m
-}
-
-func (m Or) Equals(n Model) bool {
-	if q, ok := n.(Or); ok {
-		return (m[0].Equals(q[0]) && m[1].Equals(q[1])) || (m[0].Equals(q[1]) && m[1].Equals(q[0]))
-	}
-	return false
-}
-
 type Enum map[string]struct{}
 
 func (m Enum) Zero() val.Value {
@@ -869,12 +872,12 @@ func (r *Recursion) Nullable() bool {
 	return r.Model.Nullable() // TODO use recursion lock
 }
 
-func (Any) Nullable() bool {
-	return false
+func (Optional) Nullable() bool {
+	return true
 }
 
-func (o Or) Nullable() bool {
-	return o[0].Nullable() || o[1].Nullable()
+func (Any) Nullable() bool {
+	return false
 }
 
 func (u Unique) Nullable() bool {
@@ -941,12 +944,12 @@ func (r *Recursion) Zeroable() bool {
 	return r.Model.Zeroable() // TODO use recursion lock
 }
 
-func (Any) Zeroable() bool {
-	return false
+func (Optional) Zeroable() bool {
+	return true
 }
 
-func (o Or) Zeroable() bool {
-	return o[0].Zeroable() || o[1].Zeroable()
+func (Any) Zeroable() bool {
+	return false
 }
 
 func (u Unique) Zeroable() bool {
@@ -1028,11 +1031,11 @@ func (m *Recursion) Unwrap() Model {
 	return m
 }
 
-func (m Any) Unwrap() Model {
+func (m Optional) Unwrap() Model {
 	return m
 }
 
-func (m Or) Unwrap() Model {
+func (m Any) Unwrap() Model {
 	return m
 }
 

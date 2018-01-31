@@ -42,7 +42,6 @@ func NewMetaModelValue(metaId string) val.Value {
 	return val.Union{"recursion", val.StructFromMap(map[string]val.Value{
 		"label": val.String("x"),
 		"model": val.Union{"union", val.MapFromMap(map[string]val.Value{
-			"or": val.Union{"list", val.Union{"recurse", val.String("x")}},
 			"recursive": val.Union{"struct", val.MapFromMap(map[string]val.Value{
 				"top":    val.Union{"string", val.Struct{}},
 				"models": val.Union{"map", val.Union{"recurse", val.String("x")}},
@@ -66,7 +65,6 @@ func NewMetaModelValue(metaId string) val.Value {
 			"optional": val.Union{"recurse", val.String("x")},
 			"unique":   val.Union{"recurse", val.String("x")},
 			"enum":     val.Union{"set", val.Union{"string", val.Struct{}}},
-			"any":      val.Union{"struct", val.Map{}},
 			"bool":     val.Union{"struct", val.Map{}},
 			"dateTime": val.Union{"struct", val.Map{}},
 			"float":    val.Union{"struct", val.Map{}},

@@ -24,30 +24,6 @@ func findAutoTransformation(source, target mdl.Model) (xpr.Expression, err.Error
 		}
 	}
 
-	// handle source Or (has to happen before target.(mdl.Or) check)
-	if source, ok := source.(mdl.Or); ok {
-		possibilities := mdl.UnrollOr(source, nil)
-		cases := make(map[string]xpr.Expression, len(possibilities))
-		for _, source := range possibilities {
-			arg, e := findAutoTransformation(source, target)
-			if e != nil {
-				return nil, e
-			}
-			cases[modelTypeKey(source)] = arg
-		}
-		return xpr.SwitchType{Value: xpr.Argument{}, Cases: cases}, nil
-	}
-
-	// handle target Or
-	if o, ok := target.(mdl.Or); ok {
-		l, e := findAutoTransformation(source, o[0])
-		if e == nil {
-			return l, nil
-		}
-		r, e := findAutoTransformation(source, o[1])
-		return r, e
-	}
-
 	// only possible target value
 	if _, ok := target.(mdl.Null); ok {
 		return xpr.Literal{val.Null}, nil
@@ -322,9 +298,55 @@ func newAutoTransformationError(source, target mdl.Model) err.Error {
 	return err.ExecutionError{
 		fmt.Sprintf(`cannot infer mapping from %s to %s`, modelTypeKey(source), modelTypeKey(target)),
 		nil,
-		// C: val.Map{
-		//  "source": mdl.ValueFromModel("meta", source, nil),
-		//  "target": mdl.ValueFromModel("meta", target, nil),
-		// },
 	}
+}
+
+func modelTypeKey(m mdl.Model) string {
+	switch m.Concrete().(type) {
+	case mdl.Null:
+		return "null"
+	case mdl.Set:
+		return "set"
+	case mdl.List:
+		return "list"
+	case mdl.Map:
+		return "map"
+	case mdl.Tuple:
+		return "tuple"
+	case mdl.Struct:
+		return "struct"
+	case mdl.Union:
+		return "union"
+	case mdl.String:
+		return "string"
+	case mdl.Enum:
+		return "enum"
+	case mdl.Float:
+		return "float"
+	case mdl.Bool:
+		return "bool"
+	case mdl.Any:
+		return "any"
+	case mdl.Ref:
+		return "ref"
+	case mdl.DateTime:
+		return "dateTime"
+	case mdl.Int8:
+		return "int8"
+	case mdl.Int16:
+		return "int16"
+	case mdl.Int32:
+		return "int32"
+	case mdl.Int64:
+		return "int64"
+	case mdl.Uint8:
+		return "uint8"
+	case mdl.Uint16:
+		return "uint16"
+	case mdl.Uint32:
+		return "uint32"
+	case mdl.Uint64:
+		return "uint64"
+	}
+	panic(fmt.Sprintf(`unhandled modelTypeKey case: %T`, m))
 }

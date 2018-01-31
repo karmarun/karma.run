@@ -675,15 +675,6 @@ func (x RelocateRef) Transform(f func(Expression) Expression) Expression {
 	return f(RelocateRef{f(x.Ref), f(x.Model)})
 }
 
-type SwitchType struct {
-	Value Expression
-	Cases map[string]Expression
-}
-
-func (x SwitchType) Transform(f func(Expression) Expression) Expression {
-	return f(SwitchType{f(x.Value), mapExpressionMap(x.Cases, f)})
-}
-
 type SwitchCase struct {
 	Value Expression
 	Cases map[string]Expression
@@ -709,16 +700,4 @@ type MemSort struct {
 
 func (x MemSort) Transform(f func(Expression) Expression) Expression {
 	return f(MemSort{f(x.Value), f(x.Expression)})
-}
-
-type Do map[string]Expression
-
-func (x Do) Transform(f func(Expression) Expression) Expression {
-	return f(Do(mapExpressionMap(x, f)))
-}
-
-type Bind string
-
-func (x Bind) Transform(f func(Expression) Expression) Expression {
-	return f(x)
 }

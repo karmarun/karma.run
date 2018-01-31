@@ -26,17 +26,44 @@ func ExpressionFromValue(v val.Value) Expression {
 
 	switch u := v.(val.Union); u.Case {
 
-	case "do":
-		arg := u.Value.(val.Map)
-		bs := make(map[string]Expression, arg.Len())
-		arg.ForEach(func(k string, v val.Value) bool {
-			bs[k] = ExpressionFromValue(v)
-			return true
-		})
-		return Do(bs)
+	case "null":
+		return Literal{u.Value}
 
-	case "bind":
-		return Bind(string(u.Value.(val.String)))
+	case "bool":
+		return Literal{u.Value}
+
+	case "dateTime":
+		return Literal{u.Value}
+
+	case "string":
+		return Literal{u.Value}
+
+	case "float":
+		return Literal{u.Value}
+
+	case "int8":
+		return Literal{u.Value}
+
+	case "int16":
+		return Literal{u.Value}
+
+	case "int32":
+		return Literal{u.Value}
+
+	case "int64":
+		return Literal{u.Value}
+
+	case "uint8":
+		return Literal{u.Value}
+
+	case "uint16":
+		return Literal{u.Value}
+
+	case "uint32":
+		return Literal{u.Value}
+
+	case "uint64":
+		return Literal{u.Value}
 
 	case "id", "arg":
 		return Argument{}
@@ -46,87 +73,6 @@ func ExpressionFromValue(v val.Value) Expression {
 
 	case "zero":
 		return Zero{}
-
-	case "newBool":
-		return NewBool{ExpressionFromValue(u.Value)}
-
-	case "newInt8":
-		return NewInt8{ExpressionFromValue(u.Value)}
-
-	case "newInt16":
-		return NewInt16{ExpressionFromValue(u.Value)}
-
-	case "newInt32":
-		return NewInt32{ExpressionFromValue(u.Value)}
-
-	case "newInt64", "newInt", "floatToInt":
-		return NewInt64{ExpressionFromValue(u.Value)}
-
-	case "newUint8":
-		return NewUint8{ExpressionFromValue(u.Value)}
-
-	case "newUint16":
-		return NewUint16{ExpressionFromValue(u.Value)}
-
-	case "newUint32":
-		return NewUint32{ExpressionFromValue(u.Value)}
-
-	case "newUint64", "newUint":
-		return NewUint64{ExpressionFromValue(u.Value)}
-
-	case "newFloat", "intToFloat":
-		return NewFloat{ExpressionFromValue(u.Value)}
-
-	case "newString":
-		return NewString{ExpressionFromValue(u.Value)}
-
-	case "newDateTime":
-		return NewDateTime{ExpressionFromValue(u.Value)}
-
-	case "newRef":
-		arg := u.Value.(val.Struct)
-		return NewRef{ExpressionFromValue(arg.Field("model")), ExpressionFromValue(arg.Field("id"))}
-
-	case "newUnion":
-		arg := u.Value.(val.Struct)
-		return NewUnion{ExpressionFromValue(arg.Field("case")), ExpressionFromValue(arg.Field("value"))}
-
-	case "newList":
-		arg := u.Value.(val.List)
-		nod := make(NewList, len(arg), len(arg))
-		for i, sub := range arg {
-			nod[i] = ExpressionFromValue(sub)
-		}
-		return nod
-
-	case "newTuple":
-		arg := u.Value.(val.List)
-		nod := make(NewTuple, len(arg), len(arg))
-		for i, sub := range arg {
-			nod[i] = ExpressionFromValue(sub)
-		}
-		return nod
-
-	case "newMap":
-		arg := u.Value.(val.Map)
-		nod := make(NewMap, arg.Len())
-		arg.ForEach(func(k string, v val.Value) bool {
-			nod[k] = ExpressionFromValue(v)
-			return true
-		})
-		return nod
-
-	case "newStruct":
-		arg := u.Value.(val.Map)
-		nod := make(NewStruct, arg.Len())
-		arg.ForEach(func(k string, v val.Value) bool {
-			nod[k] = ExpressionFromValue(v)
-			return true
-		})
-		return nod
-
-	case "contextual", "static":
-		return Literal{u.Value}
 
 	case "isPresent":
 		return IsPresent{ExpressionFromValue(u.Value)}
@@ -489,20 +435,6 @@ func ExpressionFromValue(v val.Value) Expression {
 	case "refTo":
 		return RefTo{ExpressionFromValue(u.Value)}
 
-	case "switchType":
-		arg := u.Value.(val.Struct)
-		node := SwitchType{nil, make(map[string]Expression, arg.Len()-1)}
-		if arg.Field("value") == val.Null {
-			arg.Set("value", argValue)
-		}
-		node.Value = ExpressionFromValue(arg.Field("value"))
-		arg.Delete("value")
-		arg.ForEach(func(k string, v val.Value) bool {
-			node.Cases[k] = ExpressionFromValue(v)
-			return true
-		})
-		return node
-
 	case "switchCase":
 		arg := u.Value.(val.Struct)
 		if arg.Field("value") == val.Null {
@@ -562,10 +494,123 @@ func ValueFromExpression(x Expression) val.Value {
 		return val.Union{"zero", val.Struct{}}
 
 	case Literal:
-		if node.Value.Primitive() {
-			return node.Value
+		// case NewList:
+		// 	return val.Union{"newList", make(val.List, len(node), len(node)).OverMap(func(i int, _ val.Value) val.Value {
+		// 		return ValueFromExpression(node[i])
+		// 	})}
+
+		// case NewTuple:
+		// 	return val.Union{"newTuple", make(val.Tuple, len(node), len(node)).OverMap(func(i int, _ val.Value) val.Value {
+		// 		return ValueFromExpression(node[i])
+		// 	})}
+
+		// case NewMap:
+		// 	values := val.NewMap(len(node))
+		// 	for k, sub := range node {
+		// 		values.Set(k, ValueFromExpression(sub))
+		// 	}
+		// 	return val.Union{"newMap", values}
+
+		// case NewStruct:
+		// 	values := val.NewMap(len(node))
+		// 	for k, sub := range node {
+		// 		values.Set(k, ValueFromExpression(sub))
+		// 	}
+		// 	return val.Union{"newStruct", values}
+
+		// case NewUnion:
+		// 	return val.Union{"newUnion", val.StructFromMap(map[string]val.Value{
+		// 		"value": ValueFromExpression(node.Value),
+		// 		"case":  ValueFromExpression(node.Case),
+		// 	})}
+
+		switch v := node.Value.(type) {
+		case val.Meta:
+			return ValueFromExpression(Literal{v.Value})
+
+		case val.Tuple:
+			return val.Union{"tuple", make(val.List, len(v), len(v)).OverMap(func(i int, v val.Value) val.Value {
+				return ValueFromExpression(Literal{v})
+			})}
+
+		case val.List:
+			return val.Union{"list", make(val.List, len(v), len(v)).OverMap(func(i int, v val.Value) val.Value {
+				return ValueFromExpression(Literal{v})
+			})}
+
+		case val.Union:
+			arg := make(val.Tuple, 2, 2)
+			arg[0] = val.String(v.Case)
+			arg[1] = ValueFromExpression(Literal{v.Value})
+			return val.Union{"union", arg}
+
+		case val.Struct:
+			arg := val.NewMap(v.Len())
+			v.ForEach(func(k string, v val.Value) bool {
+				arg.Set(k, ValueFromExpression(Literal{v}))
+				return true
+			})
+			return val.Union{"struct", arg}
+
+		case val.Map:
+			arg := val.NewMap(v.Len())
+			v.ForEach(func(k string, v val.Value) bool {
+				arg.Set(k, ValueFromExpression(Literal{v}))
+				return true
+			})
+			return val.Union{"map", arg}
+
+		case val.Set:
+			arg := make(val.Set, len(v))
+			for _, v := range v {
+				w := ValueFromExpression(Literal{v})
+				arg[val.Hash(w, nil).Sum64()] = w
+			}
+			return val.Union{"set", arg}
+
+		case val.Float:
+			return val.Union{"float", v}
+
+		case val.Bool:
+			return val.Union{"bool", v}
+
+		case val.String:
+			return val.Union{"string", v}
+
+		case val.Ref:
+			return val.Union{"ref", v}
+
+		case val.DateTime:
+			return val.Union{"dateTime", v}
+
+		case val.Symbol:
+			return val.Union{"symbol", v}
+
+		case val.Int8:
+			return val.Union{"int8", v}
+
+		case val.Int16:
+			return val.Union{"int16", v}
+
+		case val.Int32:
+			return val.Union{"int32", v}
+
+		case val.Int64:
+			return val.Union{"int64", v}
+
+		case val.Uint8:
+			return val.Union{"uint8", v}
+
+		case val.Uint16:
+			return val.Union{"uint16", v}
+
+		case val.Uint32:
+			return val.Union{"uint32", v}
+
+		case val.Uint64:
+			return val.Union{"uint64", v}
+
 		}
-		return val.Union{"static", node.Value}
 
 	case SetField:
 		return val.Union{"setField", val.StructFromMap(map[string]val.Value{
@@ -578,60 +623,6 @@ func ValueFromExpression(x Expression) val.Value {
 			"name":  ValueFromExpression(node.Name),
 			"value": ValueFromExpression(node.Value),
 			"in":    ValueFromExpression(node.In),
-		})}
-
-	case NewBool:
-		arg := ValueFromExpression(node.Argument)
-		return val.Union{"newBool", arg}
-
-	case NewInt8:
-		arg := ValueFromExpression(node.Argument)
-		return val.Union{"newInt8", arg}
-
-	case NewInt16:
-		arg := ValueFromExpression(node.Argument)
-		return val.Union{"newInt16", arg}
-
-	case NewInt32:
-		arg := ValueFromExpression(node.Argument)
-		return val.Union{"newInt32", arg}
-
-	case NewInt64:
-		arg := ValueFromExpression(node.Argument)
-		return val.Union{"newInt64", arg}
-
-	case NewUint8:
-		arg := ValueFromExpression(node.Argument)
-		return val.Union{"newUint8", arg}
-
-	case NewUint16:
-		arg := ValueFromExpression(node.Argument)
-		return val.Union{"newUint16", arg}
-
-	case NewUint32:
-		arg := ValueFromExpression(node.Argument)
-		return val.Union{"newUint32", arg}
-
-	case NewUint64:
-		arg := ValueFromExpression(node.Argument)
-		return val.Union{"newUint64", arg}
-
-	case NewFloat:
-		arg := ValueFromExpression(node.Argument)
-		return val.Union{"newFloat", arg}
-
-	case NewString:
-		arg := ValueFromExpression(node.Argument)
-		return val.Union{"newString", arg}
-
-	case NewDateTime:
-		arg := ValueFromExpression(node.Argument)
-		return val.Union{"newDateTime", arg}
-
-	case NewRef:
-		return val.Union{"newRef", val.StructFromMap(map[string]val.Value{
-			"model": ValueFromExpression(node.Model),
-			"id":    ValueFromExpression(node.Id),
 		})}
 
 	case PresentOrZero:
@@ -793,36 +784,6 @@ func ValueFromExpression(x Expression) val.Value {
 		return val.Union{"index", val.StructFromMap(map[string]val.Value{
 			"number": ValueFromExpression(node.Number),
 			"value":  ValueFromExpression(node.Value),
-		})}
-
-	case NewList:
-		return val.Union{"newList", make(val.List, len(node), len(node)).OverMap(func(i int, _ val.Value) val.Value {
-			return ValueFromExpression(node[i])
-		})}
-
-	case NewTuple:
-		return val.Union{"newTuple", make(val.Tuple, len(node), len(node)).OverMap(func(i int, _ val.Value) val.Value {
-			return ValueFromExpression(node[i])
-		})}
-
-	case NewMap:
-		values := val.NewMap(len(node))
-		for k, sub := range node {
-			values.Set(k, ValueFromExpression(sub))
-		}
-		return val.Union{"newMap", values}
-
-	case NewStruct:
-		values := val.NewMap(len(node))
-		for k, sub := range node {
-			values.Set(k, ValueFromExpression(sub))
-		}
-		return val.Union{"newStruct", values}
-
-	case NewUnion:
-		return val.Union{"newUnion", val.StructFromMap(map[string]val.Value{
-			"value": ValueFromExpression(node.Value),
-			"case":  ValueFromExpression(node.Case),
 		})}
 
 	case Referred:
@@ -1006,14 +967,6 @@ func ValueFromExpression(x Expression) val.Value {
 			"flow":  flow,
 		})}
 
-	case SwitchType:
-		args := val.NewStruct(len(node.Cases))
-		for k, subNode := range node.Cases {
-			args.Set(k, ValueFromExpression(subNode))
-		}
-		args.Set("value", ValueFromExpression(node.Value))
-		return val.Union{"switchType", args}
-
 	case SwitchCase:
 		cases := val.NewMap(len(node.Cases))
 		for k, v := range node.Cases {
@@ -1036,8 +989,6 @@ func ValueFromExpression(x Expression) val.Value {
 			"expression": ValueFromExpression(node.Expression),
 		})}
 
-	default:
-		panic(fmt.Sprintf("unhandled case: %T", node))
-
 	}
+	panic(fmt.Sprintf("unhandled case: %T", x))
 }

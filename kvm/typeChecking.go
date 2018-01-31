@@ -81,11 +81,6 @@ func _checkType(actual, expected mdl.Model, recs map[[2]*mdl.Recursion]struct{})
 
 	actual, expected = actual.Unwrap(), expected.Unwrap()
 
-	if oa, ok := actual.(mdl.Or); ok {
-		left, right := _checkType(oa[0], expected, recs), _checkType(oa[1], expected, recs)
-		return mergeTypeCheckingErrors(left, right)
-	}
-
 	if expected == (mdl.Any{}) {
 		return nil
 	}
@@ -160,17 +155,6 @@ func _checkType(actual, expected mdl.Model, recs map[[2]*mdl.Recursion]struct{})
 	}
 
 	switch expected := expected.(type) {
-
-	case mdl.Or:
-		left := _checkType(actual, expected[0], recs)
-		if len(left) == 0 {
-			return nil
-		}
-		right := _checkType(actual, expected[1], recs)
-		if len(right) == 0 {
-			return nil
-		}
-		return mergeTypeCheckingErrors(left, right)
 
 	case mdl.Set:
 		a, ok := actual.(mdl.Set)

@@ -16,6 +16,7 @@ func modelToHuman(m mdl.Model, indent int, r map[*mdl.Recursion]struct{}) string
 	if r == nil {
 		r = make(map[*mdl.Recursion]struct{})
 	}
+	m = m.Unwrap()
 	switch m := m.(type) {
 	case *mdl.Recursion:
 		if _, ok := r[m]; ok {
@@ -30,9 +31,6 @@ func modelToHuman(m mdl.Model, indent int, r map[*mdl.Recursion]struct{}) string
 		return fmt.Sprintf(`unique %s`, modelToHuman(m.Model, indent, r))
 	case mdl.Annotation:
 		return fmt.Sprintf(`annotation(%s) of %s`, m.Value, modelToHuman(m.Model, indent, r))
-	case mdl.Or:
-		l, r := modelToHuman(m[0], indent, r), modelToHuman(m[1], indent, r)
-		return l + " | " + r
 	case mdl.Set:
 		return "set of " + modelToHuman(m.Elements, indent, r)
 	case mdl.List:

@@ -164,11 +164,7 @@ func (vm VirtualMachine) ParseAndCompile(v val.Value, argument, expected mdl.Mod
 
 func (vm VirtualMachine) Parse(v val.Value, argument, expected mdl.Model) (xpr.TypedExpression, err.Error) {
 	ast := xpr.ExpressionFromValue(v)
-	untyped, e := xpr.EliminateDoNotation(ast)
-	if e != nil {
-		return xpr.TypedExpression{}, e
-	}
-	typed, e := vm.TypeExpression(untyped, argument, expected)
+	typed, e := vm.TypeExpression(ast, argument, expected)
 	if e != nil {
 		return xpr.TypedExpression{}, e
 	}
@@ -1239,7 +1235,7 @@ func (vm VirtualMachine) Write(mid string, values map[string]val.Meta) err.Error
 
 		if mid == vm.RoleModelId() {
 			// TODO: validate that permission expressions are boolean
-			// and do not contain: CRUD, static/contextual
+			// and do not contain: CRUD
 			// ^ analogously for migrations
 		}
 
@@ -1960,123 +1956,10 @@ func inStringSlice(s string, ss []string) bool {
 }
 
 func deoptionalize(m mdl.Model) mdl.Model {
-	switch m := m.(type) {
-	case mdl.Or:
-		if m[0] == (mdl.Null{}) {
-			return m[1]
-		}
-		if m[1] == (mdl.Null{}) {
-			return m[0]
-		}
-		return mdl.Or{
-			deoptionalize(m[0]),
-			deoptionalize(m[1]),
-		}
+	if m, ok := m.(mdl.Optional); ok {
+		return m.Model
 	}
 	return m
-}
-
-func modelTypeKey(m mdl.Model) string {
-	switch m := m.Concrete().(type) {
-	case mdl.Or:
-		return modelTypeKey(m[0]) + "|" + modelTypeKey(m[1])
-	case mdl.Null:
-		return "null"
-	case mdl.Set:
-		return "set"
-	case mdl.List:
-		return "list"
-	case mdl.Map:
-		return "map"
-	case mdl.Tuple:
-		return "tuple"
-	case mdl.Struct:
-		return "struct"
-	case mdl.Union:
-		return "union"
-	case mdl.String:
-		return "string"
-	case mdl.Enum:
-		return "enum"
-	case mdl.Float:
-		return "float"
-	case mdl.Bool:
-		return "bool"
-	case mdl.Any:
-		return "any"
-	case mdl.Ref:
-		return "ref"
-	case mdl.DateTime:
-		return "dateTime"
-	case mdl.Int8:
-		return "int8"
-	case mdl.Int16:
-		return "int16"
-	case mdl.Int32:
-		return "int32"
-	case mdl.Int64:
-		return "int64"
-	case mdl.Uint8:
-		return "uint8"
-	case mdl.Uint16:
-		return "uint16"
-	case mdl.Uint32:
-		return "uint32"
-	case mdl.Uint64:
-		return "uint64"
-	}
-	panic(fmt.Sprintf(`unhandled modelTypeKey case: %T`, m))
-}
-
-func valueTypeKey(v val.Value) string {
-	if v == val.Null {
-		return "null"
-	}
-	switch v.(type) {
-	case val.Raw:
-		return "unknown"
-	case val.Set:
-		return "set"
-	case val.List:
-		return "list"
-	case val.Map:
-		return "map"
-	case val.Tuple:
-		return "tuple"
-	case val.Struct:
-		return "struct"
-	case val.Union:
-		return "union"
-	case val.String:
-		return "string"
-	case val.Symbol:
-		return "enum"
-	case val.Float:
-		return "float"
-	case val.Bool:
-		return "bool"
-	case val.Ref:
-		return "ref"
-	case val.DateTime:
-		return "dateTime"
-	case val.Int8:
-		return "int8"
-	case val.Int16:
-		return "int16"
-	case val.Int32:
-		return "int32"
-	case val.Int64:
-		return "int64"
-	case val.Uint8:
-		return "uint8"
-	case val.Uint16:
-		return "uint16"
-	case val.Uint32:
-		return "uint32"
-	case val.Uint64:
-		return "uint64"
-	}
-	panic(fmt.Sprintf(`unhandled valueTypeKey case: %T`, v))
 }
 
 func reverse(v val.List) {

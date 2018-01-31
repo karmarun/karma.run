@@ -19,14 +19,6 @@ func Encode(v val.Value, m mdl.Model) []byte {
 func encode(v val.Value, m mdl.Model, bs []byte) []byte {
 	m = m.Concrete()
 	switch m := m.(type) {
-	case mdl.Or:
-		t := v.Type()
-		mm := disambiguateModel(t, m)
-		if mm == nil {
-			panic("no model found for value in mdl.Or: " + t.String() + " vs " + m.ValueType().String())
-		}
-		bs = writeUint64(uint64(t), bs)
-		return encode(v, mm, bs)
 
 	case mdl.Any:
 		return karma.Encode(v, bs)
@@ -162,13 +154,6 @@ func Decode(bs []byte, m mdl.Model) (val.Value, []byte) {
 func decode(bs []byte, m mdl.Model) (val.Value, []byte) {
 	m = m.Concrete()
 	switch m := m.(type) {
-	case mdl.Or:
-		ts, bs := readUint64(bs)
-		mm := disambiguateModel(val.Type(ts), m)
-		if mm == nil {
-			panic("no model found for type marker in mdl.Or")
-		}
-		return decode(bs, mm)
 
 	case mdl.Any:
 		return karma.Decode(bs)
@@ -373,28 +358,4 @@ func writeUint16(x uint16, bs []byte) []byte {
 
 func writeUint8(x uint8, bs []byte) []byte {
 	return append(bs, x)
-}
-
-func disambiguateModel(t val.Type, m mdl.Model) mdl.Model {
-	m = m.Concrete()
-	// NOTE: given that Ors can be non-minimal, this check
-	//       must come before m.ValueType() == t
-	if or, ok := m.(mdl.Or); ok {
-		l := disambiguateModel(t, or[0])
-		r := disambiguateModel(t, or[1])
-		if l == nil {
-			return r
-		}
-		if r == nil {
-			return l
-		}
-		return mdl.Either(l, r, nil)
-	}
-	if m.ValueType() == t {
-		return m
-	}
-	if _, ok := m.(mdl.Any); ok {
-		return m
-	}
-	return nil
 }

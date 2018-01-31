@@ -570,19 +570,6 @@ func (vm VirtualMachine) Compile(typed xpr.TypedExpression) inst.Instruction {
 		start := vm.Compile(node.Start.(xpr.TypedExpression))
 		return inst.Sequence{start, inst.GraphFlow{flow}}
 
-	case xpr.Do:
-		panic("vm.Compile: uneliminiated xpr.Do")
-
-	case xpr.Bind:
-		panic("vm.Compile: uneliminiated xpr.Bind")
-
-	case xpr.SwitchType:
-		instruction := make(inst.SwitchType, len(node.Cases))
-		for k, v := range node.Cases {
-			instruction[k] = flattenSequences(vm.Compile(v.(xpr.TypedExpression)), nil)
-		}
-		return inst.Sequence{vm.Compile(node.Value.(xpr.TypedExpression)), instruction}
-
 	case xpr.SwitchCase:
 		instruction := make(inst.SwitchCase, len(node.Cases))
 		for k, v := range node.Cases {

@@ -79,17 +79,6 @@ func _inferType(value val.Value, expected mdl.Model) (mdl.Model, []TypeInference
 
 	switch m := expected.Concrete().(type) {
 
-	case mdl.Or:
-		left, e1 := _inferType(value, m[0])
-		if e1 == nil {
-			return left, nil
-		}
-		right, e2 := _inferType(value, m[1])
-		if e2 == nil {
-			return right, nil
-		}
-		return nil, mergeTypeInferenceErrors(e1, e2)
-
 	case mdl.Any:
 		return mdl.TightestModelForValue(value), nil
 

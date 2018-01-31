@@ -26,7 +26,7 @@ var (
 	FloatModel    = mdl.Float{}
 	StringModel   = mdl.String{}
 	DateTimeModel = mdl.DateTime{}
-	IntegerModel  = mdl.RollOr([]mdl.Model{
+	IntegerModel  = mdl.UnionOf([]mdl.Model{ // TODO: this is now Any
 		Int8Model,
 		Int16Model,
 		Int32Model,
@@ -35,8 +35,8 @@ var (
 		Uint16Model,
 		Uint32Model,
 		Uint64Model,
-	})
-	NumericModel = mdl.RollOr([]mdl.Model{
+	}...)
+	NumericModel = mdl.UnionOf([]mdl.Model{
 		FloatModel,
 		Int8Model,
 		Int16Model,
@@ -46,9 +46,9 @@ var (
 		Uint16Model,
 		Uint32Model,
 		Uint64Model,
-	})
+	}...)
 	NullModel     = mdl.Null{}
-	SortableModel = mdl.RollOr([]mdl.Model{
+	SortableModel = mdl.UnionOf([]mdl.Model{
 		FloatModel,
 		BoolModel,
 		StringModel,
@@ -61,7 +61,7 @@ var (
 		Uint16Model,
 		Uint32Model,
 		Uint64Model,
-	})
+	}...)
 )
 
 var ZeroTypedExpression = xpr.TypedExpression{}
@@ -109,330 +109,6 @@ func (vm VirtualMachine) TypeExpression(node xpr.Expression, argument, expected 
 			}
 		}
 		retNode = xpr.TypedExpression{node, expected, ConstantModel{expected, expected.Zero()}}
-
-	case xpr.NewBool:
-		arg, e := vm.TypeExpression(node.Argument, argument, BoolModel)
-		if e != nil {
-			return arg, e
-		}
-		node.Argument = arg
-		model := mdl.Model(BoolModel)
-		if ca, ok := arg.Actual.(ConstantModel); ok {
-			model = ConstantModel{model, ca.Value}
-		}
-		retNode = xpr.TypedExpression{node, expected, model}
-
-	case xpr.NewInt8:
-		arg, e := vm.TypeExpression(node.Argument, argument, NumericModel)
-		if e != nil {
-			return arg, e
-		}
-		node.Argument = arg
-		model := mdl.Model(Int8Model)
-		if ca, ok := arg.Actual.(ConstantModel); ok {
-			model = ConstantModel{model, convertNumericType(ca.Value, model)}
-		}
-		retNode = xpr.TypedExpression{node, expected, model}
-
-	case xpr.NewInt16:
-		arg, e := vm.TypeExpression(node.Argument, argument, NumericModel)
-		if e != nil {
-			return arg, e
-		}
-		node.Argument = arg
-		model := mdl.Model(Int16Model)
-		if ca, ok := arg.Actual.(ConstantModel); ok {
-			model = ConstantModel{model, convertNumericType(ca.Value, model)}
-		}
-		retNode = xpr.TypedExpression{node, expected, model}
-
-	case xpr.NewInt32:
-		arg, e := vm.TypeExpression(node.Argument, argument, NumericModel)
-		if e != nil {
-			return arg, e
-		}
-		node.Argument = arg
-		model := mdl.Model(Int32Model)
-		if ca, ok := arg.Actual.(ConstantModel); ok {
-			model = ConstantModel{model, convertNumericType(ca.Value, model)}
-		}
-		retNode = xpr.TypedExpression{node, expected, model}
-
-	case xpr.NewInt64:
-		arg, e := vm.TypeExpression(node.Argument, argument, NumericModel)
-		if e != nil {
-			return arg, e
-		}
-		node.Argument = arg
-		model := mdl.Model(Int64Model)
-		if ca, ok := arg.Actual.(ConstantModel); ok {
-			model = ConstantModel{model, convertNumericType(ca.Value, model)}
-		}
-		retNode = xpr.TypedExpression{node, expected, model}
-
-	case xpr.NewUint8:
-		arg, e := vm.TypeExpression(node.Argument, argument, NumericModel)
-		if e != nil {
-			return arg, e
-		}
-		node.Argument = arg
-		model := mdl.Model(Uint8Model)
-		if ca, ok := arg.Actual.(ConstantModel); ok {
-			model = ConstantModel{model, convertNumericType(ca.Value, model)}
-		}
-		retNode = xpr.TypedExpression{node, expected, model}
-
-	case xpr.NewUint16:
-		arg, e := vm.TypeExpression(node.Argument, argument, NumericModel)
-		if e != nil {
-			return arg, e
-		}
-		node.Argument = arg
-		model := mdl.Model(Uint16Model)
-		if ca, ok := arg.Actual.(ConstantModel); ok {
-			model = ConstantModel{model, convertNumericType(ca.Value, model)}
-		}
-		retNode = xpr.TypedExpression{node, expected, model}
-
-	case xpr.NewUint32:
-		arg, e := vm.TypeExpression(node.Argument, argument, NumericModel)
-		if e != nil {
-			return arg, e
-		}
-		node.Argument = arg
-		model := mdl.Model(Uint32Model)
-		if ca, ok := arg.Actual.(ConstantModel); ok {
-			model = ConstantModel{model, convertNumericType(ca.Value, model)}
-		}
-		retNode = xpr.TypedExpression{node, expected, model}
-
-	case xpr.NewUint64:
-		arg, e := vm.TypeExpression(node.Argument, argument, NumericModel)
-		if e != nil {
-			return arg, e
-		}
-		node.Argument = arg
-		model := mdl.Model(Uint64Model)
-		if ca, ok := arg.Actual.(ConstantModel); ok {
-			model = ConstantModel{model, convertNumericType(ca.Value, model)}
-		}
-		retNode = xpr.TypedExpression{node, expected, model}
-
-	case xpr.NewFloat:
-		arg, e := vm.TypeExpression(node.Argument, argument, NumericModel)
-		if e != nil {
-			return arg, e
-		}
-		node.Argument = arg
-		model := mdl.Model(FloatModel)
-		if ca, ok := arg.Actual.(ConstantModel); ok {
-			model = ConstantModel{model, convertNumericType(ca.Value, model)}
-		}
-		retNode = xpr.TypedExpression{node, expected, model}
-
-	case xpr.NewString:
-		arg, e := vm.TypeExpression(node.Argument, argument, mdl.Or{StringModel, IntegerModel})
-		if e != nil {
-			return arg, e
-		}
-		node.Argument = arg
-		// TODO: constant optimization
-		retNode = xpr.TypedExpression{node, expected, StringModel}
-
-	case xpr.NewDateTime:
-		arg, e := vm.TypeExpression(node.Argument, argument, DateTimeModel)
-		if e != nil {
-			return arg, e
-		}
-		node.Argument = arg
-		model := mdl.Model(DateTimeModel)
-		if ca, ok := arg.Actual.(ConstantModel); ok {
-			model = ConstantModel{model, ca.Value}
-		}
-		retNode = xpr.TypedExpression{node, expected, model}
-
-	case xpr.NewRef:
-		model, e := vm.TypeExpression(node.Model, argument, mdl.Ref{vm.MetaModelId()})
-		if e != nil {
-			return model, e
-		}
-		node.Model = model
-		cm, ok := model.Actual.(ConstantModel)
-		if !ok {
-			return ZeroTypedExpression, err.CompilationError{
-				Problem: `newRef: model argument must be constant expression`,
-				Program: xpr.ValueFromExpression(model),
-			}
-		}
-		id, e := vm.TypeExpression(node.Id, argument, StringModel)
-		if e != nil {
-			return id, e
-		}
-		node.Id = id
-		refModel := mdl.Model(mdl.Ref{cm.Value.(val.Ref)[1]})
-		if ci, ok := id.Actual.(ConstantModel); ok {
-			refModel = ConstantModel{refModel, val.Ref{cm.Value.(val.Ref)[1], string(ci.Value.(val.String))}}
-		}
-		retNode = xpr.TypedExpression{node, expected, refModel}
-
-	case xpr.NewList:
-		subExpected := mdl.Model(AnyModel)
-		if lm, ok := expected.Concrete().(mdl.List); ok {
-			subExpected = lm.Elements
-		}
-		elements, constants := mdl.Model(nil), make([]val.Value, 0, len(node))
-		for i, sub := range node {
-			arg, e := vm.TypeExpression(sub, argument, subExpected)
-			if e != nil {
-				return arg, e
-			}
-			node[i] = arg
-			unwrapped := UnwrapBucket(arg.Actual)
-			if ca, ok := arg.Actual.(ConstantModel); ok {
-				constants, unwrapped = append(constants, ca.Value), ca.Model
-			}
-			if elements == nil {
-				elements = unwrapped
-			} else {
-				elements = mdl.Either(elements, unwrapped, nil)
-				// elements = elements.Union(unwrapped)
-			}
-		}
-		if elements == nil {
-			elements = AnyModel
-		}
-		elements = UnwrapBucket(elements)
-		model := mdl.Model(mdl.List{elements})
-		if len(constants) == len(node) {
-			model = ConstantModel{model, val.List(constants)}
-		}
-		retNode = xpr.TypedExpression{node, expected, model}
-
-	case xpr.NewMap:
-		subExpected := mdl.Model(AnyModel)
-		if lm, ok := expected.Concrete().(mdl.Map); ok {
-			subExpected = lm.Elements
-		}
-		elements, constants := mdl.Model(nil), make(map[string]val.Value, len(node))
-		for k, sub := range node {
-			arg, e := vm.TypeExpression(sub, argument, subExpected)
-			if e != nil {
-				return arg, e
-			}
-			node[k] = arg
-			unwrapped := UnwrapBucket(arg.Actual)
-			if ca, ok := arg.Actual.(ConstantModel); ok {
-				constants[k], unwrapped = ca.Value, ca.Model
-			}
-			if elements == nil {
-				elements = unwrapped
-			} else {
-				elements = mdl.Either(elements, unwrapped, nil)
-				// elements = elements.Union(unwrapped)
-			}
-		}
-		if elements == nil {
-			elements = subExpected
-		}
-		elements = UnwrapBucket(elements)
-		model := mdl.Model(mdl.Map{elements})
-		if len(constants) == len(node) {
-			model = ConstantModel{model, val.MapFromMap(constants)}
-		}
-		retNode = xpr.TypedExpression{node, expected, model}
-
-	case xpr.NewTuple:
-		subExpect := make([]mdl.Model, len(node), len(node))
-		for i, _ := range node {
-			subExpect[i] = AnyModel
-		}
-		if sm, ok := expected.Concrete().(mdl.Tuple); ok {
-			for i, l := 0, minInt(len(sm), len(subExpect)); i < l; i++ {
-				subExpect[i] = sm[i]
-			}
-		}
-		tuple, constants := make(mdl.Tuple, len(node), len(node)), make([]val.Value, 0, len(node))
-		for i, sub := range node {
-			arg, e := vm.TypeExpression(sub, argument, subExpect[i])
-			if e != nil {
-				return arg, e
-			}
-			node[i] = arg
-			unwrapped := UnwrapBucket(arg.Actual)
-			if ca, ok := arg.Actual.(ConstantModel); ok {
-				constants, unwrapped = append(constants, ca.Value), ca.Model
-			}
-			tuple[i] = unwrapped
-		}
-		model := mdl.Model(tuple)
-		if len(constants) == len(node) {
-			model = ConstantModel{model, val.Tuple(constants)}
-		}
-		retNode = xpr.TypedExpression{node, expected, model}
-
-	case xpr.NewStruct:
-		subExpect := make(map[string]mdl.Model, len(node))
-		for k, _ := range node {
-			subExpect[k] = AnyModel
-		}
-		if sm, ok := expected.Concrete().(mdl.Struct); ok {
-			sm.ForEach(func(k string, em mdl.Model) bool {
-				subExpect[k] = em
-				return true
-			})
-		}
-		strct, constants := mdl.NewStruct(len(node)), make(map[string]val.Value, len(node))
-		for k, sub := range node {
-			arg, e := vm.TypeExpression(sub, argument, subExpect[k])
-			if e != nil {
-				return arg, e
-			}
-			node[k] = arg
-			unwrapped := UnwrapBucket(arg.Actual)
-			if ca, ok := arg.Actual.(ConstantModel); ok {
-				constants[k], unwrapped = ca.Value, ca.Model
-			}
-			strct.Set(k, unwrapped)
-		}
-		model := mdl.Model(strct)
-		if len(constants) == len(node) {
-			model = ConstantModel{model, val.StructFromMap(constants)}
-		}
-		retNode = xpr.TypedExpression{node, expected, model}
-
-	case xpr.NewUnion:
-		caze, e := vm.TypeExpression(node.Case, argument, StringModel)
-		if e != nil {
-			return caze, e
-		}
-		node.Case = caze
-		cc, ok := caze.Actual.(ConstantModel)
-		if !ok {
-			return ZeroTypedExpression, err.CompilationError{
-				Problem: `newUnion: case argument must be constant expression`,
-				Program: xpr.ValueFromExpression(caze),
-			}
-		}
-		caseString := string(cc.Value.(val.String))
-		subExpect := mdl.Model(AnyModel)
-		if ce, ok := expected.Concrete().(mdl.Union); ok {
-			if sm, ok := ce.Get(caseString); ok {
-				subExpect = sm
-			}
-		}
-		value, e := vm.TypeExpression(node.Value, argument, subExpect)
-		if e != nil {
-			return value, e
-		}
-		node.Value = value
-		valModel := UnwrapBucket(value.Actual)
-		unionModel := mdl.NewUnion(1)
-		unionModel.Set(caseString, valModel)
-		model := (mdl.Model)(unionModel)
-		if cv, ok := value.Actual.(ConstantModel); ok {
-			model = ConstantModel{model, val.Union{caseString, cv.Value}}
-		}
-		retNode = xpr.TypedExpression{node, expected, model}
 
 	case xpr.SetField:
 
@@ -498,14 +174,8 @@ func (vm VirtualMachine) TypeExpression(node xpr.Expression, argument, expected 
 		}
 		node.Argument = arg
 
-		alwaysPresent := true
-		possibilities := mdl.UnrollOr(arg.Actual.Concrete(), nil)
-		for _, m := range possibilities {
-			if _, ok := m.Concrete().(mdl.Null); ok {
-				alwaysPresent = false
-				break
-			}
-		}
+		_, ok := arg.Actual.Concrete().(mdl.Optional)
+		alwaysPresent := !ok
 
 		if alwaysPresent {
 			return ZeroTypedExpression, err.CompilationError{
@@ -522,20 +192,10 @@ func (vm VirtualMachine) TypeExpression(node xpr.Expression, argument, expected 
 			}
 		}
 
-		possibilities = mdl.UnrollOr(model, nil)
-		for _, m := range possibilities {
-			if _, ok := m.Concrete().(mdl.Ref); ok {
-				return ZeroTypedExpression, err.CompilationError{
-					Problem: fmt.Sprintf(`presentOrZero: argument may be ref, which has no zero value`),
-					Program: xpr.ValueFromExpression(arg),
-				}
-			}
-		}
-
 		retNode = xpr.TypedExpression{node, expected, model}
 
 	case xpr.IsPresent:
-		arg, e := vm.TypeExpression(node.Argument, argument, mdl.Or{AnyModel, mdl.Null{}})
+		arg, e := vm.TypeExpression(node.Argument, argument, AnyModel)
 		if e != nil {
 			return arg, e
 		}
@@ -549,7 +209,7 @@ func (vm VirtualMachine) TypeExpression(node xpr.Expression, argument, expected 
 		retNode = xpr.TypedExpression{node, expected, model}
 
 	case xpr.AssertPresent:
-		arg, e := vm.TypeExpression(node.Argument, argument, mdl.Or{mdl.Null{}, expected})
+		arg, e := vm.TypeExpression(node.Argument, argument, mdl.Optional{expected})
 		if e != nil {
 			return arg, e
 		}
@@ -688,25 +348,7 @@ func (vm VirtualMachine) TypeExpression(node xpr.Expression, argument, expected 
 		unwrapped := UnwrapBucket(model)
 		retNode = xpr.TypedExpression{node, expected, unwrapped}
 
-	case xpr.Do:
-		panic("vm.TypeExpression: uneliminated xpr.Do")
-
-	case xpr.Bind:
-		panic("vm.TypeExpression: uneliminated xpr.Bind")
-
 	case xpr.Literal:
-		// backward-compatibility
-		if raw, ok := node.Value.(val.Raw); ok {
-			decoded, e := vm.Codec.Decode(raw, expected.Concrete())
-			if e != nil {
-				return ZeroTypedExpression, err.CompilationError{
-					Problem: `json/static: failed decoding data`,
-					Program: raw,
-					Child_:  e,
-				}
-			}
-			node.Value = decoded
-		}
 		actual, e := inferType(node.Value, expected)
 		if e != nil {
 			return ZeroTypedExpression, err.CompilationError{
@@ -1093,7 +735,6 @@ func (vm VirtualMachine) TypeExpression(node xpr.Expression, argument, expected 
 		for i := 0; i < 100; i++ { // 100 iterations as sanity
 			if bottom != nil {
 				subArg = mdl.Either(subArg, bottom, nil)
-				// subArg = subArg.Union(bottom)
 			}
 			expression, e := vm.TypeExpression(node.Expression, mdl.Tuple{subArg, subArg}, expected)
 			if e != nil {
@@ -1506,7 +1147,6 @@ func (vm VirtualMachine) TypeExpression(node xpr.Expression, argument, expected 
 			caze.Return = retrn
 
 			retModel = mdl.Either(retModel, retrn.Actual.Concrete(), nil)
-			// retModel = retModel.Union(retrn.Actual.Concrete())
 
 			node.Cases[i] = caze
 		}
@@ -1589,10 +1229,7 @@ func (vm VirtualMachine) TypeExpression(node xpr.Expression, argument, expected 
 			return value, e
 		}
 		node.Value = value
-		model := mdl.Model(mdl.Or{
-			value.Actual.Concrete().(mdl.Map).Elements,
-			mdl.Null{},
-		})
+		model := mdl.Model(mdl.Optional{value.Actual.Concrete().(mdl.Map).Elements})
 		if cv, ok := value.Actual.(ConstantModel); ok {
 			if cn, ok := name.Actual.(ConstantModel); ok {
 				ov := cv.Value.(val.Map).Key(string(cn.Value.(val.String)))
@@ -1795,29 +1432,10 @@ func (vm VirtualMachine) TypeExpression(node xpr.Expression, argument, expected 
 			return rhs, e
 		}
 		node[1] = rhs
-		{
-			lac, rac := lhs.Actual.Concrete(), rhs.Actual.Concrete()
-			if _, ok := lac.Concrete().(mdl.Or); ok {
-				return ZeroTypedExpression, err.CompilationError{
-					Problem: `greater: both arguments must have an unambiguous type`,
-					Program: xpr.ValueFromExpression(lhs),
-				}
-			}
-			if _, ok := rac.Concrete().(mdl.Or); ok {
-				return ZeroTypedExpression, err.CompilationError{
-					Problem: `greater: both arguments must have an unambiguous type`,
-					Program: xpr.ValueFromExpression(rhs),
-				}
-			}
-			if lac != rac {
-				return ZeroTypedExpression, err.CompilationError{
-					Problem: `greater: comparing distinct types`,
-					Program: xpr.ValueFromExpression(rhs),
-					// C: val.Map{
-					//  "left":  mdl.ValueFromModel(vm.MetaModelId(), lhs.Actual.Concrete(), nil),
-					//  "right": mdl.ValueFromModel(vm.MetaModelId(), rhs.Actual.Concrete(), nil),
-					// },
-				}
+		if lac, rac := lhs.Actual.Concrete(), rhs.Actual.Concrete(); lac != rac {
+			return ZeroTypedExpression, err.CompilationError{
+				Problem: `greater: comparing distinct types`,
+				Program: xpr.ValueFromExpression(rhs),
 			}
 		}
 		model := mdl.Model(BoolModel)
@@ -1863,29 +1481,10 @@ func (vm VirtualMachine) TypeExpression(node xpr.Expression, argument, expected 
 			return rhs, e
 		}
 		node[1] = rhs
-		{
-			lac, rac := lhs.Actual.Concrete(), rhs.Actual.Concrete()
-			if _, ok := lac.Concrete().(mdl.Or); ok {
-				return ZeroTypedExpression, err.CompilationError{
-					Problem: `less: both arguments must have an unambiguous type`,
-					Program: xpr.ValueFromExpression(lhs),
-				}
-			}
-			if _, ok := rac.Concrete().(mdl.Or); ok {
-				return ZeroTypedExpression, err.CompilationError{
-					Problem: `less: both arguments must have an unambiguous type`,
-					Program: xpr.ValueFromExpression(rhs),
-				}
-			}
-			if lac != rac {
-				return ZeroTypedExpression, err.CompilationError{
-					Problem: `less: comparing distinct types`,
-					Program: xpr.ValueFromExpression(rhs),
-					// C: val.Map{
-					//  "left":  mdl.ValueFromModel(vm.MetaModelId(), lhs.Actual.Concrete(), nil),
-					//  "right": mdl.ValueFromModel(vm.MetaModelId(), rhs.Actual.Concrete(), nil),
-					// },
-				}
+		if lac, rac := lhs.Actual.Concrete(), rhs.Actual.Concrete(); lac != rac {
+			return ZeroTypedExpression, err.CompilationError{
+				Problem: `less: comparing distinct types`,
+				Program: xpr.ValueFromExpression(rhs),
 			}
 		}
 		model := mdl.Model(BoolModel)
@@ -1931,29 +1530,10 @@ func (vm VirtualMachine) TypeExpression(node xpr.Expression, argument, expected 
 			return rhs, err.LiftArgumentError(e).AppendPath(err.NewFuncArgPathElement("add", 2))
 		}
 		node[1] = rhs
-		{
-			lac, rac := lhs.Actual.Concrete(), rhs.Actual.Concrete()
-			if _, ok := lac.Concrete().(mdl.Or); ok {
-				return ZeroTypedExpression, err.CompilationError{
-					Problem: `add: both arguments must have an unambiguous type`,
-					Program: xpr.ValueFromExpression(lhs),
-				}
-			}
-			if _, ok := rac.Concrete().(mdl.Or); ok {
-				return ZeroTypedExpression, err.CompilationError{
-					Problem: `add: both arguments must have an unambiguous type`,
-					Program: xpr.ValueFromExpression(rhs),
-				}
-			}
-			if lac != rac {
-				return ZeroTypedExpression, err.CompilationError{
-					Problem: `add: distinct types`,
-					Program: xpr.ValueFromExpression(rhs),
-					//  val.Map{
-					//  "left":  mdl.ValueFromModel(vm.MetaModelId(), lhs.Actual.Concrete(), nil),
-					//  "right": mdl.ValueFromModel(vm.MetaModelId(), rhs.Actual.Concrete(), nil),
-					// },
-				}
+		if lac, rac := lhs.Actual.Concrete(), rhs.Actual.Concrete(); lac != rac {
+			return ZeroTypedExpression, err.CompilationError{
+				Problem: `add: distinct types`,
+				Program: xpr.ValueFromExpression(rhs),
 			}
 		}
 		model := lhs.Actual.Concrete()
@@ -1997,29 +1577,10 @@ func (vm VirtualMachine) TypeExpression(node xpr.Expression, argument, expected 
 			return rhs, err.LiftArgumentError(e).AppendPath(err.NewFuncArgPathElement("subtract", 2))
 		}
 		node[1] = rhs
-		{
-			lac, rac := lhs.Actual.Concrete(), rhs.Actual.Concrete()
-			if _, ok := lac.Concrete().(mdl.Or); ok {
-				return ZeroTypedExpression, err.CompilationError{
-					Problem: `subtract: both arguments must have an unambiguous type`,
-					Program: xpr.ValueFromExpression(lhs),
-				}
-			}
-			if _, ok := rac.Concrete().(mdl.Or); ok {
-				return ZeroTypedExpression, err.CompilationError{
-					Problem: `subtract: both arguments must have an unambiguous type`,
-					Program: xpr.ValueFromExpression(rhs),
-				}
-			}
-			if lac != rac {
-				return ZeroTypedExpression, err.CompilationError{
-					Problem: `subtract: distinct types`,
-					Program: xpr.ValueFromExpression(rhs),
-					// C: val.Map{
-					//  "left":  mdl.ValueFromModel(vm.MetaModelId(), lhs.Actual.Concrete(), nil),
-					//  "right": mdl.ValueFromModel(vm.MetaModelId(), rhs.Actual.Concrete(), nil),
-					// },
-				}
+		if lac, rac := lhs.Actual.Concrete(), rhs.Actual.Concrete(); lac != rac {
+			return ZeroTypedExpression, err.CompilationError{
+				Problem: `subtract: distinct types`,
+				Program: xpr.ValueFromExpression(rhs),
 			}
 		}
 		model := lhs.Actual.Concrete()
@@ -2063,29 +1624,10 @@ func (vm VirtualMachine) TypeExpression(node xpr.Expression, argument, expected 
 			return rhs, e
 		}
 		node[1] = rhs
-		{
-			lac, rac := lhs.Actual.Concrete(), rhs.Actual.Concrete()
-			if _, ok := lac.Concrete().(mdl.Or); ok {
-				return ZeroTypedExpression, err.CompilationError{
-					Problem: `multiply: both arguments must have an unambiguous type`,
-					Program: xpr.ValueFromExpression(lhs),
-				}
-			}
-			if _, ok := rac.Concrete().(mdl.Or); ok {
-				return ZeroTypedExpression, err.CompilationError{
-					Problem: `multiply: both arguments must have an unambiguous type`,
-					Program: xpr.ValueFromExpression(rhs),
-				}
-			}
-			if lac != rac {
-				return ZeroTypedExpression, err.CompilationError{
-					Problem: `multiply: distinct types`,
-					Program: xpr.ValueFromExpression(rhs),
-					// C: val.Map{
-					//  "left":  mdl.ValueFromModel(vm.MetaModelId(), lhs.Actual.Concrete(), nil),
-					//  "right": mdl.ValueFromModel(vm.MetaModelId(), rhs.Actual.Concrete(), nil),
-					// },
-				}
+		if lac, rac := lhs.Actual.Concrete(), rhs.Actual.Concrete(); lac != rac {
+			return ZeroTypedExpression, err.CompilationError{
+				Problem: `multiply: distinct types`,
+				Program: xpr.ValueFromExpression(rhs),
 			}
 		}
 		model := lhs.Actual.Concrete()
@@ -2129,29 +1671,10 @@ func (vm VirtualMachine) TypeExpression(node xpr.Expression, argument, expected 
 			return rhs, e
 		}
 		node[1] = rhs
-		{
-			lac, rac := lhs.Actual.Concrete(), rhs.Actual.Concrete()
-			if _, ok := lac.Concrete().(mdl.Or); ok {
-				return ZeroTypedExpression, err.CompilationError{
-					Problem: `divide: both arguments must have an unambiguous type`,
-					Program: xpr.ValueFromExpression(lhs),
-				}
-			}
-			if _, ok := rac.Concrete().(mdl.Or); ok {
-				return ZeroTypedExpression, err.CompilationError{
-					Problem: `divide: both arguments must have an unambiguous type`,
-					Program: xpr.ValueFromExpression(rhs),
-				}
-			}
-			if lac != rac {
-				return ZeroTypedExpression, err.CompilationError{
-					Problem: `divide: distinct types`,
-					Program: xpr.ValueFromExpression(rhs),
-					// C: val.Map{
-					//  "left":  mdl.ValueFromModel(vm.MetaModelId(), lhs.Actual.Concrete(), nil),
-					//  "right": mdl.ValueFromModel(vm.MetaModelId(), rhs.Actual.Concrete(), nil),
-					// },
-				}
+		if lac, rac := lhs.Actual.Concrete(), rhs.Actual.Concrete(); lac != rac {
+			return ZeroTypedExpression, err.CompilationError{
+				Problem: `divide: distinct types`,
+				Program: xpr.ValueFromExpression(rhs),
 			}
 		}
 		model := lhs.Actual.Concrete()
@@ -2238,41 +1761,6 @@ func (vm VirtualMachine) TypeExpression(node xpr.Expression, argument, expected 
 		}
 		retNode = xpr.TypedExpression{node, expected, model}
 
-	case xpr.SwitchType:
-		value, e := vm.TypeExpression(node.Value, argument, AnyModel)
-		if e != nil {
-			return ZeroTypedExpression, e
-		}
-		node.Value = value
-		possibilities := mdl.UnrollOr(argument.Concrete(), nil)
-		keysRequired := make(map[string]mdl.Model, len(possibilities))
-		for _, m := range possibilities {
-			keysRequired[modelTypeKey(m.Concrete())] = m
-		}
-		model := (mdl.Model)(nil)
-		for key, subArg := range keysRequired {
-			arg, ok := node.Cases[key]
-			if !ok {
-				return ZeroTypedExpression, err.CompilationError{
-					Problem: fmt.Sprintf(`switchType: required case missing: %s`, key),
-					// P: xpr.ValueFromExpression(node), // TODO: program
-				}
-			}
-			typedArg, e := vm.TypeExpression(arg, subArg, expected)
-			if e != nil {
-				return typedArg, e
-			}
-			node.Cases[key] = typedArg
-			if model == nil {
-				model = typedArg.Actual.Concrete() // TODO: .Concrete() correct because of .Union()?
-			} else {
-				model = mdl.Either(model, typedArg.Actual.Concrete(), nil)
-				// model = model.Union(typedArg.Actual.Concrete()) // TODO: .Concrete() correct because of .Union()?
-			}
-		}
-		// TODO: constant optimization
-		retNode = xpr.TypedExpression{node, expected, model}
-
 	case xpr.SwitchCase:
 
 		if len(node.Cases) == 0 {
@@ -2303,10 +1791,9 @@ func (vm VirtualMachine) TypeExpression(node xpr.Expression, argument, expected 
 			}
 			node.Cases[k] = subNode
 			if model == nil {
-				model = subNode.Actual.Concrete() // TODO: .Concrete() correct because of .Union()?
+				model = subNode.Actual.Concrete() // TODO: .Concrete() correct?
 			} else {
 				model = mdl.Either(model, subNode.Actual.Concrete(), nil)
-				// model = model.Union(subNode.Actual.Concrete()) // TODO: .Concrete() correct because of .Union()?
 			}
 		}
 
@@ -2328,13 +1815,10 @@ func (vm VirtualMachine) TypeExpression(node xpr.Expression, argument, expected 
 		}
 		node.Expression = expression
 
-		if _, ok := expression.Actual.Concrete().(mdl.Or); ok {
+		if _, ok := expression.Actual.Concrete().(mdl.Any); ok {
 			return ZeroTypedExpression, err.CompilationError{
 				Problem: fmt.Sprintf(`memSort: expression must return unambiguous type`),
 				Program: xpr.ValueFromExpression(expression),
-				// C: val.Map{
-				//  "actual": mdl.ValueFromModel(vm.MetaModelId(), expression.Actual.Concrete(), nil),
-				// },
 			}
 		}
 
