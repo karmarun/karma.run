@@ -28,14 +28,17 @@ const model = `
                 "uint16":   ["uint16", {}],
                 "uint32":   ["uint32", {}],
                 "uint64":   ["uint64", {}],
+                "symbol":   ["string", {}],
+
 
                 "map":      ["map",   ["recurse", "x"]],
                 "list":     ["list",  ["recurse", "x"]],
                 "set":      ["set",   ["recurse", "x"]],
                 "struct":   ["map",   ["recurse", "x"]],
                 "tuple":    ["list",  ["recurse", "x"]],
-                "ref":      ["tuple", [["recurse", "x"], ["recurse", "x"]]],
                 "union":    ["tuple", [["string", {}], ["recurse", "x"]]],
+
+                "ref":      ["tuple", [["recurse", "x"], ["recurse", "x"]]],
 
                 "id":          ["struct", {}],
                 "arg":         ["struct", {}],

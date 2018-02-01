@@ -101,6 +101,9 @@ func ValueFromModel(metaId string, model Model, recursions map[*Recursion]struct
 		delete(recursions, m)
 		return val.Union{"recursion", o}
 
+	case Optional:
+		return val.Union{"optional", ValueFromModel(metaId, m.Model, recursions)}
+
 	case Unique:
 		return val.Union{"unique", ValueFromModel(metaId, m.Model, recursions)}
 
@@ -461,8 +464,14 @@ func Either(l, r Model, m map[*Recursion]*Recursion) Model {
 		return any
 	}
 
-	if l == r {
+	if l.Equals(r) {
 		return l
+	}
+
+	if _, ok := l.(Ref); ok {
+		if _, ok := r.(Ref); ok {
+			return Ref{} // any ref
+		}
 	}
 
 	return any

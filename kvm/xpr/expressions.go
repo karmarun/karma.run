@@ -6,6 +6,14 @@ import (
 	"karma.run/kvm/val"
 )
 
+type RefConstructor struct {
+	Model, Id Expression
+}
+
+func (x RefConstructor) Transform(f func(Expression) Expression) Expression {
+	return f(RefConstructor{x.Model.Transform(f), x.Id.Transform(f)})
+}
+
 type Argument struct{}
 
 func (x Argument) Transform(f func(Expression) Expression) Expression {
@@ -37,7 +45,7 @@ type ReverseList struct {
 }
 
 func (x ReverseList) Transform(f func(Expression) Expression) Expression {
-	return f(ReverseList{f(x.Argument)})
+	return f(ReverseList{x.Argument.Transform(f)})
 }
 
 type StringToLower struct {
@@ -45,7 +53,7 @@ type StringToLower struct {
 }
 
 func (x StringToLower) Transform(f func(Expression) Expression) Expression {
-	return f(StringToLower{f(x.Argument)})
+	return f(StringToLower{x.Argument.Transform(f)})
 }
 
 type ExtractStrings struct {
@@ -53,7 +61,7 @@ type ExtractStrings struct {
 }
 
 func (x ExtractStrings) Transform(f func(Expression) Expression) Expression {
-	return f(ExtractStrings{f(x.Argument)})
+	return f(ExtractStrings{x.Argument.Transform(f)})
 }
 
 type NewBool struct {
@@ -61,7 +69,7 @@ type NewBool struct {
 }
 
 func (x NewBool) Transform(f func(Expression) Expression) Expression {
-	return f(NewBool{f(x.Argument)})
+	return f(NewBool{x.Argument.Transform(f)})
 }
 
 type NewInt8 struct {
@@ -69,7 +77,7 @@ type NewInt8 struct {
 }
 
 func (x NewInt8) Transform(f func(Expression) Expression) Expression {
-	return f(NewInt8{f(x.Argument)})
+	return f(NewInt8{x.Argument.Transform(f)})
 }
 
 type NewInt16 struct {
@@ -77,7 +85,7 @@ type NewInt16 struct {
 }
 
 func (x NewInt16) Transform(f func(Expression) Expression) Expression {
-	return f(NewInt16{f(x.Argument)})
+	return f(NewInt16{x.Argument.Transform(f)})
 }
 
 type NewInt32 struct {
@@ -85,7 +93,7 @@ type NewInt32 struct {
 }
 
 func (x NewInt32) Transform(f func(Expression) Expression) Expression {
-	return f(NewInt32{f(x.Argument)})
+	return f(NewInt32{x.Argument.Transform(f)})
 }
 
 type NewInt64 struct {
@@ -93,7 +101,7 @@ type NewInt64 struct {
 }
 
 func (x NewInt64) Transform(f func(Expression) Expression) Expression {
-	return f(NewInt64{f(x.Argument)})
+	return f(NewInt64{x.Argument.Transform(f)})
 }
 
 type NewUint8 struct {
@@ -101,7 +109,7 @@ type NewUint8 struct {
 }
 
 func (x NewUint8) Transform(f func(Expression) Expression) Expression {
-	return f(NewUint8{f(x.Argument)})
+	return f(NewUint8{x.Argument.Transform(f)})
 }
 
 type NewUint16 struct {
@@ -109,7 +117,7 @@ type NewUint16 struct {
 }
 
 func (x NewUint16) Transform(f func(Expression) Expression) Expression {
-	return f(NewUint16{f(x.Argument)})
+	return f(NewUint16{x.Argument.Transform(f)})
 }
 
 type NewUint32 struct {
@@ -117,7 +125,7 @@ type NewUint32 struct {
 }
 
 func (x NewUint32) Transform(f func(Expression) Expression) Expression {
-	return f(NewUint32{f(x.Argument)})
+	return f(NewUint32{x.Argument.Transform(f)})
 }
 
 type NewUint64 struct {
@@ -125,7 +133,7 @@ type NewUint64 struct {
 }
 
 func (x NewUint64) Transform(f func(Expression) Expression) Expression {
-	return f(NewUint64{f(x.Argument)})
+	return f(NewUint64{x.Argument.Transform(f)})
 }
 
 type NewFloat struct {
@@ -133,7 +141,7 @@ type NewFloat struct {
 }
 
 func (x NewFloat) Transform(f func(Expression) Expression) Expression {
-	return f(NewFloat{f(x.Argument)})
+	return f(NewFloat{x.Argument.Transform(f)})
 }
 
 type NewString struct {
@@ -141,7 +149,7 @@ type NewString struct {
 }
 
 func (x NewString) Transform(f func(Expression) Expression) Expression {
-	return f(NewString{f(x.Argument)})
+	return f(NewString{x.Argument.Transform(f)})
 }
 
 type NewDateTime struct {
@@ -149,7 +157,7 @@ type NewDateTime struct {
 }
 
 func (x NewDateTime) Transform(f func(Expression) Expression) Expression {
-	return f(NewDateTime{f(x.Argument)})
+	return f(NewDateTime{x.Argument.Transform(f)})
 }
 
 type IsPresent struct {
@@ -157,7 +165,7 @@ type IsPresent struct {
 }
 
 func (x IsPresent) Transform(f func(Expression) Expression) Expression {
-	return f(IsPresent{f(x.Argument)})
+	return f(IsPresent{x.Argument.Transform(f)})
 }
 
 type PresentOrZero struct {
@@ -165,7 +173,7 @@ type PresentOrZero struct {
 }
 
 func (x PresentOrZero) Transform(f func(Expression) Expression) Expression {
-	return f(PresentOrZero{f(x.Argument)})
+	return f(PresentOrZero{x.Argument.Transform(f)})
 }
 
 type AssertPresent struct {
@@ -173,7 +181,7 @@ type AssertPresent struct {
 }
 
 func (x AssertPresent) Transform(f func(Expression) Expression) Expression {
-	return f(AssertPresent{f(x.Argument)})
+	return f(AssertPresent{x.Argument.Transform(f)})
 }
 
 type AssertAbsent struct {
@@ -181,7 +189,7 @@ type AssertAbsent struct {
 }
 
 func (x AssertAbsent) Transform(f func(Expression) Expression) Expression {
-	return f(AssertAbsent{f(x.Argument)})
+	return f(AssertAbsent{x.Argument.Transform(f)})
 }
 
 type Model struct {
@@ -189,7 +197,7 @@ type Model struct {
 }
 
 func (x Model) Transform(f func(Expression) Expression) Expression {
-	return f(Model{f(x.Argument)})
+	return f(Model{x.Argument.Transform(f)})
 }
 
 type Tag struct {
@@ -197,7 +205,7 @@ type Tag struct {
 }
 
 func (x Tag) Transform(f func(Expression) Expression) Expression {
-	return f(Tag{f(x.Argument)})
+	return f(Tag{x.Argument.Transform(f)})
 }
 
 type All struct {
@@ -205,7 +213,7 @@ type All struct {
 }
 
 func (x All) Transform(f func(Expression) Expression) Expression {
-	return f(All{f(x.Argument)})
+	return f(All{x.Argument.Transform(f)})
 }
 
 type Delete struct {
@@ -213,7 +221,7 @@ type Delete struct {
 }
 
 func (x Delete) Transform(f func(Expression) Expression) Expression {
-	return f(Delete{f(x.Argument)})
+	return f(Delete{x.Argument.Transform(f)})
 }
 
 type ResolveAllRefs struct {
@@ -221,7 +229,7 @@ type ResolveAllRefs struct {
 }
 
 func (x ResolveAllRefs) Transform(f func(Expression) Expression) Expression {
-	return f(ResolveAllRefs{f(x.Argument)})
+	return f(ResolveAllRefs{x.Argument.Transform(f)})
 }
 
 type First struct {
@@ -229,7 +237,7 @@ type First struct {
 }
 
 func (x First) Transform(f func(Expression) Expression) Expression {
-	return f(First{f(x.Argument)})
+	return f(First{x.Argument.Transform(f)})
 }
 
 type Get struct {
@@ -237,7 +245,7 @@ type Get struct {
 }
 
 func (x Get) Transform(f func(Expression) Expression) Expression {
-	return f(Get{f(x.Argument)})
+	return f(Get{x.Argument.Transform(f)})
 }
 
 type Length struct {
@@ -245,7 +253,7 @@ type Length struct {
 }
 
 func (x Length) Transform(f func(Expression) Expression) Expression {
-	return f(Length{f(x.Argument)})
+	return f(Length{x.Argument.Transform(f)})
 }
 
 type Not struct {
@@ -253,7 +261,7 @@ type Not struct {
 }
 
 func (x Not) Transform(f func(Expression) Expression) Expression {
-	return f(Not{f(x.Argument)})
+	return f(Not{x.Argument.Transform(f)})
 }
 
 type ModelOf struct {
@@ -261,7 +269,7 @@ type ModelOf struct {
 }
 
 func (x ModelOf) Transform(f func(Expression) Expression) Expression {
-	return f(ModelOf{f(x.Argument)})
+	return f(ModelOf{x.Argument.Transform(f)})
 }
 
 type Metarialize struct {
@@ -269,7 +277,7 @@ type Metarialize struct {
 }
 
 func (x Metarialize) Transform(f func(Expression) Expression) Expression {
-	return f(Metarialize{f(x.Argument)})
+	return f(Metarialize{x.Argument.Transform(f)})
 }
 
 type RefTo struct {
@@ -277,7 +285,7 @@ type RefTo struct {
 }
 
 func (x RefTo) Transform(f func(Expression) Expression) Expression {
-	return f(RefTo{f(x.Argument)})
+	return f(RefTo{x.Argument.Transform(f)})
 }
 
 type NewRef struct {
@@ -285,7 +293,7 @@ type NewRef struct {
 }
 
 func (x NewRef) Transform(f func(Expression) Expression) Expression {
-	return f(NewRef{f(x.Model), f(x.Id)})
+	return f(NewRef{x.Model.Transform(f), x.Id.Transform(f)})
 }
 
 type With struct {
@@ -293,7 +301,7 @@ type With struct {
 }
 
 func (x With) Transform(f func(Expression) Expression) Expression {
-	return f(With{f(x.Value), f(x.Return)})
+	return f(With{x.Value.Transform(f), x.Return.Transform(f)})
 }
 
 type If struct {
@@ -301,7 +309,7 @@ type If struct {
 }
 
 func (x If) Transform(f func(Expression) Expression) Expression {
-	return f(If{f(x.Condition), f(x.Then), f(x.Else)})
+	return f(If{x.Condition.Transform(f), x.Then.Transform(f), x.Else.Transform(f)})
 }
 
 type JoinStrings struct {
@@ -309,7 +317,7 @@ type JoinStrings struct {
 }
 
 func (x JoinStrings) Transform(f func(Expression) Expression) Expression {
-	return f(JoinStrings{f(x.Strings), f(x.Separator)})
+	return f(JoinStrings{x.Strings.Transform(f), x.Separator.Transform(f)})
 }
 
 type Update struct {
@@ -317,7 +325,7 @@ type Update struct {
 }
 
 func (x Update) Transform(f func(Expression) Expression) Expression {
-	return f(Update{f(x.Ref), f(x.Value)})
+	return f(Update{x.Ref.Transform(f), x.Value.Transform(f)})
 }
 
 type Create struct {
@@ -325,7 +333,7 @@ type Create struct {
 }
 
 func (x Create) Transform(f func(Expression) Expression) Expression {
-	return f(Create{f(x.In), f(x.Value)})
+	return f(Create{x.In.Transform(f), x.Value.Transform(f)})
 }
 
 type InList struct {
@@ -333,7 +341,7 @@ type InList struct {
 }
 
 func (x InList) Transform(f func(Expression) Expression) Expression {
-	return f(InList{f(x.Value), f(x.In)})
+	return f(InList{x.Value.Transform(f), x.In.Transform(f)})
 }
 
 type Filter struct {
@@ -341,7 +349,7 @@ type Filter struct {
 }
 
 func (x Filter) Transform(f func(Expression) Expression) Expression {
-	return f(Filter{f(x.Value), f(x.Expression)})
+	return f(Filter{x.Value.Transform(f), x.Expression.Transform(f)})
 }
 
 type AssertCase struct {
@@ -349,7 +357,7 @@ type AssertCase struct {
 }
 
 func (x AssertCase) Transform(f func(Expression) Expression) Expression {
-	return f(AssertCase{f(x.Value), f(x.Case)})
+	return f(AssertCase{x.Value.Transform(f), x.Case.Transform(f)})
 }
 
 type IsCase struct {
@@ -357,7 +365,7 @@ type IsCase struct {
 }
 
 func (x IsCase) Transform(f func(Expression) Expression) Expression {
-	return f(IsCase{f(x.Value), f(x.Case)})
+	return f(IsCase{x.Value.Transform(f), x.Case.Transform(f)})
 }
 
 type MapMap struct {
@@ -365,7 +373,7 @@ type MapMap struct {
 }
 
 func (x MapMap) Transform(f func(Expression) Expression) Expression {
-	return f(MapMap{f(x.Value), f(x.Expression)})
+	return f(MapMap{x.Value.Transform(f), x.Expression.Transform(f)})
 }
 
 type MapList struct {
@@ -373,7 +381,7 @@ type MapList struct {
 }
 
 func (x MapList) Transform(f func(Expression) Expression) Expression {
-	return f(MapList{f(x.Value), f(x.Expression)})
+	return f(MapList{x.Value.Transform(f), x.Expression.Transform(f)})
 }
 
 type ReduceList struct {
@@ -381,7 +389,7 @@ type ReduceList struct {
 }
 
 func (x ReduceList) Transform(f func(Expression) Expression) Expression {
-	return f(ReduceList{f(x.Value), f(x.Expression)})
+	return f(ReduceList{x.Value.Transform(f), x.Expression.Transform(f)})
 }
 
 type ResolveRefs struct {
@@ -390,7 +398,7 @@ type ResolveRefs struct {
 }
 
 func (x ResolveRefs) Transform(f func(Expression) Expression) Expression {
-	return f(ResolveRefs{f(x.Value), mapExpressions(x.Models, f)})
+	return f(ResolveRefs{x.Value.Transform(f), mapExpressions(x.Models, f)})
 }
 
 type GraphFlow struct {
@@ -415,7 +423,7 @@ func (x GraphFlow) Transform(f func(Expression) Expression) Expression {
 	for i, p := range x.Flow {
 		ps[i] = p._transform(f)
 	}
-	return f(GraphFlow{f(x.Start), ps})
+	return f(GraphFlow{x.Start.Transform(f), ps})
 }
 
 type AssertModelRef struct {
@@ -423,7 +431,7 @@ type AssertModelRef struct {
 }
 
 func (x AssertModelRef) Transform(f func(Expression) Expression) Expression {
-	return f(AssertModelRef{f(x.Value), f(x.Ref)})
+	return f(AssertModelRef{x.Value.Transform(f), x.Ref.Transform(f)})
 }
 
 type SwitchModelRef struct {
@@ -447,7 +455,7 @@ func (x SwitchModelRef) Transform(f func(Expression) Expression) Expression {
 	for i, c := range x.Cases {
 		cs[i] = c._transform(f)
 	}
-	return f(SwitchModelRef{f(x.Value), f(x.Default), cs})
+	return f(SwitchModelRef{x.Value.Transform(f), x.Default.Transform(f), cs})
 }
 
 type Slice struct {
@@ -457,7 +465,7 @@ type Slice struct {
 }
 
 func (x Slice) Transform(f func(Expression) Expression) Expression {
-	return f(Slice{f(x.Value), f(x.Offset), f(x.Length)})
+	return f(Slice{x.Value.Transform(f), x.Offset.Transform(f), x.Length.Transform(f)})
 }
 
 type SearchAllRegex struct {
@@ -468,7 +476,7 @@ type SearchAllRegex struct {
 }
 
 func (x SearchAllRegex) Transform(f func(Expression) Expression) Expression {
-	return f(SearchAllRegex{f(x.Value), f(x.Regex), f(x.MultiLine), f(x.CaseInsensitive)})
+	return f(SearchAllRegex{x.Value.Transform(f), x.Regex.Transform(f), x.MultiLine.Transform(f), x.CaseInsensitive.Transform(f)})
 }
 
 type SearchRegex struct {
@@ -479,7 +487,7 @@ type SearchRegex struct {
 }
 
 func (x SearchRegex) Transform(f func(Expression) Expression) Expression {
-	return f(SearchRegex{f(x.Value), f(x.Regex), f(x.MultiLine), f(x.CaseInsensitive)})
+	return f(SearchRegex{x.Value.Transform(f), x.Regex.Transform(f), x.MultiLine.Transform(f), x.CaseInsensitive.Transform(f)})
 }
 
 type MatchRegex struct {
@@ -490,7 +498,7 @@ type MatchRegex struct {
 }
 
 func (x MatchRegex) Transform(f func(Expression) Expression) Expression {
-	return f(MatchRegex{f(x.Value), f(x.Regex), f(x.MultiLine), f(x.CaseInsensitive)})
+	return f(MatchRegex{x.Value.Transform(f), x.Regex.Transform(f), x.MultiLine.Transform(f), x.CaseInsensitive.Transform(f)})
 }
 
 type SetField struct {
@@ -500,7 +508,7 @@ type SetField struct {
 }
 
 func (x SetField) Transform(f func(Expression) Expression) Expression {
-	return f(SetField{f(x.Name), f(x.Value), f(x.In)})
+	return f(SetField{x.Name.Transform(f), x.Value.Transform(f), x.In.Transform(f)})
 }
 
 type SetKey struct {
@@ -510,7 +518,7 @@ type SetKey struct {
 }
 
 func (x SetKey) Transform(f func(Expression) Expression) Expression {
-	return f(SetKey{f(x.Name), f(x.Value), f(x.In)})
+	return f(SetKey{x.Name.Transform(f), x.Value.Transform(f), x.In.Transform(f)})
 }
 
 type Field struct {
@@ -518,7 +526,7 @@ type Field struct {
 }
 
 func (x Field) Transform(f func(Expression) Expression) Expression {
-	return f(Field{f(x.Value), f(x.Name)})
+	return f(Field{x.Value.Transform(f), x.Name.Transform(f)})
 }
 
 type Key struct {
@@ -526,7 +534,7 @@ type Key struct {
 }
 
 func (x Key) Transform(f func(Expression) Expression) Expression {
-	return f(Key{f(x.Value), f(x.Name)})
+	return f(Key{x.Value.Transform(f), x.Name.Transform(f)})
 }
 
 type Index struct {
@@ -534,7 +542,7 @@ type Index struct {
 }
 
 func (x Index) Transform(f func(Expression) Expression) Expression {
-	return f(Index{f(x.Value), f(x.Number)})
+	return f(Index{x.Value.Transform(f), x.Number.Transform(f)})
 }
 
 type NewList []Expression
@@ -566,7 +574,7 @@ type NewUnion struct {
 }
 
 func (x NewUnion) Transform(f func(Expression) Expression) Expression {
-	return f(NewUnion{f(x.Case), f(x.Value)})
+	return f(NewUnion{x.Case.Transform(f), x.Value.Transform(f)})
 }
 
 type CreateMultiple struct {
@@ -575,7 +583,7 @@ type CreateMultiple struct {
 }
 
 func (x CreateMultiple) Transform(f func(Expression) Expression) Expression {
-	return f(CreateMultiple{f(x.In), mapExpressionMap(x.Values, f)})
+	return f(CreateMultiple{x.In.Transform(f), mapExpressionMap(x.Values, f)})
 }
 
 type Referred struct {
@@ -583,7 +591,7 @@ type Referred struct {
 }
 
 func (x Referred) Transform(f func(Expression) Expression) Expression {
-	return f(Referred{f(x.From), f(x.In)})
+	return f(Referred{x.From.Transform(f), x.In.Transform(f)})
 }
 
 type Referrers struct {
@@ -591,7 +599,7 @@ type Referrers struct {
 }
 
 func (x Referrers) Transform(f func(Expression) Expression) Expression {
-	return f(Referrers{f(x.Of), f(x.In)})
+	return f(Referrers{x.Of.Transform(f), x.In.Transform(f)})
 }
 
 type ConcatLists [2]Expression
@@ -672,7 +680,7 @@ type RelocateRef struct {
 }
 
 func (x RelocateRef) Transform(f func(Expression) Expression) Expression {
-	return f(RelocateRef{f(x.Ref), f(x.Model)})
+	return f(RelocateRef{x.Ref.Transform(f), x.Model.Transform(f)})
 }
 
 type SwitchCase struct {
@@ -681,7 +689,7 @@ type SwitchCase struct {
 }
 
 func (x SwitchCase) Transform(f func(Expression) Expression) Expression {
-	return f(SwitchCase{f(x.Value), mapExpressionMap(x.Cases, f)})
+	return f(SwitchCase{x.Value.Transform(f), mapExpressionMap(x.Cases, f)})
 }
 
 type MapSet struct {
@@ -690,7 +698,7 @@ type MapSet struct {
 }
 
 func (x MapSet) Transform(f func(Expression) Expression) Expression {
-	return f(MapSet{f(x.Value), f(x.Expression)})
+	return f(MapSet{x.Value.Transform(f), x.Expression.Transform(f)})
 }
 
 type MemSort struct {
@@ -699,5 +707,5 @@ type MemSort struct {
 }
 
 func (x MemSort) Transform(f func(Expression) Expression) Expression {
-	return f(MemSort{f(x.Value), f(x.Expression)})
+	return f(MemSort{x.Value.Transform(f), x.Expression.Transform(f)})
 }

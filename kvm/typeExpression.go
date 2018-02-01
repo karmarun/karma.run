@@ -166,6 +166,33 @@ func (vm VirtualMachine) TypeExpression(node xpr.Expression, argument, expected 
 
 		retNode = xpr.TypedExpression{node, expected, mdl.Map{value.Actual.Unwrap()}}
 
+	case xpr.RefConstructor:
+		marg, e := vm.TypeExpression(node.Model, argument, mdl.Ref{vm.MetaModelId()})
+		if e != nil {
+			return marg, e
+		}
+		node.Model = marg
+
+		cm, ok := marg.Actual.(ConstantModel)
+		if !ok {
+			return ZeroTypedExpression, err.CompilationError{
+				Problem: `ref: model argument must be constant expression`,
+				Program: xpr.ValueFromExpression(marg),
+			}
+		}
+
+		mid := cm.Value.(val.Ref)[1]
+
+		iarg, e := vm.TypeExpression(node.Id, argument, StringModel)
+		if e != nil {
+			return iarg, e
+		}
+		node.Id = iarg
+
+		// TODO: check that ID exists (during execution)
+
+		retNode = xpr.TypedExpression{node, expected, mdl.Ref{mid}}
+
 	case xpr.PresentOrZero:
 
 		arg, e := vm.TypeExpression(node.Argument, argument, AnyModel)
@@ -352,7 +379,7 @@ func (vm VirtualMachine) TypeExpression(node xpr.Expression, argument, expected 
 		actual, e := inferType(node.Value, expected)
 		if e != nil {
 			return ZeroTypedExpression, err.CompilationError{
-				Problem: `literal type inference failed`,
+				Problem: `literal type mismatch`,
 				Program: node.Value,
 				Child_:  e,
 			}

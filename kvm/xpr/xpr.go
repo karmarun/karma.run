@@ -65,6 +65,16 @@ func ExpressionFromValue(v val.Value) Expression {
 	case "uint64":
 		return Literal{u.Value}
 
+	case "symbol":
+		return Literal{val.Symbol(u.Value.(val.String))}
+
+	case "ref":
+		// case: (string, string)
+		// case: (ref<metaModel>, string)   // <- needs validation
+		// case: (ref<modelA>, ref<modelB>) // <- equivalent to relocateRef
+		arg := u.Value.(val.Tuple)
+		return RefConstructor{ExpressionFromValue(arg[0]), ExpressionFromValue(arg[1])}
+
 	case "id", "arg":
 		return Argument{}
 

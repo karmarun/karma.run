@@ -150,8 +150,14 @@ func encode(value val.Value, cache JSON) JSON {
 		return append(cache, bs...)
 
 	case val.Ref:
-		bs, _ := ej.Marshal(v[1])
-		return append(cache, bs...)
+		bs := append(cache, '[')
+		cs, _ := ej.Marshal(v[0])
+		bs = append(bs, cs...)
+		bs = append(bs, ',')
+		cs, _ = ej.Marshal(v[1])
+		bs = append(bs, cs...)
+		bs = append(bs, ']')
+		return bs
 
 	case val.DateTime:
 
@@ -225,6 +231,13 @@ func decode(json JSON, model mdl.Model) (val.Value, JSON, err.Error) {
 			return nil, json, e
 		}
 		return val.Null, json, nil
+
+	case mdl.Optional:
+		json, e := readLiteral("null", json)
+		if e == nil {
+			return val.Null, json, nil
+		}
+		return decode(json, m.Model)
 
 	case mdl.Annotation:
 		return decode(json, m.Model)
@@ -738,7 +751,10 @@ func decodeStruct(json JSON, strct mdl.Struct) (val.Value, JSON, err.Error) {
 		return nil, json, e
 	}
 	vs := val.NewStruct(strct.Len())
-	for i, l := 0, strct.Len(); i < l; i++ {
+	for {
+		if json, e = readLiteral(`}`, skipWhiteSpace(json)); e == nil {
+			break
+		}
 		str, temp, e := readString(skipWhiteSpace(json))
 		if e != nil {
 			return nil, temp, e
@@ -760,21 +776,31 @@ func decodeStruct(json JSON, strct mdl.Struct) (val.Value, JSON, err.Error) {
 		}
 		vs.Set(str, v)
 		json = temp
-		if i == (l - 1) {
-			// allow optional trailing comma
-			json, _ = readLiteral(`,`, skipWhiteSpace(json))
+		if temp, e := readLiteral(`,`, skipWhiteSpace(json)); e == nil {
+			json = temp
+			continue
+		}
+		json, e = readLiteral(`}`, skipWhiteSpace(json))
+		if e != nil {
 			break
 		}
-		json, e = readLiteral(`,`, skipWhiteSpace(json))
-		if e != nil {
-			return nil, json, e
+		return vs, json, nil
+	}
+	for _, k := range strct.Keys() {
+		if _, ok := vs.Get(k); ok {
+			continue
+		}
+		m, _ := strct.Get(k)
+		if _, ok := m.(mdl.Optional); ok {
+			vs.Set(k, val.Null)
+			continue
+		}
+		return nil, json, err.InputParsingError{
+			Problem: fmt.Sprintf(`missing non-optional field "%s" in struct`, k),
+			Input:   json,
 		}
 	}
-	// closing curly brace
-	json, e = readLiteral(`}`, skipWhiteSpace(json))
-	if e != nil {
-		return nil, json, e
-	}
+
 	return vs, json, nil
 }
 
@@ -818,6 +844,16 @@ func decodeObject(json JSON, model mdl.Model) (map[string]val.Value, JSON, err.E
 func skipWhiteSpace(json JSON) JSON {
 	for len(json) > 0 && (json[0] == '\t' || json[0] == '\n' || json[0] == '\r' || json[0] == ' ') {
 		json = json[1:]
+	}
+	if len(json) > 1 && json[0] == '/' && json[1] == '/' {
+		json = json[2:]
+		for len(json) > 0 && json[0] != '\n' {
+			json = json[1:]
+		}
+		if len(json) > 0 {
+			json = json[1:] // skip last \n if there is one
+		}
+		return skipWhiteSpace(json)
 	}
 	return json
 }

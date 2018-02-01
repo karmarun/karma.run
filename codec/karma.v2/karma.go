@@ -5,7 +5,6 @@ package karma
 import (
 	"encoding/binary"
 	"fmt"
-	"karma.run/codec/karma"
 	"karma.run/kvm/mdl"
 	"karma.run/kvm/val"
 	"math"
@@ -19,9 +18,6 @@ func Encode(v val.Value, m mdl.Model) []byte {
 func encode(v val.Value, m mdl.Model, bs []byte) []byte {
 	m = m.Concrete()
 	switch m := m.(type) {
-
-	case mdl.Any:
-		return karma.Encode(v, bs)
 
 	case mdl.Set:
 		v := v.(val.Set)
@@ -154,9 +150,6 @@ func Decode(bs []byte, m mdl.Model) (val.Value, []byte) {
 func decode(bs []byte, m mdl.Model) (val.Value, []byte) {
 	m = m.Concrete()
 	switch m := m.(type) {
-
-	case mdl.Any:
-		return karma.Decode(bs)
 
 	case mdl.Set:
 		l, bs := readUint32(bs)
