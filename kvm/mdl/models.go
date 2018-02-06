@@ -744,7 +744,7 @@ func (w Annotation) Traverse(p []string, f func([]string, Model)) {
 }
 
 func (m Annotation) Concrete() Model {
-	return m.Model
+	return m.Model.Concrete()
 }
 
 func (m Annotation) Equals(n Model) bool {

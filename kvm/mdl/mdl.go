@@ -548,11 +548,12 @@ func Either(l, r Model, m map[*Recursion]*Recursion) Model {
 		if !ok {
 			return any
 		}
-		e := make(Enum, minInt(len(l), len(r)))
+		e := make(Enum, len(l)+len(r))
 		for k, _ := range l {
-			if _, ok := r[k]; ok {
-				e[k] = struct{}{}
-			}
+			e[k] = struct{}{}
+		}
+		for k, _ := range r {
+			e[k] = struct{}{}
 		}
 		return e
 
