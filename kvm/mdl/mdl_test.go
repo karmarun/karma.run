@@ -25,7 +25,34 @@ func TestEither(t *testing.T) {
 		})
 		out := Either(a, b, nil)
 		if !out.Equals(expect) {
-			t.Fatal("out != expect")
+			t.Fatalf("%#v\n", out)
+		}
+	}
+	{
+		a := Tuple{String{}, Float{}, Int16{}, Any{}}
+		b := Tuple{Int32{}, Float{}, Any{}}
+		expect := Tuple{any, Float{}, any}
+		out := Either(a, b, nil)
+		if !out.Equals(expect) {
+			t.Fatalf("%#v\n", out)
+		}
+	}
+	{
+		a := Int64{}
+		b := Optional{Int64{}}
+		expect := b
+		out := Either(a, b, nil)
+		if !out.Equals(expect) {
+			t.Fatalf("%#v\n", out)
+		}
+	}
+	{
+		a := List{Int64{}}
+		b := List{Float{}}
+		expect := List{any}
+		out := Either(a, b, nil)
+		if !out.Equals(expect) {
+			t.Fatalf("%#v\n", out)
 		}
 	}
 }

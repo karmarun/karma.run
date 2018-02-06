@@ -461,7 +461,7 @@ func Either(l, r Model, m map[*Recursion]*Recursion) Model {
 		panic("mdl.Either called with nil")
 	}
 
-	l, r = l.Unwrap(), r.Unwrap()
+	l, r = l.Concrete(), r.Concrete() // discard semantic wrappers
 
 	if l == any || r == any {
 		return any
@@ -477,7 +477,51 @@ func Either(l, r Model, m map[*Recursion]*Recursion) Model {
 		}
 	}
 
+	{ // optional<L> | R = optional<L|R>
+		if lo, ok := l.(Optional); ok {
+			ro, ok := r.(Optional)
+			if !ok {
+				return NewOptional(Either(lo.Model, r, m))
+			}
+			return NewOptional(Either(lo.Model, ro.Model, m))
+		}
+		if ro, ok := r.(Optional); ok {
+			return NewOptional(Either(l, ro.Model, m))
+		}
+	}
+
+	{ // L | null = optional<L>
+		if _, ok := l.(Null); ok {
+			return Optional{r}
+		}
+		if _, ok := r.(Null); ok {
+			return Optional{l}
+		}
+	}
+
 	switch l := l.(type) {
+
+	case List:
+		r, ok := r.(List)
+		if !ok {
+			return any
+		}
+		return List{Either(l.Elements, r.Elements, m)}
+
+	case Map:
+		r, ok := r.(Map)
+		if !ok {
+			return any
+		}
+		return Map{Either(l.Elements, r.Elements, m)}
+
+	case Set:
+		r, ok := r.(Set)
+		if !ok {
+			return any
+		}
+		return Set{Either(l.Elements, r.Elements, m)}
+
 	case Union:
 		r, ok := r.(Union)
 		if !ok {
@@ -499,6 +543,19 @@ func Either(l, r Model, m map[*Recursion]*Recursion) Model {
 		})
 		return u
 
+	case Enum:
+		r, ok := r.(Enum)
+		if !ok {
+			return any
+		}
+		e := make(Enum, minInt(len(l), len(r)))
+		for k, _ := range l {
+			if _, ok := r[k]; ok {
+				e[k] = struct{}{}
+			}
+		}
+		return e
+
 	case Struct:
 		r, ok := r.(Struct)
 		if !ok {
@@ -514,6 +571,22 @@ func Either(l, r Model, m map[*Recursion]*Recursion) Model {
 			return true
 		})
 		return s
+
+	case Tuple:
+		r, ok := r.(Tuple)
+		if !ok {
+			return any
+		}
+		ln := minInt(len(l), len(r))
+		t := make(Tuple, ln, ln)
+		longer, shorter := l, r
+		if len(l) == ln {
+			longer, shorter = r, l
+		}
+		for i, w := range shorter {
+			t[i] = Either(w, longer[i], m)
+		}
+		return t
 
 	}
 

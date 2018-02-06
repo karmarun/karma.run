@@ -84,6 +84,13 @@ type Optional struct {
 	Model Model
 }
 
+func NewOptional(m Model) Model {
+	if _, ok := m.(Optional); ok {
+		return m
+	}
+	return Optional{m}
+}
+
 func (m Optional) Transform(f func(Model) Model) Model {
 	return f(List{m.Model.Transform(f)})
 }
