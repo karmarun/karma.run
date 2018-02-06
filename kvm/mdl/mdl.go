@@ -477,6 +477,46 @@ func Either(l, r Model, m map[*Recursion]*Recursion) Model {
 		}
 	}
 
+	switch l := l.(type) {
+	case Union:
+		r, ok := r.(Union)
+		if !ok {
+			return any
+		}
+		u := NewUnion(l.Len() + r.Len())
+		l.ForEach(func(k string, w Model) bool {
+			u.Set(k, w)
+			return true
+		})
+		r.ForEach(func(k string, w Model) bool {
+			q, ok := u.Get(k)
+			if !ok {
+				u.Set(k, w)
+				return true
+			}
+			u.Set(k, Either(q, w, m))
+			return true
+		})
+		return u
+
+	case Struct:
+		r, ok := r.(Struct)
+		if !ok {
+			return any
+		}
+		s := NewStruct(l.Len() + r.Len())
+		l.ForEach(func(k string, w Model) bool {
+			q, ok := r.Get(k)
+			if !ok {
+				return true
+			}
+			s.Set(k, Either(q, w, m))
+			return true
+		})
+		return s
+
+	}
+
 	return any
 }
 

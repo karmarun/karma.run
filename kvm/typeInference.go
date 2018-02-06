@@ -335,36 +335,3 @@ func overMapTypeInferenceErrors(es []TypeInferenceError, f func(e TypeInferenceE
 	}
 	return es
 }
-
-func mergeTypeInferenceErrors(left, right []TypeInferenceError) []TypeInferenceError {
-	if len(left) == 0 && len(right) == 0 {
-		return nil
-	}
-	zero := TypeInferenceError{}
-	merged := make([]TypeInferenceError, 0, len(left)+len(right))
-	unmatchedLeft := left[:0] // reuse memory, avoid allocation
-	for _, l := range left {
-		match := -1
-		for i, r := range right {
-			if l.Path.Equals(r.Path) {
-				match = i
-				break
-			}
-		}
-		if match == -1 {
-			unmatchedLeft = append(unmatchedLeft, l)
-		} else {
-			r := right[match]
-			merged = append(merged, TypeInferenceError{mdl.Either(l.Want, r.Want, nil), l.Have, l.Path}) // note: same path implies same .Have
-			right[match] = zero
-		}
-	}
-	unmatchedRight := right[:0] // reuse memory, avoid allocation
-	for _, r := range right {
-		if r.Zero() {
-			continue
-		}
-		unmatchedRight = append(unmatchedRight, r)
-	}
-	return append(append(merged, unmatchedLeft...), unmatchedRight...)
-}
