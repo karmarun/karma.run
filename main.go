@@ -197,7 +197,7 @@ func main() {
 				Handler:   http.HandlerFunc(api.HttpHandler),
 				TLSConfig: &tls.Config{GetCertificate: m.GetCertificate},
 			}
-			httpServer.Handler = httpsRedirectionHandler
+			httpServer.Handler = m.HTTPHandler(httpsRedirectionHandler)
 			httpsCertFile, httpsKeyFile = ``, ``
 		}
 	}

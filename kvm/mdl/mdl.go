@@ -386,6 +386,9 @@ func ModelFromValue(metaId string, u val.Union, recursions map[string]*Recursion
 		if e != nil {
 			return nil, e.AppendPath(err.ErrorPathElementUnionCase(u.Case))
 		}
+		if _, ok := m.(Optional); ok {
+			return nil, err.ModelParsingError{`nested optional`, u, nil} // TODO: make this check more robust
+		}
 		return Optional{m}, nil
 
 	case "unique":
@@ -394,7 +397,7 @@ func ModelFromValue(metaId string, u val.Union, recursions map[string]*Recursion
 			return nil, e.AppendPath(err.ErrorPathElementUnionCase(u.Case))
 		}
 		if _, ok := m.(Unique); ok {
-			return nil, err.ModelParsingError{`nested unique`, u, nil}
+			return nil, err.ModelParsingError{`nested unique`, u, nil} // TODO: make this check more robust
 		}
 		return Unique{Model: m}, nil
 

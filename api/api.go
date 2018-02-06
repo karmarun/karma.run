@@ -26,7 +26,7 @@ import (
 	_ "net/http/pprof"
 )
 
-var version = `1.4.0`
+var version = `0.5-beta.deterministic`
 
 type Payload []byte
 
