@@ -45,6 +45,8 @@ type PresentOrConstant struct {
 
 type IsPresent struct{}
 
+type AllReferrers struct{}
+
 type Before struct{}
 
 type ConcatLists struct{}
@@ -489,3 +491,4 @@ func (SearchAllRegex) _inst()    {}
 func (SearchRegex) _inst()       {}
 func (ToString) _inst()          {}
 func (With) _inst()              {}
+func (AllReferrers) _inst()      {}

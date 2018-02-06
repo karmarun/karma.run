@@ -65,6 +65,7 @@ const model = `
                 "stringToLower":  ["recurse", "x"],
                 "tag":            ["recurse", "x"],
                 "zero":           ["recurse", "x"],
+                "allReferrers":   ["recurse", "x"],
 
                 "after":       ["tuple", [["recurse","x"], ["recurse","x"]]],
                 "before":      ["tuple", [["recurse","x"], ["recurse","x"]]],

@@ -93,6 +93,9 @@ func (vm VirtualMachine) Compile(typed xpr.TypedExpression) inst.Instruction {
 	case xpr.PresentOrZero:
 		return inst.Sequence{vm.Compile(node.Argument.(xpr.TypedExpression)), inst.PresentOrConstant{typed.Actual.Zero()}}
 
+	case xpr.AllReferrers:
+		return inst.Sequence{vm.Compile(node.Argument.(xpr.TypedExpression)), inst.AllReferrers{}}
+
 	case xpr.IsPresent:
 		return inst.Sequence{vm.Compile(node.Argument.(xpr.TypedExpression)), inst.IsPresent{}}
 

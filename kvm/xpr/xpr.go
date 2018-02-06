@@ -84,6 +84,9 @@ func ExpressionFromValue(v val.Value) Expression {
 	case "zero":
 		return Zero{}
 
+	case "allReferrers":
+		return AllReferrers{ExpressionFromValue(u.Value)}
+
 	case "isPresent":
 		return IsPresent{ExpressionFromValue(u.Value)}
 
@@ -504,35 +507,6 @@ func ValueFromExpression(x Expression) val.Value {
 		return val.Union{"zero", val.Struct{}}
 
 	case Literal:
-		// case NewList:
-		// 	return val.Union{"newList", make(val.List, len(node), len(node)).OverMap(func(i int, _ val.Value) val.Value {
-		// 		return ValueFromExpression(node[i])
-		// 	})}
-
-		// case NewTuple:
-		// 	return val.Union{"newTuple", make(val.Tuple, len(node), len(node)).OverMap(func(i int, _ val.Value) val.Value {
-		// 		return ValueFromExpression(node[i])
-		// 	})}
-
-		// case NewMap:
-		// 	values := val.NewMap(len(node))
-		// 	for k, sub := range node {
-		// 		values.Set(k, ValueFromExpression(sub))
-		// 	}
-		// 	return val.Union{"newMap", values}
-
-		// case NewStruct:
-		// 	values := val.NewMap(len(node))
-		// 	for k, sub := range node {
-		// 		values.Set(k, ValueFromExpression(sub))
-		// 	}
-		// 	return val.Union{"newStruct", values}
-
-		// case NewUnion:
-		// 	return val.Union{"newUnion", val.StructFromMap(map[string]val.Value{
-		// 		"value": ValueFromExpression(node.Value),
-		// 		"case":  ValueFromExpression(node.Case),
-		// 	})}
 
 		switch v := node.Value.(type) {
 		case val.Meta:
@@ -620,6 +594,8 @@ func ValueFromExpression(x Expression) val.Value {
 		case val.Uint64:
 			return val.Union{"uint64", v}
 
+		default:
+			panic(fmt.Sprintf("%T", node.Value))
 		}
 
 	case SetField:
@@ -634,6 +610,9 @@ func ValueFromExpression(x Expression) val.Value {
 			"value": ValueFromExpression(node.Value),
 			"in":    ValueFromExpression(node.In),
 		})}
+
+	case AllReferrers:
+		return val.Union{"allReferrers", ValueFromExpression(node.Argument)}
 
 	case PresentOrZero:
 		return val.Union{"presentOrZero", ValueFromExpression(node.Argument)}

@@ -903,6 +903,16 @@ func (vm VirtualMachine) Execute(program inst.Sequence, input val.Value) (val.Va
 				stack.Push(v)
 			}
 
+		case inst.AllReferrers:
+			v := unMeta(stack.Pop()).(val.Ref)
+			ls := make(val.List, 0, 64)
+			db.Bucket(definitions.PhargBucketBytes).Bucket(encodeVertex(v[0], v[1])).ForEach(func(k, _ []byte) error {
+				m, i := decodeVertex(k)
+				ls = append(ls, val.Ref{m, i})
+				return nil
+			})
+			stack.Push(ls)
+
 		case inst.IsPresent:
 			v := unMeta(stack.Pop())
 			stack.Push(val.Bool(v != val.Null))

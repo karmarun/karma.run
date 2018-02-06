@@ -40,6 +40,14 @@ func (x Literal) Transform(f func(Expression) Expression) Expression {
 	return f(x)
 }
 
+type AllReferrers struct {
+	Argument Expression
+}
+
+func (x AllReferrers) Transform(f func(Expression) Expression) Expression {
+	return f(AllReferrers{x.Argument.Transform(f)})
+}
+
 type ReverseList struct {
 	Argument Expression
 }

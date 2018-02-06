@@ -221,6 +221,16 @@ func (vm VirtualMachine) TypeExpression(node xpr.Expression, argument, expected 
 
 		retNode = xpr.TypedExpression{node, expected, model}
 
+	case xpr.AllReferrers:
+
+		arg, e := vm.TypeExpression(node.Argument, argument, mdl.Ref{})
+		if e != nil {
+			return arg, e
+		}
+		node.Argument = arg
+
+		retNode = xpr.TypedExpression{node, expected, mdl.List{mdl.Ref{}}}
+
 	case xpr.IsPresent:
 		arg, e := vm.TypeExpression(node.Argument, argument, AnyModel)
 		if e != nil {
