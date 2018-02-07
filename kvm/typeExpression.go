@@ -110,6 +110,68 @@ func (vm VirtualMachine) TypeExpression(node xpr.Expression, argument, expected 
 		}
 		retNode = xpr.TypedExpression{node, expected, ConstantModel{expected, expected.Zero()}}
 
+	case xpr.NewUnion:
+
+		caze, e := vm.TypeExpression(node.Case, argument, StringModel)
+		if e != nil {
+			return caze, e
+		}
+		node.Case = caze
+
+		cc, ok := caze.Actual.(ConstantModel)
+		if !ok {
+			return ZeroTypedExpression, err.CompilationError{
+				Problem: `union: case must be constant expression`,
+				Program: xpr.ValueFromExpression(node),
+			}
+		}
+
+		caseString := string(cc.Value.(val.String))
+
+		value, e := vm.TypeExpression(node.Value, argument, AnyModel)
+		if e != nil {
+			return value, e
+		}
+		node.Value = value
+
+		model := mdl.NewUnion(1)
+		model.Set(caseString, value.Actual.Unwrap())
+
+		retNode = xpr.TypedExpression{node, expected, model}
+
+	case xpr.NewMap:
+
+		subModel := mdl.Model(nil)
+
+		for k, arg := range node {
+			arg, e := vm.TypeExpression(arg, argument, AnyModel)
+			if e != nil {
+				return arg, e
+			}
+			node[k] = arg
+			if subModel == nil {
+				subModel = arg.Actual.Unwrap()
+			} else {
+				subModel = mdl.Either(subModel, arg.Actual.Unwrap(), nil)
+			}
+		}
+
+		retNode = xpr.TypedExpression{node, expected, mdl.Map{subModel}}
+
+	case xpr.NewStruct:
+
+		model := mdl.NewStruct(len(node))
+
+		for k, arg := range node {
+			arg, e := vm.TypeExpression(arg, argument, AnyModel)
+			if e != nil {
+				return arg, e
+			}
+			model.Set(k, arg.Actual.Unwrap())
+		}
+
+		retNode = xpr.TypedExpression{node, expected, model}
+
 	case xpr.SetField:
 
 		name, e := vm.TypeExpression(node.Name, argument, StringModel)

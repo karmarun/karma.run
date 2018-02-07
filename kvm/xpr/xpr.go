@@ -68,6 +68,28 @@ func ExpressionFromValue(v val.Value) Expression {
 	case "symbol":
 		return Literal{val.Symbol(u.Value.(val.String))}
 
+	case "union":
+		arg := u.Value.(val.Tuple)
+		return NewUnion{Literal{arg[0].(val.String)}, ExpressionFromValue(arg[1])}
+
+	case "map":
+		arg := u.Value.(val.Map)
+		ret := make(NewMap, arg.Len())
+		arg.ForEach(func(k string, w val.Value) bool {
+			ret[k] = ExpressionFromValue(w)
+			return true
+		})
+		return ret
+
+	case "struct":
+		arg := u.Value.(val.Map)
+		ret := make(NewStruct, arg.Len())
+		arg.ForEach(func(k string, w val.Value) bool {
+			ret[k] = ExpressionFromValue(w)
+			return true
+		})
+		return ret
+
 	case "ref":
 		// case: (string, string)
 		// case: (ref<metaModel>, string)   // <- needs validation
