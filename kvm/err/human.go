@@ -85,7 +85,7 @@ func ProgramToHuman(v val.Value, indent int) string {
 		subIndentation := strings.Repeat(indentUnit, indent+1)
 		arg := u.Value.(val.Map)
 		if arg.Len() == 0 {
-			return "map[]"
+			return "map{}"
 		}
 		args := "\n"
 		keys := arg.Keys()
@@ -93,12 +93,12 @@ func ProgramToHuman(v val.Value, indent int) string {
 			k := keys[i]
 			args += subIndentation + fmt.Sprintf(`"%s" => `, k) + ProgramToHuman(arg.Key(k), indent+1) + ",\n"
 		}
-		return fmt.Sprintf("map [%s%s]", args, indentation)
+		return fmt.Sprintf("map {%s%s}", args, indentation)
 
 	case "union":
 		arg := u.Value.(val.Tuple)
 		caze := string(arg[0].(val.Union).Value.(val.String))
-		return fmt.Sprintf(`<%s> `, caze) + ProgramToHuman(arg[1], indent)
+		return fmt.Sprintf(`union(%s: %s)`, caze, ProgramToHuman(arg[1], indent))
 	}
 	out := u.Case
 	a := u.Value
@@ -144,17 +144,17 @@ func ValueToHuman(v val.Value) string {
 	case val.Meta:
 		return ValueToHuman(v.Value)
 	case val.Tuple:
-		return "tuple" // TODO
+		return "..." // TODO
 	case val.Union:
-		return "union" // TODO
+		return "..." // TODO
 	case val.Struct:
-		return "struct" // TODO
+		return "..." // TODO
 	case val.Map:
-		return "map" // TODO
+		return "..." // TODO
 	case val.List:
-		return "list" // TODO
+		return "..." // TODO
 	case val.Set:
-		return "set" // TODO
+		return "..." // TODO
 	case val.Ref:
 		return fmt.Sprintf(`%s/%s`, v[0], v[1])
 	case val.Raw:
