@@ -18,6 +18,10 @@ func modelToHuman(m mdl.Model, indent int, r map[*mdl.Recursion]struct{}) string
 	}
 	m = m.Unwrap()
 	switch m := m.(type) {
+
+	case mdl.Optional:
+		return "optional " + modelToHuman(m.Model, indent, r)
+
 	case *mdl.Recursion:
 		if _, ok := r[m]; ok {
 			return `recursion`

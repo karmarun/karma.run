@@ -81,6 +81,14 @@ func ExpressionFromValue(v val.Value) Expression {
 		})
 		return ret
 
+	case "list":
+		arg := u.Value.(val.List)
+		ret := make(NewList, len(arg))
+		for i, w := range arg {
+			ret[i] = ExpressionFromValue(w)
+		}
+		return ret
+
 	case "struct":
 		arg := u.Value.(val.Map)
 		ret := make(NewStruct, arg.Len())
@@ -999,6 +1007,27 @@ func ValueFromExpression(x Expression) val.Value {
 			"value":      ValueFromExpression(node.Value),
 			"expression": ValueFromExpression(node.Expression),
 		})}
+
+	case NewList:
+		arg := make(val.List, len(node))
+		for i, w := range node {
+			arg[i] = ValueFromExpression(w)
+		}
+		return val.Union{"list", arg}
+
+	case NewStruct:
+		arg := val.NewMap(len(node))
+		for k, w := range node {
+			arg.Set(k, ValueFromExpression(w))
+		}
+		return val.Union{"struct", arg}
+
+	case NewMap:
+		arg := val.NewMap(len(node))
+		for k, w := range node {
+			arg.Set(k, ValueFromExpression(w))
+		}
+		return val.Union{"map", arg}
 
 	}
 	panic(fmt.Sprintf("unhandled case: %T", x))

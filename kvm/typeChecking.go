@@ -156,6 +156,12 @@ func _checkType(actual, expected mdl.Model, recs map[[2]*mdl.Recursion]struct{})
 
 	switch expected := expected.(type) {
 
+	case mdl.Optional:
+		if _, ok := actual.(mdl.Null); ok {
+			return nil
+		}
+		return _checkType(actual, expected.Model, recs)
+
 	case mdl.Set:
 		a, ok := actual.(mdl.Set)
 		if !ok {
@@ -226,12 +232,9 @@ func _checkType(actual, expected mdl.Model, recs map[[2]*mdl.Recursion]struct{})
 		expected.ForEach(func(k string, m mdl.Model) bool {
 			ak, ok := a.Get(k)
 			if !ok {
-				// NOTE: commented out because at this stage, structs should have
-				//       null values wherever they were allowed
-				//       (instead of eliding the key as in some codecs)
-				// if m.Nullable() {
-				// 	return true
-				// }
+				if m.Nullable() {
+					return true
+				}
 				e = []TypeCheckingError{TypeCheckingError{expected, actual, nil}}
 				return false
 			}

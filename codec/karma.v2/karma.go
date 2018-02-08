@@ -19,6 +19,12 @@ func encode(v val.Value, m mdl.Model, bs []byte) []byte {
 	m = m.Concrete()
 	switch m := m.(type) {
 
+	case mdl.Optional:
+		if v == val.Null {
+			return append(bs, 0)
+		}
+		return encode(v, m.Model, append(bs, 1))
+
 	case mdl.Set:
 		v := v.(val.Set)
 		bs = writeUint32(uint32(len(v)), bs)
@@ -57,7 +63,7 @@ func encode(v val.Value, m mdl.Model, bs []byte) []byte {
 		m.ForEach(func(k string, m mdl.Model) bool {
 			w, ok := v.Get(k)
 			if !ok {
-				w = val.Null // m is slided (null|something)
+				w = val.Null // m is elided
 			}
 			bs = encode(w, m, bs)
 			return true
@@ -150,6 +156,12 @@ func Decode(bs []byte, m mdl.Model) (val.Value, []byte) {
 func decode(bs []byte, m mdl.Model) (val.Value, []byte) {
 	m = m.Concrete()
 	switch m := m.(type) {
+
+	case mdl.Optional:
+		if bs[0] == 0 {
+			return val.Null, bs[1:]
+		}
+		return decode(bs[1:], m.Model)
 
 	case mdl.Set:
 		l, bs := readUint32(bs)
