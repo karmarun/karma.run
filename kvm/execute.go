@@ -111,6 +111,14 @@ func (vm VirtualMachine) Execute(program inst.Sequence, input val.Value) (val.Va
 			}
 			stack.Push(ls)
 
+		case inst.BuildSet:
+			st := make(val.Set, it.Length)
+			for i := it.Length - 1; i > -1; i-- {
+				v := stack.Pop()
+				st[val.Hash(v, nil).Sum64()] = v
+			}
+			stack.Push(st)
+
 		case inst.BuildTuple:
 			ls := make(val.Tuple, it.Length, it.Length)
 			for i := it.Length - 1; i > -1; i-- {
@@ -1777,7 +1785,7 @@ func (vm VirtualMachine) Execute(program inst.Sequence, input val.Value) (val.Va
 			stack.Push(c)
 
 		default:
-			panic(fmt.Sprintf("unimplemented inst.Instruction: %T: %v", it, it))
+			panic(fmt.Sprintf("unimplemented inst.Instruction: %#v", it))
 		}
 
 	}

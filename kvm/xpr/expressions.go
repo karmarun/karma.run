@@ -6,14 +6,6 @@ import (
 	"karma.run/kvm/val"
 )
 
-type RefConstructor struct {
-	Model, Id Expression
-}
-
-func (x RefConstructor) Transform(f func(Expression) Expression) Expression {
-	return f(RefConstructor{x.Model.Transform(f), x.Id.Transform(f)})
-}
-
 type Argument struct{}
 
 func (x Argument) Transform(f func(Expression) Expression) Expression {

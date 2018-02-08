@@ -590,7 +590,7 @@ func readJsonNumber(json JSON) (JSON, JSON, err.Error) {
 	}
 	if json[0] < '1' || json[0] > '9' {
 		return nil, input, err.InputParsingError{
-			Problem: fmt.Sprintf(`expected digit between 1 and 9, found "%s"`, json[0]),
+			Problem: fmt.Sprintf(`expected digit between 1 and 9, found "%s"`, string(json[0])),
 			Input:   json,
 		}
 	}

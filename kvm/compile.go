@@ -254,6 +254,14 @@ func (vm VirtualMachine) Compile(typed xpr.TypedExpression) inst.Instruction {
 		}
 		return append(is, inst.BuildList{len(node)})
 
+	case xpr.NewSet:
+		is := make(inst.Sequence, 0, len(node)+1)
+		for _, sub := range node {
+			arg := vm.Compile(sub.(xpr.TypedExpression))
+			is = append(is, arg)
+		}
+		return append(is, inst.BuildSet{len(node)})
+
 	case xpr.NewTuple:
 		is := make(inst.Sequence, 0, len(node)+1)
 		for _, sub := range node {
@@ -597,6 +605,6 @@ func (vm VirtualMachine) Compile(typed xpr.TypedExpression) inst.Instruction {
 		}
 
 	}
-	panic(fmt.Sprintf("unhandled case: %T", typed))
+	panic(fmt.Sprintf("unhandled case: %T", typed.Expression))
 
 }

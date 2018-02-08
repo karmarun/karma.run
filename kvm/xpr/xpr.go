@@ -119,7 +119,7 @@ func ExpressionFromValue(v val.Value) Expression {
 		// case: (ref<metaModel>, string)   // <- needs validation
 		// case: (ref<modelA>, ref<modelB>) // <- equivalent to relocateRef
 		arg := u.Value.(val.Tuple)
-		return RefConstructor{ExpressionFromValue(arg[0]), ExpressionFromValue(arg[1])}
+		return NewRef{ExpressionFromValue(arg[0]), ExpressionFromValue(arg[1])}
 
 	case "id", "arg":
 		return Argument{}

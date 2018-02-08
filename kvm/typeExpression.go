@@ -193,6 +193,33 @@ func (vm VirtualMachine) TypeExpression(node xpr.Expression, argument, expected 
 
 		retNode = xpr.TypedExpression{node, expected, mdl.Map{subModel}}
 
+	case xpr.NewSet:
+
+		subModel := mdl.Model(nil)
+
+		for i, arg := range node {
+			arg, e := vm.TypeExpression(arg, argument, AnyModel)
+			if e != nil {
+				return arg, e
+			}
+			node[i] = arg
+			if subModel == nil {
+				subModel = arg.Actual.Unwrap()
+			} else {
+				subModel = mdl.Either(subModel, arg.Actual.Unwrap(), nil)
+			}
+		}
+
+		if len(node) == 0 {
+			if em, ok := expected.Unwrap().(mdl.Set); ok {
+				subModel = em.Elements
+			} else {
+				subModel = AnyModel
+			}
+		}
+
+		retNode = xpr.TypedExpression{node, expected, mdl.Set{subModel}}
+
 	case xpr.NewStruct:
 
 		model := mdl.NewStruct(len(node))
@@ -204,6 +231,21 @@ func (vm VirtualMachine) TypeExpression(node xpr.Expression, argument, expected 
 			}
 			node[k] = arg
 			model.Set(k, arg.Actual.Unwrap())
+		}
+
+		retNode = xpr.TypedExpression{node, expected, model}
+
+	case xpr.NewTuple:
+
+		model := make(mdl.Tuple, len(node))
+
+		for i, arg := range node {
+			arg, e := vm.TypeExpression(arg, argument, AnyModel)
+			if e != nil {
+				return arg, e
+			}
+			node[i] = arg
+			model[i] = arg.Actual.Unwrap()
 		}
 
 		retNode = xpr.TypedExpression{node, expected, model}
@@ -264,7 +306,7 @@ func (vm VirtualMachine) TypeExpression(node xpr.Expression, argument, expected 
 
 		retNode = xpr.TypedExpression{node, expected, mdl.Map{value.Actual.Unwrap()}}
 
-	case xpr.RefConstructor:
+	case xpr.NewRef:
 		marg, e := vm.TypeExpression(node.Model, argument, mdl.Ref{vm.MetaModelId()})
 		if e != nil {
 			return marg, e

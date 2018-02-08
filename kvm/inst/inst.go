@@ -142,6 +142,10 @@ type Limit struct {
 	Length int
 }
 
+type BuildSet struct {
+	Length int
+}
+
 type BuildList struct {
 	Length int
 }
@@ -492,3 +496,4 @@ func (SearchRegex) _inst()       {}
 func (ToString) _inst()          {}
 func (With) _inst()              {}
 func (AllReferrers) _inst()      {}
+func (BuildSet) _inst()          {}
