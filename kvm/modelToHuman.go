@@ -60,7 +60,7 @@ func modelToHuman(m mdl.Model, indent int, r map[*mdl.Recursion]struct{}) string
 			}
 			args += strings.Repeat(" ", indent*2) + k + ": " + modelToHuman(m.Field(k), indent+1, r)
 		}
-		return fmt.Sprintf("struct{%s\n%s}", args, strings.Repeat(" ", (indent-1)*2))
+		return fmt.Sprintf("struct {%s\n%s}", args, strings.Repeat(" ", (indent-1)*2))
 	case mdl.Union:
 		ks := m.Cases()
 		if len(ks) == 0 {
@@ -74,7 +74,7 @@ func modelToHuman(m mdl.Model, indent int, r map[*mdl.Recursion]struct{}) string
 			}
 			args += strings.Repeat(" ", indent*2) + k + ": " + modelToHuman(m.Case(k), indent+1, r)
 		}
-		return fmt.Sprintf("union{%s\n%s}", args, strings.Repeat(" ", (indent-1)*2))
+		return fmt.Sprintf("union {%s\n%s}", args, strings.Repeat(" ", (indent-1)*2))
 	case mdl.Enum:
 		ss := make([]string, 0, len(m))
 		for k, _ := range m {
@@ -82,6 +82,9 @@ func modelToHuman(m mdl.Model, indent int, r map[*mdl.Recursion]struct{}) string
 		}
 		return fmt.Sprintf(`enum(%s)`, strings.Join(ss, ", "))
 	case mdl.Ref:
+		if m.Model == "" {
+			return "ref"
+		}
 		return "ref to " + m.Model
 	case mdl.Any:
 		return "any"

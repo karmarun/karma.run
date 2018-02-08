@@ -78,11 +78,13 @@ func encode(value val.Value, cache JSON) JSON {
 	case val.Set:
 		bs := cache
 		bs = append(bs, '[')
-		for i, w := range v {
+		i := 0
+		for _, w := range v {
 			if i > 0 {
 				bs = append(bs, ',')
 			}
 			bs = encode(w, bs)
+			i++
 		}
 		bs = append(bs, ']')
 		return bs
