@@ -553,6 +553,12 @@ func (x Index) Transform(f func(Expression) Expression) Expression {
 	return f(Index{x.Value.Transform(f), x.Number.Transform(f)})
 }
 
+type NewSet []Expression
+
+func (x NewSet) Transform(f func(Expression) Expression) Expression {
+	return f(NewSet(mapExpressions(x, f)))
+}
+
 type NewList []Expression
 
 func (x NewList) Transform(f func(Expression) Expression) Expression {

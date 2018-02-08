@@ -81,6 +81,22 @@ func ExpressionFromValue(v val.Value) Expression {
 		})
 		return ret
 
+	case "set":
+		arg := u.Value.(val.Set)
+		ret := make(NewSet, 0, len(arg))
+		for _, w := range arg {
+			ret = append(ret, ExpressionFromValue(w))
+		}
+		return ret
+
+	case "tuple":
+		arg := u.Value.(val.List)
+		ret := make(NewTuple, len(arg))
+		for i, w := range arg {
+			ret[i] = ExpressionFromValue(w)
+		}
+		return ret
+
 	case "list":
 		arg := u.Value.(val.List)
 		ret := make(NewList, len(arg))
@@ -625,8 +641,56 @@ func ValueFromExpression(x Expression) val.Value {
 			return val.Union{"uint64", v}
 
 		default:
-			panic(fmt.Sprintf("%T", node.Value))
+			panic(fmt.Sprintf("unhandled literal type %T", node.Value))
 		}
+
+	case NewList:
+		arg := make(val.List, len(node))
+		for i, w := range node {
+			arg[i] = ValueFromExpression(w)
+		}
+		return val.Union{"list", arg}
+
+	case NewStruct:
+		arg := val.NewMap(len(node))
+		for k, w := range node {
+			arg.Set(k, ValueFromExpression(w))
+		}
+		return val.Union{"struct", arg}
+
+	case NewMap:
+		arg := val.NewMap(len(node))
+		for k, w := range node {
+			arg.Set(k, ValueFromExpression(w))
+		}
+		return val.Union{"map", arg}
+
+	case NewUnion:
+		arg := make(val.Tuple, 2)
+		arg[0] = ValueFromExpression(node.Case)
+		arg[1] = ValueFromExpression(node.Value)
+		return val.Union{"union", arg}
+
+	case NewSet:
+		arg := make(val.Set, len(node))
+		for _, w := range node {
+			v := ValueFromExpression(w)
+			arg[val.Hash(v, nil).Sum64()] = v
+		}
+		return val.Union{"set", arg}
+
+	case NewTuple:
+		arg := make(val.List, len(node))
+		for i, w := range node {
+			arg[i] = ValueFromExpression(w)
+		}
+		return val.Union{"tuple", arg}
+
+	case NewRef:
+		arg := make(val.Tuple, 2)
+		arg[0] = ValueFromExpression(node.Model)
+		arg[1] = ValueFromExpression(node.Id)
+		return val.Union{"ref", arg}
 
 	case SetField:
 		return val.Union{"setField", val.StructFromMap(map[string]val.Value{
@@ -1007,27 +1071,6 @@ func ValueFromExpression(x Expression) val.Value {
 			"value":      ValueFromExpression(node.Value),
 			"expression": ValueFromExpression(node.Expression),
 		})}
-
-	case NewList:
-		arg := make(val.List, len(node))
-		for i, w := range node {
-			arg[i] = ValueFromExpression(w)
-		}
-		return val.Union{"list", arg}
-
-	case NewStruct:
-		arg := val.NewMap(len(node))
-		for k, w := range node {
-			arg.Set(k, ValueFromExpression(w))
-		}
-		return val.Union{"struct", arg}
-
-	case NewMap:
-		arg := val.NewMap(len(node))
-		for k, w := range node {
-			arg.Set(k, ValueFromExpression(w))
-		}
-		return val.Union{"map", arg}
 
 	}
 	panic(fmt.Sprintf("unhandled case: %T", x))
