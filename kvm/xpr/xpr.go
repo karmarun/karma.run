@@ -324,21 +324,21 @@ func ExpressionFromValue(v val.Value) Expression {
 		return Divide{ExpressionFromValue(arg[0]), ExpressionFromValue(arg[1])}
 
 	case "or":
-		arg := u.Value.(val.List)
+		arg := u.Value.(val.Set)
 		if len(arg) == 1 {
 			return ExpressionFromValue(arg[0])
 		}
-		nod := make(Or, len(arg), len(arg))
-		for i, sub := range arg {
-			nod[i] = ExpressionFromValue(sub)
+		nod := make(Or, 0, len(arg))
+		for _, sub := range arg {
+			nod = append(nod, ExpressionFromValue(sub))
 		}
 		return nod
 
 	case "and":
-		arg := u.Value.(val.List)
-		nod := make(And, len(arg), len(arg))
-		for i, sub := range arg {
-			nod[i] = ExpressionFromValue(sub)
+		arg := u.Value.(val.Set)
+		nod := make(And, 0, len(arg))
+		for _, sub := range arg {
+			nod = append(nod, ExpressionFromValue(sub))
 		}
 		return nod
 
@@ -942,14 +942,20 @@ func ValueFromExpression(x Expression) val.Value {
 		}}
 
 	case And:
-		return val.Union{"and", make(val.List, len(node), len(node)).OverMap(func(i int, _ val.Value) val.Value {
-			return ValueFromExpression(node[i])
-		})}
+		arg := make(val.Set, len(node))
+		for _, v := range node {
+			w := ValueFromExpression(v)
+			arg[val.Hash(w, nil).Sum64()] = w
+		}
+		return val.Union{"and", arg}
 
 	case Or:
-		return val.Union{"or", make(val.List, len(node), len(node)).OverMap(func(i int, _ val.Value) val.Value {
-			return ValueFromExpression(node[i])
-		})}
+		arg := make(val.Set, len(node))
+		for _, v := range node {
+			w := ValueFromExpression(v)
+			arg[val.Hash(w, nil).Sum64()] = w
+		}
+		return val.Union{"or", arg}
 
 	case CreateMultiple:
 		values := val.NewMap(len(node.Values))
