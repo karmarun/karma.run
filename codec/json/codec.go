@@ -162,6 +162,9 @@ func encode(value val.Value, cache JSON) JSON {
 		return bs
 
 	case val.DateTime:
+		cache = append(cache, '"')
+		cache = append(cache, JSON(v.Time.Format(mdl.FormatDateTime))...)
+		return append(cache, '"')
 
 	case val.Int8:
 		return append(cache, JSON(strconv.FormatInt(int64(v), 10))...)
