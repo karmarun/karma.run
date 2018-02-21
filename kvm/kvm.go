@@ -1173,7 +1173,9 @@ func (vm VirtualMachine) Write(mid string, values map[string]val.Meta) err.Error
 
 		}
 
-		if edges := extractRefs(v.Value); len(edges) > 0 {
+		{
+
+			edges := extractRefs(v.Value)
 
 			for _, edge := range edges {
 				if _, ok := values[edge[1]]; ok {
