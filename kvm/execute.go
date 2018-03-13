@@ -241,6 +241,10 @@ func (vm VirtualMachine) Execute(program inst.Sequence, input val.Value) (val.Va
 				return nil, e
 			}
 
+			if e := mm.Validate(vl, nil); e != nil {
+				return nil, e
+			}
+
 			// vl already validated against mm
 
 			migrationMap := vm.applyMigrationTree(rf[1], map[string]*migrationNode{
@@ -299,37 +303,38 @@ func (vm VirtualMachine) Execute(program inst.Sequence, input val.Value) (val.Va
 				return nil, e
 			}
 
-			vs := unMeta(stack.Pop()).(val.Map)        // vm's elements already validated against mm
-			im := make(map[string]val.Value, vs.Len()) // key -> id as val.Ref
-			rm := make(map[string]map[string]val.Meta) // mid -> id -> value
+			subArg := val.NewStruct(len(it.Values)) // key -> id as val.Ref
+			for k, _ := range it.Values {
+				subArg.Set(k, val.Ref{it.Model, common.RandomId()})
+			}
 
-			// allocate some random IDs
-			vs.ForEach(func(k string, v val.Value) bool {
-				im[k] = val.Ref{it.Model, common.RandomId()}
-				return true
-			})
+			vs := make(map[string]val.Value, len(it.Values))
+			for k, sub := range it.Values {
+				w, e := vm.Execute(sub, subArg)
+				if e != nil {
+					return nil, e
+				}
+				vs[k] = w
+			}
+
+			rm := make(map[string]map[string]val.Meta) // mid -> id -> value
 
 			migrationTree := vm.migrationTree(it.Model, nil)
 
-			vs.ForEach(func(k string, v val.Value) bool {
+			for k, v := range vs {
 
-				id := string(im[k].(val.Ref)[1])
+				if e = mm.Validate(v, nil); e != nil {
+					break
+				}
 
-				v = unMeta(v).Transform(func(v val.Value) val.Value {
-					if r, ok := v.(val.Ref); ok {
-						if id, ok := im[r[1]]; ok {
-							return id
-						}
-					}
-					return v
-				})
+				id := string(subArg.Field(k).(val.Ref)[1])
 
 				if it.Model == vm.MetaModelId() {
 					// in this case validating structure is not enough,
 					// we have to make sure that we can build an actual model
 					// from the given value
 					if _, e = mdl.ModelFromValue(vm.MetaModelId(), v.(val.Union), nil); e != nil {
-						return false
+						break
 					}
 				}
 
@@ -344,18 +349,17 @@ func (vm VirtualMachine) Execute(program inst.Sequence, input val.Value) (val.Va
 
 				for mid, v := range migrationMap {
 					if _, ok := rm[mid]; !ok {
-						rm[mid] = make(map[string]val.Meta, vs.Len())
+						rm[mid] = make(map[string]val.Meta, len(vs))
 					}
 					rm[mid][id] = v
 				}
 
-				return true
-			})
+			}
 			if e != nil {
 				return nil, e
 			}
 
-			stack.Push(val.MapFromMap(im))
+			stack.Push(val.MapFromStruct(subArg))
 
 			// TODO: should primary mid go first for more sensible model IDs in errors?
 			for mid, values := range rm {

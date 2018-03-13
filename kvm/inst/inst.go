@@ -182,7 +182,8 @@ type ResolveAllRefs struct{}
 type Deref struct{}
 
 type CreateMultiple struct {
-	Model string
+	Model  string
+	Values map[string]Sequence
 }
 
 type Update struct{}

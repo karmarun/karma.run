@@ -43,63 +43,6 @@ func ProgramToHuman(v val.Value, indent int) string {
 		return ValueToHuman(v)
 	}
 	indentation := strings.Repeat(indentUnit, indent)
-	switch u.Case {
-	case "struct":
-		subIndentation := strings.Repeat(indentUnit, indent+1)
-		arg := u.Value.(val.Map)
-		if arg.Len() == 0 {
-			return "struct{}"
-		}
-		args := "\n"
-		keys := arg.Keys()
-		for i, l := 0, len(keys); i < l; i++ {
-			k := keys[i]
-			args += subIndentation + k + ": " + ProgramToHuman(arg.Key(k), indent+1) + ",\n"
-		}
-		return fmt.Sprintf("struct {%s%s}", args, indentation)
-	case "list":
-		subIndentation := strings.Repeat(indentUnit, indent+1)
-		arg := u.Value.(val.List)
-		if len(arg) == 0 {
-			return "list[]"
-		}
-		args := "\n"
-		for i, l := 0, len(arg); i < l; i++ {
-			args += subIndentation + ProgramToHuman(arg[i], indent+1) + ",\n"
-		}
-		return fmt.Sprintf("list [%s%s]", args, indentation)
-
-	case "set":
-		subIndentation := strings.Repeat(indentUnit, indent+1)
-		arg := u.Value.(val.Set)
-		if len(arg) == 0 {
-			return "set{}"
-		}
-		args := "\n"
-		for _, sub := range arg {
-			args += subIndentation + ProgramToHuman(sub, indent+1) + ",\n"
-		}
-		return fmt.Sprintf("set {%s%s}", args, indentation)
-
-	case "map":
-		subIndentation := strings.Repeat(indentUnit, indent+1)
-		arg := u.Value.(val.Map)
-		if arg.Len() == 0 {
-			return "map{}"
-		}
-		args := "\n"
-		keys := arg.Keys()
-		for i, l := 0, len(keys); i < l; i++ {
-			k := keys[i]
-			args += subIndentation + fmt.Sprintf(`"%s" => `, k) + ProgramToHuman(arg.Key(k), indent+1) + ",\n"
-		}
-		return fmt.Sprintf("map {%s%s}", args, indentation)
-
-	case "union":
-		arg := u.Value.(val.Tuple)
-		caze := string(arg[0].(val.Union).Value.(val.String))
-		return fmt.Sprintf(`union(%s: %s)`, caze, ProgramToHuman(arg[1], indent))
-	}
 	out := u.Case
 	a := u.Value
 	if s, ok := a.(val.Struct); ok {
@@ -136,36 +79,96 @@ func ProgramToHuman(v val.Value, indent int) string {
 	return out + fmt.Sprintf(`(%s)`, ValueToHuman(a))
 
 }
-func ValueToHuman(v val.Value) string {
+
+func valueToHuman(v val.Value, indent int) string {
 	if v == val.Null {
-		return `null`
+		return "null"
 	}
+	indentation := strings.Repeat(indentUnit, indent)
 	switch v := v.(type) {
 	case val.Meta:
-		return ValueToHuman(v.Value)
-	case val.Tuple:
-		return "..." // TODO
-	case val.Union:
-		return "..." // TODO
+		return valueToHuman(v.Value, indent)
+
 	case val.Struct:
-		return "..." // TODO
-	case val.Map:
-		return "..." // TODO
+		subIndentation := strings.Repeat(indentUnit, indent+1)
+		arg := v
+		if arg.Len() == 0 {
+			return "struct{}"
+		}
+		args := "\n"
+		keys := arg.Keys()
+		for i, l := 0, len(keys); i < l; i++ {
+			k := keys[i]
+			args += subIndentation + k + ": " + valueToHuman(arg.Field(k), indent+1) + ",\n"
+		}
+		return fmt.Sprintf("struct {%s%s}", args, indentation)
+
 	case val.List:
-		return "..." // TODO
+		subIndentation := strings.Repeat(indentUnit, indent+1)
+		arg := v
+		if len(arg) == 0 {
+			return "list[]"
+		}
+		args := "\n"
+		for i, l := 0, len(arg); i < l; i++ {
+			args += subIndentation + valueToHuman(arg[i], indent+1) + ",\n"
+		}
+		return fmt.Sprintf("list [%s%s]", args, indentation)
+
+	case val.Tuple:
+		subIndentation := strings.Repeat(indentUnit, indent+1)
+		arg := v
+		if len(arg) == 0 {
+			return "tuple[]"
+		}
+		args := "\n"
+		for i, l := 0, len(arg); i < l; i++ {
+			args += subIndentation + valueToHuman(arg[i], indent+1) + ",\n"
+		}
+		return fmt.Sprintf("tuple [%s%s]", args, indentation)
+
 	case val.Set:
-		return "..." // TODO
+		subIndentation := strings.Repeat(indentUnit, indent+1)
+		arg := v
+		if len(arg) == 0 {
+			return "set{}"
+		}
+		args := "\n"
+		for _, sub := range arg {
+			args += subIndentation + valueToHuman(sub, indent+1) + ",\n"
+		}
+		return fmt.Sprintf("set {%s%s}", args, indentation)
+
+	case val.Map:
+		subIndentation := strings.Repeat(indentUnit, indent+1)
+		arg := v
+		if arg.Len() == 0 {
+			return "map{}"
+		}
+		args := "\n"
+		keys := arg.Keys()
+		for i, l := 0, len(keys); i < l; i++ {
+			k := keys[i]
+			args += subIndentation + fmt.Sprintf(`"%s" => `, k) + valueToHuman(arg.Key(k), indent+1) + ",\n"
+		}
+		return fmt.Sprintf("map {%s%s}", args, indentation)
+
+	case val.Union:
+		arg := v
+		return fmt.Sprintf(`union(%s: %s)`, arg.Case, valueToHuman(arg.Value, indent))
+
 	case val.Ref:
-		return fmt.Sprintf(`%s/%s`, v[0], v[1])
-	case val.Raw:
-		return `<raw bytes>`
+		return fmt.Sprintf(`ref(%s: %s)`, v[0], v[1])
+
 	case val.Symbol:
 		return fmt.Sprintf(`%s`, v)
+
 	case val.Bool:
 		if v {
 			return `true`
 		}
 		return `false`
+
 	case val.DateTime:
 		return v.Format(time.RFC3339)
 	case val.Float:
@@ -189,6 +192,9 @@ func ValueToHuman(v val.Value) string {
 	case val.Uint64:
 		return fmt.Sprintf(`%d`, v)
 	}
-	return "value"
-	panic(fmt.Sprintf(`unhandled value type: %T`, v))
+	return "..."
+}
+
+func ValueToHuman(v val.Value) string {
+	return valueToHuman(v, 1)
 }

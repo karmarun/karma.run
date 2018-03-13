@@ -171,35 +171,6 @@ func (v Union) Primitive() bool {
 	return false
 }
 
-type Raw []byte
-
-func (v Raw) Transform(f func(Value) Value) Value {
-	return f(v)
-}
-
-func (a Raw) Copy() Value {
-	c := make(Raw, len(a), len(a))
-	copy(c, a)
-	return c
-}
-
-func (a Raw) Equals(v Value) bool {
-	q, ok := v.(Raw)
-	if !ok {
-		return false
-	}
-	for i := 0; i < len(a); i++ {
-		if a[i] != q[i] {
-			return false
-		}
-	}
-	return true
-}
-
-func (v Raw) Primitive() bool {
-	return false
-}
-
 type Struct struct{ lm *logMapStringValue }
 
 func NewStruct(capacity int) Struct {
@@ -296,6 +267,12 @@ type Map struct{ lm *logMapStringValue }
 
 func NewMap(capacity int) Map {
 	return Map{newlogMapStringValue(capacity)}
+}
+
+func MapFromStruct(s Struct) Map {
+	l := s.lm
+	s.lm = nil // move semantics
+	return Map{l}
 }
 
 func MapFromMap(m map[string]Value) Map {

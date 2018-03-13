@@ -659,82 +659,123 @@ func (vm VirtualMachine) InitDB() error {
 	}
 
 	{ // create default models
+
+		e := (err.Error)(nil)
+
+		createBuckets := func(k string, id val.Value) bool {
+			if e_ := db.Put([]byte(k), []byte(id.(val.Ref)[1])); e_ != nil {
+				e = err.InternalError{Problem: e.Error()}
+				return false
+			}
+			return true
+		}
+
 		ids, e := vm.Execute(inst.Sequence{
-			inst.Constant{val.String(definitions.TagModel)},
-			inst.Constant{definitions.NewTagModelValue(meta)},
-
-			inst.Constant{val.String(definitions.ExpressionModel)},
-			inst.Constant{mdl.ValueFromModel(meta, xpr.LanguageModel, nil)},
-
-			inst.Constant{val.String(definitions.MigrationModel)},
-			inst.Constant{definitions.NewMigrationModelValue(meta, definitions.ExpressionModel)},
-
-			inst.Constant{val.String(definitions.RoleModel)},
-			inst.Constant{definitions.NewRoleModelValue(meta, definitions.ExpressionModel)},
-
-			inst.Constant{val.String(definitions.UserModel)},
-			inst.Constant{definitions.NewUserModelValue(meta, definitions.RoleModel)},
-
-			inst.BuildMap{5},
-			inst.CreateMultiple{meta},
+			inst.CreateMultiple{meta, map[string]inst.Sequence{
+				definitions.TagModel: {
+					inst.Constant{
+						definitions.NewTagModelValue(meta),
+					},
+				},
+				definitions.ExpressionModel: {
+					inst.Constant{
+						mdl.ValueFromModel(meta, xpr.LanguageModel, nil),
+					},
+				},
+			}},
 		}, nil)
 
 		if e != nil {
 			return e
 		}
 
-		ids.(val.Map).ForEach(func(k string, id val.Value) bool {
-			if e_ := db.Put([]byte(k), []byte(id.(val.Ref)[1])); e_ != nil {
-				e = err.InternalError{Problem: e.Error()}
-				return false
-			}
-			return true
-		})
+		if ids.(val.Map).ForEach(createBuckets); e != nil {
+			return e
+		}
+
+		ids, e = vm.Execute(inst.Sequence{
+			inst.CreateMultiple{meta, map[string]inst.Sequence{
+				definitions.MigrationModel: {
+					inst.Constant{
+						definitions.NewMigrationModelValue(meta, ids.(val.Map).Key(definitions.ExpressionModel).(val.Ref)[1]),
+					},
+				},
+				definitions.RoleModel: {
+					inst.Constant{
+						definitions.NewRoleModelValue(meta, ids.(val.Map).Key(definitions.ExpressionModel).(val.Ref)[1]),
+					},
+				},
+			}},
+		}, nil)
+
 		if e != nil {
 			return e
 		}
+
+		if ids.(val.Map).ForEach(createBuckets); e != nil {
+			return e
+		}
+
+		ids, e = vm.Execute(inst.Sequence{
+			inst.CreateMultiple{meta, map[string]inst.Sequence{
+				definitions.UserModel: {
+					inst.Constant{
+						definitions.NewUserModelValue(meta, ids.(val.Map).Key(definitions.RoleModel).(val.Ref)[1]),
+					},
+				},
+			}},
+		}, nil)
+
+		if e != nil {
+			return e
+		}
+
+		if ids.(val.Map).ForEach(createBuckets); e != nil {
+			return e
+		}
+
 	}
 
 	{ // create default tags
 		_, e := vm.Execute(inst.Sequence{
-			inst.Constant{val.String("_model")},
-			inst.Constant{val.StructFromMap(map[string]val.Value{
-				"tag":   val.String("_model"),
-				"model": val.Ref{meta, vm.MetaModelId()},
-			})},
-
-			inst.Constant{val.String("_tag")},
-			inst.Constant{val.StructFromMap(map[string]val.Value{
-				"tag":   val.String("_tag"),
-				"model": val.Ref{meta, vm.TagModelId()},
-			})},
-
-			inst.Constant{val.String("_expression")},
-			inst.Constant{val.StructFromMap(map[string]val.Value{
-				"tag":   val.String("_expression"),
-				"model": val.Ref{meta, vm.ExpressionModelId()},
-			})},
-
-			inst.Constant{val.String("_migration")},
-			inst.Constant{val.StructFromMap(map[string]val.Value{
-				"tag":   val.String("_migration"),
-				"model": val.Ref{meta, vm.MigrationModelId()},
-			})},
-
-			inst.Constant{val.String("_role")},
-			inst.Constant{val.StructFromMap(map[string]val.Value{
-				"tag":   val.String("_role"),
-				"model": val.Ref{meta, vm.RoleModelId()},
-			})},
-
-			inst.Constant{val.String("_user")},
-			inst.Constant{val.StructFromMap(map[string]val.Value{
-				"tag":   val.String("_user"),
-				"model": val.Ref{meta, vm.UserModelId()},
-			})},
-
-			inst.BuildMap{6},
-			inst.CreateMultiple{vm.TagModelId()},
+			inst.CreateMultiple{vm.TagModelId(), map[string]inst.Sequence{
+				"_model": inst.Sequence{
+					inst.Constant{val.StructFromMap(map[string]val.Value{
+						"tag":   val.String("_model"),
+						"model": val.Ref{meta, vm.MetaModelId()},
+					})},
+				},
+				"_tag": inst.Sequence{
+					inst.Constant{val.StructFromMap(map[string]val.Value{
+						"tag":   val.String("_tag"),
+						"model": val.Ref{meta, vm.TagModelId()},
+					})},
+				},
+				"_expression": inst.Sequence{
+					inst.Constant{val.StructFromMap(map[string]val.Value{
+						"tag":   val.String("_expression"),
+						"model": val.Ref{meta, vm.ExpressionModelId()},
+					})},
+				},
+				"_migration": inst.Sequence{
+					inst.Constant{val.StructFromMap(map[string]val.Value{
+						"tag":   val.String("_migration"),
+						"model": val.Ref{meta, vm.MigrationModelId()},
+					})},
+				},
+				"_role": inst.Sequence{
+					inst.Constant{val.StructFromMap(map[string]val.Value{
+						"tag":   val.String("_role"),
+						"model": val.Ref{meta, vm.RoleModelId()},
+					})},
+				},
+				"_user": inst.Sequence{
+					inst.Constant{val.StructFromMap(map[string]val.Value{
+						"tag":   val.String("_user"),
+						"model": val.Ref{meta, vm.UserModelId()},
+					})},
+				},
+			}},
 		}, nil)
 
 		if e != nil {
@@ -745,10 +786,11 @@ func (vm VirtualMachine) InitDB() error {
 	{ // create root user
 
 		trueExpr, e := vm.Execute(inst.Sequence{
-			inst.Constant{val.String("self")},
-			inst.Constant{val.Bool(true)},
-			inst.BuildMap{1},
-			inst.CreateMultiple{vm.ExpressionModelId()},
+			inst.CreateMultiple{vm.ExpressionModelId(), map[string]inst.Sequence{
+				"self": inst.Sequence{
+					inst.Constant{val.Union{"data", val.Union{"bool", val.Bool(true)}}},
+				},
+			}},
 			inst.Constant{val.String("self")},
 			inst.Key{},
 		}, nil)
@@ -757,18 +799,19 @@ func (vm VirtualMachine) InitDB() error {
 		}
 
 		sysRole, e := vm.Execute(inst.Sequence{
-			inst.Constant{val.String("self")},
-			inst.Constant{val.StructFromMap(map[string]val.Value{
-				"name": val.String("admins"),
-				"permissions": val.StructFromMap(map[string]val.Value{
-					"create": trueExpr.(val.Ref),
-					"read":   trueExpr.(val.Ref),
-					"update": trueExpr.(val.Ref),
-					"delete": trueExpr.(val.Ref),
-				}),
-			})},
-			inst.BuildMap{1},
-			inst.CreateMultiple{vm.RoleModelId()},
+			inst.CreateMultiple{vm.RoleModelId(), map[string]inst.Sequence{
+				"self": inst.Sequence{
+					inst.Constant{val.StructFromMap(map[string]val.Value{
+						"name": val.String("admins"),
+						"permissions": val.StructFromMap(map[string]val.Value{
+							"create": trueExpr.(val.Ref),
+							"read":   trueExpr.(val.Ref),
+							"update": trueExpr.(val.Ref),
+							"delete": trueExpr.(val.Ref),
+						}),
+					})},
+				},
+			}},
 			inst.Constant{val.String("self")},
 			inst.Key{},
 		}, nil)
@@ -777,14 +820,15 @@ func (vm VirtualMachine) InitDB() error {
 		}
 
 		sysUser, e := vm.Execute(inst.Sequence{
-			inst.Constant{val.String("self")},
-			inst.Constant{val.StructFromMap(map[string]val.Value{
-				"username": val.String("admin"),
-				"password": val.String(""),
-				"roles":    val.List{sysRole},
-			})},
-			inst.BuildMap{1},
-			inst.CreateMultiple{vm.UserModelId()},
+			inst.CreateMultiple{vm.UserModelId(), map[string]inst.Sequence{
+				"self": inst.Sequence{
+					inst.Constant{val.StructFromMap(map[string]val.Value{
+						"username": val.String("admin"),
+						"password": val.String(""),
+						"roles":    val.List{sysRole},
+					})},
+				},
+			}},
 			inst.Constant{val.String("self")},
 			inst.Key{},
 		}, nil)

@@ -44,7 +44,7 @@ func (e TypeInferenceError) String() string {
 	}
 	out += "Expected\n"
 	out += "--------\n"
-	out += ModelToHuman(e.Want) + "\n\n"
+	out += mdl.ModelToHuman(e.Want) + "\n\n"
 	out += "Actual\n"
 	out += "--------\n"
 	out += err.ValueToHuman(e.Have) + "\n\n"
@@ -78,6 +78,12 @@ func inferType(value val.Value, expected mdl.Model) (mdl.Model, err.Error) {
 func _inferType(value val.Value, expected mdl.Model) (mdl.Model, []TypeInferenceError) {
 
 	switch m := expected.Concrete().(type) {
+
+	case mdl.Optional:
+		if value == val.Null {
+			return mdl.Null{}, nil
+		}
+		return _inferType(value, m.Model)
 
 	case mdl.Any:
 		return mdl.TightestModelForValue(value), nil

@@ -62,8 +62,6 @@ func TightestModelForValue(v val.Value) Model {
 
 	case val.Symbol:
 		return Enum{string(v): struct{}{}}
-	case val.Raw:
-		return Any{}
 	case val.Bool:
 		return Bool{}
 	case val.DateTime:

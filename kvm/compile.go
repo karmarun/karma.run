@@ -169,12 +169,10 @@ func (vm VirtualMachine) Compile(typed xpr.TypedExpression) inst.Instruction {
 	case xpr.Create:
 		value := vm.Compile(node.Value.(xpr.TypedExpression))
 		return inst.Sequence{
-			inst.Constant{val.String("self")},
-			value,
-			inst.BuildMap{1},
-			inst.CreateMultiple{typed.Actual.(mdl.Ref).Model},
-			inst.Constant{val.String("self")},
-			inst.Key{},
+			inst.CreateMultiple{
+				typed.Actual.(mdl.Ref).Model,
+				map[string]inst.Sequence{"self": flattenSequences(value, nil)},
+			},
 		}
 
 	case xpr.InList:
@@ -182,7 +180,7 @@ func (vm VirtualMachine) Compile(typed xpr.TypedExpression) inst.Instruction {
 		value := vm.Compile(node.Value.(xpr.TypedExpression))
 		return inst.Sequence{in, value, inst.InList{}}
 
-	case xpr.Filter:
+	case xpr.FilterList:
 		value := vm.Compile(node.Value.(xpr.TypedExpression))
 		expression := vm.Compile(node.Expression.(xpr.TypedExpression))
 		return inst.Sequence{value, inst.Filter{flattenSequences(expression, nil)}}
@@ -484,13 +482,13 @@ func (vm VirtualMachine) Compile(typed xpr.TypedExpression) inst.Instruction {
 		return is
 
 	case xpr.CreateMultiple:
-		is := make(inst.Sequence, 0, len(node.Values)*2+2)
+		mref := node.In.(xpr.TypedExpression).Actual.(ConstantModel).Value.(val.Ref)
+		cm := inst.CreateMultiple{mref[1], make(map[string]inst.Sequence, len(node.Values))}
 		for k, sub := range node.Values {
 			arg := vm.Compile(sub.(xpr.TypedExpression))
-			is = append(is, inst.Constant{val.String(k)}, arg)
+			cm.Values[k] = flattenSequences(arg, nil)
 		}
-		mref := node.In.(xpr.TypedExpression).Actual.(ConstantModel).Value.(val.Ref)
-		return append(is, inst.BuildMap{len(node.Values)}, inst.CreateMultiple{mref[1]})
+		return cm
 
 	case xpr.Slice:
 		value := vm.Compile(node.Value.(xpr.TypedExpression))

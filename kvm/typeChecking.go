@@ -47,10 +47,10 @@ func (e TypeCheckingError) String() string {
 	}
 	out += "Expected\n"
 	out += "--------\n"
-	out += ModelToHuman(e.Want) + "\n\n"
+	out += mdl.ModelToHuman(e.Want) + "\n\n"
 	out += "Actual\n"
 	out += "--------\n"
-	out += ModelToHuman(e.Have) + "\n\n"
+	out += mdl.ModelToHuman(e.Have) + "\n\n"
 	return out
 }
 func (e TypeCheckingError) Child() err.Error {

@@ -40,10 +40,6 @@ func Hash(v Value, h hash.Hash64) hash.Hash64 {
 		h.Write([]byte(v.Case))
 		h = Hash(v.Value, h)
 		return h
-	case Raw:
-		h.Write([]byte(`raw`))
-		h.Write([]byte(v))
-		return h
 	case Struct:
 		h.Write([]byte(`struct`))
 		v.ForEach(func(k string, v Value) bool {

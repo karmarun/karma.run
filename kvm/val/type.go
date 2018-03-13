@@ -134,10 +134,6 @@ func (Union) Type() Type {
 	return TypeUnion
 }
 
-func (Raw) Type() Type {
-	return 0
-}
-
 func (Struct) Type() Type {
 	return TypeStruct
 }

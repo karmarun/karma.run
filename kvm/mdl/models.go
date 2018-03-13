@@ -24,6 +24,12 @@ func NewRecursion(label string) *Recursion {
 	return &Recursion{Label: label, copyLock: &sync.Mutex{}}
 }
 
+func DefineRecursion(label string, definition func(*Recursion) Model) *Recursion {
+	r := NewRecursion(label)
+	r.Model = definition(r)
+	return r
+}
+
 func (r *Recursion) Transform(f func(Model) Model) Model {
 	if r.Model == nil {
 		panic("mdl.*Recursion.Transform() called during model building")

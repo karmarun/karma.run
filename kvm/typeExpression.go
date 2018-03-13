@@ -307,7 +307,7 @@ func (vm VirtualMachine) TypeExpression(node xpr.Expression, argument, expected 
 		retNode = xpr.TypedExpression{node, expected, mdl.Map{value.Actual.Unwrap()}}
 
 	case xpr.NewRef:
-		marg, e := vm.TypeExpression(node.Model, argument, mdl.Ref{vm.MetaModelId()})
+		marg, e := vm.TypeExpression(node.Model, argument, StringModel)
 		if e != nil {
 			return marg, e
 		}
@@ -321,7 +321,7 @@ func (vm VirtualMachine) TypeExpression(node xpr.Expression, argument, expected 
 			}
 		}
 
-		mid := cm.Value.(val.Ref)[1]
+		mid := cm.Value.(val.String)
 
 		iarg, e := vm.TypeExpression(node.Id, argument, StringModel)
 		if e != nil {
@@ -331,7 +331,7 @@ func (vm VirtualMachine) TypeExpression(node xpr.Expression, argument, expected 
 
 		// TODO: check that ID exists (during execution)
 
-		retNode = xpr.TypedExpression{node, expected, mdl.Ref{mid}}
+		retNode = xpr.TypedExpression{node, expected, mdl.Ref{string(mid)}}
 
 	case xpr.PresentOrZero:
 
@@ -729,7 +729,9 @@ func (vm VirtualMachine) TypeExpression(node xpr.Expression, argument, expected 
 		if e != nil {
 			return ZeroTypedExpression, e
 		}
-		value, e := vm.TypeExpression(node.Value, argument, UnwrapBucket(subExpect))
+		subArg := mdl.NewStruct(1)
+		subArg.Set("self", mdl.Ref{mid})
+		value, e := vm.TypeExpression(node.Value, subArg, UnwrapBucket(subExpect))
 		if e != nil {
 			return value, e
 		}
@@ -767,7 +769,7 @@ func (vm VirtualMachine) TypeExpression(node xpr.Expression, argument, expected 
 		}
 		retNode = xpr.TypedExpression{node, expected, model}
 
-	case xpr.Filter:
+	case xpr.FilterList:
 		value, e := vm.TypeExpression(node.Value, argument, mdl.List{AnyModel})
 		if e != nil {
 			return value, e
@@ -1352,8 +1354,12 @@ func (vm VirtualMachine) TypeExpression(node xpr.Expression, argument, expected 
 			}
 			subExpect = UnwrapBucket(m)
 		}
+		subArg := mdl.NewStruct(len(node.Values))
+		for k, _ := range node.Values {
+			subArg.Set(k, mdl.Ref{vm.MetaModelId()})
+		}
 		for k, sub := range node.Values {
-			arg, e := vm.TypeExpression(sub, argument, subExpect)
+			arg, e := vm.TypeExpression(sub, subArg, subExpect)
 			if e != nil {
 				return arg, e
 			}

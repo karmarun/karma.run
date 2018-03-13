@@ -12,6 +12,10 @@ import (
 // Model represents a possibly nested and/or recursive data type.
 type Model interface {
 
+	// Validate returns nil for val.Values that fit the given Model
+	// It returns an error for everything else
+	Validate(v val.Value, p err.ErrorPath) err.Error
+
 	// Copy copies a Model tree. It's equivalent to calling
 	// Transform(mdl.TransformationIdentity)
 	Copy() Model
@@ -195,9 +199,6 @@ func ValueFromModel(metaId string, model Model, recursions map[*Recursion]struct
 
 	case Bool:
 		return val.Union{"bool", val.Struct{}}
-
-	case Any:
-		return val.Union{"any", val.Struct{}}
 
 	case Ref:
 		return val.Union{"ref", val.Ref{metaId, m.Model}}

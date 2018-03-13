@@ -344,12 +344,12 @@ func (x InList) Transform(f func(Expression) Expression) Expression {
 	return f(InList{x.Value.Transform(f), x.In.Transform(f)})
 }
 
-type Filter struct {
+type FilterList struct {
 	Value, Expression Expression
 }
 
-func (x Filter) Transform(f func(Expression) Expression) Expression {
-	return f(Filter{x.Value.Transform(f), x.Expression.Transform(f)})
+func (x FilterList) Transform(f func(Expression) Expression) Expression {
+	return f(FilterList{x.Value.Transform(f), x.Expression.Transform(f)})
 }
 
 type AssertCase struct {

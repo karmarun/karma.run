@@ -175,6 +175,10 @@ func ResetHttpHandler(rw http.ResponseWriter, rq *http.Request) {
 	})
 
 	if e != nil {
+		if ke, ok := e.(err.Error); ok {
+			writeError(rw, cdc, err.HumanReadableError{ke})
+			return
+		}
 		log.Panicln(e)
 	}
 

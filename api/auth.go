@@ -66,8 +66,7 @@ func AuthHttpHandler(rw http.ResponseWriter, rq *http.Request) {
 
 	atv, ke := cdc.Decode([]byte(pld), AuthRequestModel)
 	if ke != nil {
-		rw.WriteHeader(http.StatusBadRequest)
-		rw.Write(cdc.Encode(ke.Value()))
+		writeError(rw, cdc, err.HumanReadableError{ke})
 		return
 	}
 
@@ -95,7 +94,7 @@ func AuthHttpHandler(rw http.ResponseWriter, rq *http.Request) {
 
 	findUser := xpr.Metarialize{
 		xpr.First{
-			xpr.Filter{
+			xpr.FilterList{
 				Value: xpr.All{
 					xpr.Tag{
 						xpr.Literal{val.String("_user")},

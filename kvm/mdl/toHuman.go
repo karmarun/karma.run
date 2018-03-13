@@ -1,53 +1,52 @@
 // Copyright 2017 karma.run AG. All rights reserved.
 // Use of this source code is governed by an AGPL license that can be found in the LICENSE file.
-package kvm
+package mdl
 
 import (
 	"fmt"
-	"karma.run/kvm/mdl"
 	"strings"
 )
 
-func ModelToHuman(m mdl.Model) string {
+func ModelToHuman(m Model) string {
 	return modelToHuman(m, 1, nil)
 }
 
-func modelToHuman(m mdl.Model, indent int, r map[*mdl.Recursion]struct{}) string {
+func modelToHuman(m Model, indent int, r map[*Recursion]struct{}) string {
 	if r == nil {
-		r = make(map[*mdl.Recursion]struct{})
+		r = make(map[*Recursion]struct{})
 	}
 	m = m.Unwrap()
 	switch m := m.(type) {
 
-	case mdl.Optional:
+	case Optional:
 		return "optional " + modelToHuman(m.Model, indent, r)
 
-	case *mdl.Recursion:
+	case *Recursion:
 		if _, ok := r[m]; ok {
-			return `recursion`
+			return fmt.Sprintf(`recurse(%s)`, m.Label)
 		}
 		r[m] = struct{}{}
 		s := modelToHuman(m.Model, indent, r)
 		delete(r, m)
 		return s
 
-	case mdl.Unique:
+	case Unique:
 		return fmt.Sprintf(`unique %s`, modelToHuman(m.Model, indent, r))
-	case mdl.Annotation:
+	case Annotation:
 		return fmt.Sprintf(`annotation(%s) of %s`, m.Value, modelToHuman(m.Model, indent, r))
-	case mdl.Set:
+	case Set:
 		return "set of " + modelToHuman(m.Elements, indent, r)
-	case mdl.List:
+	case List:
 		return "list of " + modelToHuman(m.Elements, indent, r)
-	case mdl.Map:
+	case Map:
 		return "map of " + modelToHuman(m.Elements, indent, r)
-	case mdl.Tuple:
+	case Tuple:
 		ss := make([]string, 0, len(m))
 		for _, w := range m {
 			ss = append(ss, modelToHuman(w, indent, r))
 		}
 		return fmt.Sprintf(`tuple(%s)`, strings.Join(ss, ", "))
-	case mdl.Struct:
+	case Struct:
 		ks := m.Keys()
 		if len(ks) == 0 {
 			return "struct{}"
@@ -61,7 +60,7 @@ func modelToHuman(m mdl.Model, indent int, r map[*mdl.Recursion]struct{}) string
 			args += strings.Repeat(" ", indent*2) + k + ": " + modelToHuman(m.Field(k), indent+1, r)
 		}
 		return fmt.Sprintf("struct {%s\n%s}", args, strings.Repeat(" ", (indent-1)*2))
-	case mdl.Union:
+	case Union:
 		ks := m.Cases()
 		if len(ks) == 0 {
 			return "union{}"
@@ -75,44 +74,44 @@ func modelToHuman(m mdl.Model, indent int, r map[*mdl.Recursion]struct{}) string
 			args += strings.Repeat(" ", indent*2) + k + ": " + modelToHuman(m.Case(k), indent+1, r)
 		}
 		return fmt.Sprintf("union {%s\n%s}", args, strings.Repeat(" ", (indent-1)*2))
-	case mdl.Enum:
+	case Enum:
 		ss := make([]string, 0, len(m))
 		for k, _ := range m {
 			ss = append(ss, k)
 		}
 		return fmt.Sprintf(`enum(%s)`, strings.Join(ss, ", "))
-	case mdl.Ref:
+	case Ref:
 		if m.Model == "" {
 			return "ref"
 		}
 		return "ref to " + m.Model
-	case mdl.Any:
+	case Any:
 		return "any"
-	case mdl.Null:
+	case Null:
 		return "null"
-	case mdl.String:
+	case String:
 		return "string"
-	case mdl.Float:
+	case Float:
 		return "float"
-	case mdl.Bool:
+	case Bool:
 		return "bool"
-	case mdl.DateTime:
+	case DateTime:
 		return "dateTime"
-	case mdl.Int8:
+	case Int8:
 		return "int8"
-	case mdl.Int16:
+	case Int16:
 		return "int16"
-	case mdl.Int32:
+	case Int32:
 		return "int32"
-	case mdl.Int64:
+	case Int64:
 		return "int64"
-	case mdl.Uint8:
+	case Uint8:
 		return "uint8"
-	case mdl.Uint16:
+	case Uint16:
 		return "uint16"
-	case mdl.Uint32:
+	case Uint32:
 		return "uint32"
-	case mdl.Uint64:
+	case Uint64:
 		return "uint64"
 	}
 	panic(fmt.Sprintf("unhandled model type: %T", m))

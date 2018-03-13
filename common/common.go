@@ -3,7 +3,6 @@
 package common
 
 import (
-	"karma.run/codec/json"
 	"karma.run/definitions"
 	"karma.run/kvm/mdl"
 	"karma.run/kvm/val"
@@ -19,18 +18,6 @@ func init() {
 
 // internal use only
 var internalMetaModel, _ = mdl.ModelFromValue("internal", definitions.NewMetaModelValue("internal").(val.Union), nil)
-
-func QuickModel(data string) mdl.Model {
-	v, e := json.Decode(json.JSON(data), internalMetaModel, nil)
-	if e != nil {
-		log.Panicf("%#v\n%s\n", e, data)
-	}
-	m, ke := mdl.ModelFromValue("internal", v.(val.Union), nil)
-	if ke != nil {
-		log.Panicf("%#v\n", ke.Error())
-	}
-	return m
-}
 
 // func SetCorsHeaders(rw http.ResponseWriter, rq *http.Request) {
 // 	rw.Header().Set("Access-Control-Allow-Headers", "Expect, Accept, Content-Type, X-Ijt, X-Karma-Database, X-Karma-Codec, X-Karma-Signature, X-Karma-Secret")
