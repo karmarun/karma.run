@@ -84,6 +84,11 @@ var LanguageModel = mdl.DefineRecursion("function", func(function *mdl.Recursion
 			"before":      mdl.Tuple{expression, expression},
 			"equal":       mdl.Tuple{expression, expression},
 			"concatLists": mdl.Tuple{expression, expression},
+
+			"mapSet":  mdl.Tuple{expression, function},
+			"mapList": mdl.Tuple{expression, function},
+			"mapMap":  mdl.Tuple{expression, function},
+
 			"setField": mdl.StructFromMap(map[string]mdl.Model{
 				"name":  mdl.String{},
 				"value": expression,
@@ -192,18 +197,6 @@ var LanguageModel = mdl.DefineRecursion("function", func(function *mdl.Recursion
 			"memSort": mdl.StructFromMap(map[string]mdl.Model{
 				"value":      expression,
 				"expression": expression,
-			}),
-			"mapSet": mdl.StructFromMap(map[string]mdl.Model{
-				"value":      expression,
-				"expression": expression,
-			}),
-			"mapList": mdl.StructFromMap(map[string]mdl.Model{
-				"value":      expression,
-				"expression": function,
-			}),
-			"mapMap": mdl.StructFromMap(map[string]mdl.Model{
-				"value":      expression,
-				"expression": function,
 			}),
 			"filterList": mdl.StructFromMap(map[string]mdl.Model{
 				"value":      expression,

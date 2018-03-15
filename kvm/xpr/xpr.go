@@ -202,18 +202,16 @@ func ExpressionFromValue(v val.Value) Expression {
 		return Create{ExpressionFromValue(arg.Field("in")), ExpressionFromValue(arg.Field("value"))}
 
 	case "mapMap":
-		arg := u.Value.(val.Struct)
-		return MapMap{
-			ExpressionFromValue(arg.Field("value")),
-			FunctionFromValue(arg.Field("expression")),
-		}
+		arg := u.Value.(val.Tuple)
+		return MapMap{ExpressionFromValue(arg[0]), FunctionFromValue(arg[1])}
 
 	case "mapList":
-		arg := u.Value.(val.Struct)
-		return MapList{
-			ExpressionFromValue(arg.Field("value")),
-			FunctionFromValue(arg.Field("expression")),
-		}
+		arg := u.Value.(val.Tuple)
+		return MapList{ExpressionFromValue(arg[0]), FunctionFromValue(arg[1])}
+
+	case "mapSet":
+		arg := u.Value.(val.Tuple)
+		return MapSet{ExpressionFromValue(arg[0]), FunctionFromValue(arg[1])}
 
 	case "reduceList":
 		arg := u.Value.(val.Struct)
@@ -414,13 +412,6 @@ func ExpressionFromValue(v val.Value) Expression {
 		return MemSort{
 			Value: ExpressionFromValue(arg.Field("value")),
 			Order: FunctionFromValue(arg.Field("expression")),
-		}
-
-	case "mapSet":
-		arg := u.Value.(val.Struct)
-		return MapSet{
-			Value:   ExpressionFromValue(arg.Field("value")),
-			Mapping: FunctionFromValue(arg.Field("expression")),
 		}
 
 	default:
@@ -760,16 +751,13 @@ func ValueFromExpression(x Expression) val.Value {
 		})}
 
 	case MapMap:
-		return val.Union{"mapMap", val.StructFromMap(map[string]val.Value{
-			"value":      ValueFromExpression(node.Value),
-			"expression": ValueFromFunction(node.Mapping),
-		})}
+		return val.Union{"mapMap", val.Tuple{ValueFromExpression(node.Value), ValueFromFunction(node.Mapping)}}
 
 	case MapList:
-		return val.Union{"mapList", val.StructFromMap(map[string]val.Value{
-			"value":      ValueFromExpression(node.Value),
-			"expression": ValueFromFunction(node.Mapping),
-		})}
+		return val.Union{"mapList", val.Tuple{ValueFromExpression(node.Value), ValueFromFunction(node.Mapping)}}
+
+	case MapSet:
+		return val.Union{"mapSet", val.Tuple{ValueFromExpression(node.Value), ValueFromFunction(node.Mapping)}}
 
 	case ReduceList:
 		return val.Union{"reduceList", val.StructFromMap(map[string]val.Value{
@@ -958,12 +946,6 @@ func ValueFromExpression(x Expression) val.Value {
 		return val.Union{"memSort", val.StructFromMap(map[string]val.Value{
 			"value":      ValueFromExpression(node.Value),
 			"expression": ValueFromFunction(node.Order),
-		})}
-
-	case MapSet:
-		return val.Union{"mapSet", val.StructFromMap(map[string]val.Value{
-			"value":      ValueFromExpression(node.Value),
-			"expression": ValueFromFunction(node.Mapping),
 		})}
 
 	case Scope:
