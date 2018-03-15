@@ -11,12 +11,12 @@ import (
 	"karma.run/kvm/inst"
 	"karma.run/kvm/mdl"
 	"karma.run/kvm/val"
+	"karma.run/kvm/xpr"
 	"log"
 	"math/rand"
 	"sort"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 )
 
@@ -27,20 +27,75 @@ func unMeta(value val.Value) val.Value {
 	return value
 }
 
-var StackPool = &sync.Pool{
-	New: func() interface{} {
-		s := make(Stack, 0, 32)
-		return &s
-	},
+type ValueScope struct {
+	parent *ValueScope
+	scope  map[string]val.Value
 }
 
-func (vm VirtualMachine) Execute(program inst.Sequence, input val.Value) (val.Value, err.Error) {
+func NewValueScope() *ValueScope {
+	return &ValueScope{nil, make(map[string]val.Value)}
+}
+
+func (s *ValueScope) Get(k string) (val.Value, bool) {
+	if s == nil {
+		return nil, false
+	}
+	if m, ok := s.scope[k]; ok {
+		return m, true
+	}
+	return s.parent.Get(k)
+}
+
+func (s *ValueScope) Set(k string, m val.Value) {
+	s.scope[k] = m
+}
+
+func (s *ValueScope) Child() *ValueScope {
+	c := NewValueScope()
+	c.parent = s
+	return c
+}
+
+type Stack []val.Value
+
+func NewStack(capacity int) *Stack {
+	stack := make(Stack, 0, capacity)
+	return &stack
+}
+
+func (s *Stack) Push(v val.Value) {
+	(*s) = append((*s), v)
+}
+
+func (s *Stack) Pop() val.Value {
+	l := s.Len()
+	v := (*s)[l-1]
+	(*s) = (*s)[:l-1]
+	return v
+}
+
+func (s Stack) Len() int {
+	return len(s)
+}
+
+func (s Stack) Peek() val.Value {
+	if len(s) == 0 {
+		return nil
+	}
+	return s[len(s)-1]
+}
+
+// scope may be nil, that's fine, scope.Child() will allocate when needed.
+func (vm VirtualMachine) Execute(program inst.Sequence, scope *ValueScope, args ...val.Value) (val.Value, err.Error) {
 
 	if len(program) == 0 {
 		panic("empty program")
 	}
 
-	db := vm.RootBucket
+	stack := NewStack(128)
+	for i := len(args) - 1; i > -1; i-- {
+		stack.Push(args[i])
+	}
 
 	if ct, ok := program[0].(inst.Constant); ok && len(program) == 1 {
 		return ct.Value, nil
@@ -50,40 +105,32 @@ func (vm VirtualMachine) Execute(program inst.Sequence, input val.Value) (val.Va
 		return nil, e
 	}
 
-	stack := StackPool.Get().(*Stack)
-
-	defer func() {
-		s := *stack
-		s = s[:cap(s)]
-		for i, _ := range s {
-			s[i] = nil
-		}
-		s = s[:0]
-		StackPool.Put(&s)
-	}()
-
-	// pretty.Println(input)
-	// printDebugProgram(stack, program)
-
 	for pc, pl := 0, len(program); pc < pl; pc++ {
+
+		// { // debug
+		// 	fmt.Printf("stack.Peek(): %T %v\n", stack.Peek(), stack.Peek())
+		// 	fmt.Printf("instruction: %T %v\n\n", program[pc], program[pc])
+		// }
 
 		switch it := program[pc].(type) {
 
-		case inst.Sequence:
-			log.Panicln("flattenSequences missed an inst.Sequence ;P")
+		case inst.Define:
+			if scope == nil {
+				scope = NewValueScope()
+			}
+			scope.Set(string(it), stack.Pop())
 
-		case inst.DebugPrintStack:
-			pretty.Println("input:", input)
-			pretty.Println("stack:", *stack)
-
-		case inst.Identity:
-			if input == nil {
+		case inst.Scope:
+			v, ok := scope.Get(string(it))
+			if !ok {
 				return nil, err.ExecutionError{
-					`id/arg: no input in this context`,
-					nil,
+					Problem: fmt.Sprintf(`not in scope: "%s"`, it),
 				}
 			}
-			stack.Push(input.Copy())
+			stack.Push(v)
+
+		case inst.Sequence:
+			log.Panicln("vm.Execute: nested inst.Sequence")
 
 		case inst.CurrentUser:
 			stack.Push(val.Ref{vm.UserModelId(), vm.UserID})
@@ -98,7 +145,7 @@ func (vm VirtualMachine) Execute(program inst.Sequence, input val.Value) (val.Va
 			} else {
 				cont = it.Else
 			}
-			v, e := vm.Execute(cont, input)
+			v, e := vm.Execute(cont, scope.Child())
 			if e != nil {
 				return nil, e
 			}
@@ -120,27 +167,27 @@ func (vm VirtualMachine) Execute(program inst.Sequence, input val.Value) (val.Va
 			stack.Push(st)
 
 		case inst.BuildTuple:
-			ls := make(val.Tuple, it.Length, it.Length)
+			tp := make(val.Tuple, it.Length, it.Length)
 			for i := it.Length - 1; i > -1; i-- {
-				ls[i] = stack.Pop()
+				tp[i] = stack.Pop()
 			}
-			stack.Push(ls)
+			stack.Push(tp)
 
 		case inst.BuildMap:
-			ls := val.NewMap(it.Length)
+			mp := val.NewMap(it.Length)
 			for i, l := 0, it.Length; i < l; i++ {
 				v := stack.Pop()
 				k := unMeta(stack.Pop()).(val.String)
-				ls.Set(string(k), v)
+				mp.Set(string(k), v)
 			}
-			stack.Push(ls)
+			stack.Push(mp)
 
 		case inst.BuildStruct:
-			v := val.NewStruct(len(it.Keys))
+			st := val.NewStruct(len(it.Keys))
 			for i := len(it.Keys) - 1; i > -1; i-- {
-				v.Set(it.Keys[i], stack.Pop())
+				st.Set(it.Keys[i], stack.Pop())
 			}
-			stack.Push(v)
+			stack.Push(st)
 
 		case inst.BuildUnion:
 			stack.Push(val.Union{Case: it.Case, Value: stack.Pop()})
@@ -157,11 +204,10 @@ func (vm VirtualMachine) Execute(program inst.Sequence, input val.Value) (val.Va
 
 		case inst.Tag:
 			tag := unMeta(stack.Pop()).(val.String)
-			mid := db.Bucket(definitions.TagBucketBytes).Get([]byte(tag))
+			mid := vm.RootBucket.Bucket(definitions.TagBucketBytes).Get([]byte(tag))
 			if mid == nil {
 				return nil, err.ExecutionError{
-					fmt.Sprintf(`tag: "%s" not found`, tag),
-					nil,
+					Problem: fmt.Sprintf(`tag not found: "%s"`, tag),
 				}
 			}
 			stack.Push(val.Ref{vm.MetaModelId(), string(mid)})
@@ -251,7 +297,7 @@ func (vm VirtualMachine) Execute(program inst.Sequence, input val.Value) (val.Va
 				rf[0]: {
 					InModel:   mm, // correct, even if it seems weird
 					InValue:   vl,
-					Migration: val.Union{Case: "id", Value: val.Struct{}},
+					Migration: xpr.ValueFromFunction(xpr.NewFunction([]string{"input"}, xpr.Scope("input"))),
 					Children:  vm.migrationTree(rf[0], nil),
 				},
 			}, nil)
@@ -293,9 +339,6 @@ func (vm VirtualMachine) Execute(program inst.Sequence, input val.Value) (val.Va
 
 			}
 
-		case inst.PopToInput:
-			input = stack.Pop().Copy()
-
 		case inst.CreateMultiple:
 
 			mm, e := vm.Model(it.Model)
@@ -310,7 +353,7 @@ func (vm VirtualMachine) Execute(program inst.Sequence, input val.Value) (val.Va
 
 			vs := make(map[string]val.Value, len(it.Values))
 			for k, sub := range it.Values {
-				w, e := vm.Execute(sub, subArg)
+				w, e := vm.Execute(sub, scope.Child(), subArg)
 				if e != nil {
 					return nil, e
 				}
@@ -342,7 +385,7 @@ func (vm VirtualMachine) Execute(program inst.Sequence, input val.Value) (val.Va
 					it.Model: {
 						InModel:   mm,
 						InValue:   v,
-						Migration: val.Union{Case: "id", Value: val.Struct{}},
+						Migration: xpr.ValueFromFunction(xpr.NewFunction([]string{"input"}, xpr.Scope("input"))),
 						Children:  migrationTree,
 					},
 				}, nil)
@@ -389,49 +432,6 @@ func (vm VirtualMachine) Execute(program inst.Sequence, input val.Value) (val.Va
 			}
 			stack.Push(iteratorValue{iter})
 
-		case inst.MapStruct:
-			mv := unMeta(stack.Pop()).(val.Struct)
-			e := (err.Error)(nil)
-			temp := val.NewStruct(2)
-			mapped := mv.Map(func(k string, v val.Value) val.Value {
-				if e != nil {
-					return nil
-				}
-				temp.Set("field", val.String(k))
-				temp.Set("value", v)
-				mapped, e_ := vm.Execute(it.Expression, temp)
-				if e_ != nil {
-					e = e_
-				}
-				return mapped
-			})
-			if e != nil {
-				return nil, e
-			}
-			stack.Push(mapped)
-
-		case inst.MapMap:
-
-			mv := unMeta(stack.Pop()).(val.Map)
-			e := (err.Error)(nil)
-			temp := val.NewStruct(2)
-			mapped := mv.Map(func(k string, v val.Value) val.Value {
-				if e != nil {
-					return nil
-				}
-				temp.Set("key", val.String(k))
-				temp.Set("value", v)
-				mapped, e_ := vm.Execute(it.Expression, temp)
-				if e_ != nil {
-					e = e_
-				}
-				return mapped
-			})
-			if e != nil {
-				return nil, e
-			}
-			stack.Push(mapped)
-
 		case inst.ReduceList:
 
 			value, e := slurpIterators(unMeta(stack.Pop()))
@@ -442,14 +442,13 @@ func (vm VirtualMachine) Execute(program inst.Sequence, input val.Value) (val.Va
 			vs := value.(val.List)
 			if len(vs) == 0 {
 				return nil, err.ExecutionError{
-					`reduce: empty list value`,
-					nil,
+					Problem: `reduce: empty list value`,
 				}
 			}
 
 			v := vs[0]
 			for _, w := range vs[1:] {
-				x, e := vm.Execute(it.Expression, val.Tuple{v, w})
+				x, e := vm.Execute(it.Expression, scope.Child(), v, w)
 				if e != nil {
 					return nil, e
 				}
@@ -487,7 +486,7 @@ func (vm VirtualMachine) Execute(program inst.Sequence, input val.Value) (val.Va
 
 		case inst.With:
 			v := stack.Pop()
-			w, e := vm.Execute(it.Expression, v)
+			w, e := vm.Execute(it.Expression, scope.Child(), v)
 			if e != nil {
 				return nil, e
 			}
@@ -499,7 +498,7 @@ func (vm VirtualMachine) Execute(program inst.Sequence, input val.Value) (val.Va
 			case val.List:
 				cp := make(val.List, len(ls), len(ls))
 				for i, value := range ls {
-					mapped, e := vm.Execute(it.Expression, value)
+					mapped, e := vm.Execute(it.Expression, scope.Child(), val.Int64(i), value)
 					if e != nil {
 						return nil, e
 					}
@@ -508,15 +507,70 @@ func (vm VirtualMachine) Execute(program inst.Sequence, input val.Value) (val.Va
 				stack.Push(cp)
 
 			case iteratorValue:
+				i := val.Int64(-1)
 				stack.Push(iteratorValue{
 					newMappingIterator(ls.iterator, func(v val.Value) (val.Value, err.Error) {
-						return vm.Execute(it.Expression, v)
+						i++
+						return vm.Execute(it.Expression, scope.Child(), i, v)
 					}),
 				})
 
 			default:
 				log.Panicf("Execute: MapList: unexpected type on stack: %T.", ls)
 			}
+
+		case inst.MapSet:
+			v := unMeta(stack.Pop()).(val.Set)
+			c := make(val.Set, len(v))
+			for _, v := range v {
+				w, e := vm.Execute(it.Expression, scope.Child(), v)
+				if e != nil {
+					return nil, e
+				}
+				if _, ok := w.(iteratorValue); ok {
+					c[rand.Uint64()] = w // always treat iterators as distinct
+				} else {
+					c[val.Hash(w, nil).Sum64()] = w
+				}
+			}
+			stack.Push(c)
+
+		case inst.MapMap:
+
+			mv := unMeta(stack.Pop()).(val.Map)
+			e := (err.Error)(nil)
+			mapped := mv.Map(func(k string, v val.Value) val.Value {
+				if e != nil {
+					return nil
+				}
+				mapped, e_ := vm.Execute(it.Expression, scope.Child(), val.String(k), v)
+				if e_ != nil {
+					e = e_
+				}
+				return mapped
+			})
+			if e != nil {
+				return nil, e
+			}
+			stack.Push(mapped)
+
+		case inst.MapStruct:
+			mv := unMeta(stack.Pop()).(val.Struct)
+			e := (err.Error)(nil)
+			mapped := mv.Map(func(k string, v val.Value) val.Value {
+				if e != nil {
+					return nil
+				}
+				mapped, e_ := vm.Execute(it.Expression, scope.Child(), val.String(k), v)
+				if e_ != nil {
+					e = e_
+				}
+				return mapped
+			})
+			if e != nil {
+				return nil, e
+			}
+			stack.Push(mapped)
 
 		case inst.GraphFlow:
 
@@ -551,7 +605,7 @@ func (vm VirtualMachine) Execute(program inst.Sequence, input val.Value) (val.Va
 
 				flow := it.FlowParams[vertex[0]]
 
-				if ob := db.Bucket(definitions.GraphBucketBytes).Bucket(encodeVertex(vertex[0], vertex[1])); ob != nil {
+				if ob := vm.RootBucket.Bucket(definitions.GraphBucketBytes).Bucket(encodeVertex(vertex[0], vertex[1])); ob != nil {
 					e := ob.ForEach(func(k, _ []byte) error {
 						m, i := decodeVertex(k)
 						if _, ok := flow.Forward[m]; !ok {
@@ -567,7 +621,7 @@ func (vm VirtualMachine) Execute(program inst.Sequence, input val.Value) (val.Va
 					}
 				}
 
-				if ib := db.Bucket(definitions.PhargBucketBytes).Bucket(encodeVertex(vertex[0], vertex[1])); ib != nil {
+				if ib := vm.RootBucket.Bucket(definitions.PhargBucketBytes).Bucket(encodeVertex(vertex[0], vertex[1])); ib != nil {
 					e := ib.ForEach(func(k, _ []byte) error {
 						m, i := decodeVertex(k)
 						if _, ok := flow.Backward[m]; !ok {
@@ -627,7 +681,7 @@ func (vm VirtualMachine) Execute(program inst.Sequence, input val.Value) (val.Va
 				continue
 			}
 
-			migs := db.Bucket(definitions.MigrationBucketBytes)
+			migs := vm.RootBucket.Bucket(definitions.MigrationBucketBytes)
 			todo := make([]string, 0, 16)
 			todo = append(todo, ref[0])
 			done := make(map[string]struct{})
@@ -663,8 +717,7 @@ func (vm VirtualMachine) Execute(program inst.Sequence, input val.Value) (val.Va
 
 			if !path {
 				return nil, err.ExecutionError{
-					`relocateRef: no migration path between source and target models`,
-					nil,
+					Problem: `relocateRef: no migration path between source and target models`,
 				}
 			}
 
@@ -674,7 +727,7 @@ func (vm VirtualMachine) Execute(program inst.Sequence, input val.Value) (val.Va
 
 			from := unMeta(stack.Pop()).(val.Ref)
 
-			gb := db.Bucket(definitions.GraphBucketBytes)
+			gb := vm.RootBucket.Bucket(definitions.GraphBucketBytes)
 			if gb == nil {
 				log.Panicln("Graph bucket missing!")
 			}
@@ -723,7 +776,7 @@ func (vm VirtualMachine) Execute(program inst.Sequence, input val.Value) (val.Va
 
 			of := unMeta(stack.Pop()).(val.Ref)
 
-			pb := db.Bucket(definitions.PhargBucketBytes)
+			pb := vm.RootBucket.Bucket(definitions.PhargBucketBytes)
 			if pb == nil {
 				log.Panicln("Pharg bucket missing!")
 			}
@@ -774,7 +827,7 @@ func (vm VirtualMachine) Execute(program inst.Sequence, input val.Value) (val.Va
 			case val.List:
 				cp := make(val.List, 0, len(ls))
 				for _, value := range ls {
-					keep, e := vm.Execute(it.Expression, value)
+					keep, e := vm.Execute(it.Expression, scope.Child(), value)
 					if e != nil {
 						return nil, e
 					}
@@ -787,7 +840,7 @@ func (vm VirtualMachine) Execute(program inst.Sequence, input val.Value) (val.Va
 			case iteratorValue:
 				stack.Push(iteratorValue{
 					newFilterIterator(ls.iterator, func(value val.Value) (bool, err.Error) {
-						v, e := vm.Execute(it.Expression, value)
+						v, e := vm.Execute(it.Expression, scope.Child(), value)
 						if e != nil {
 							return false, e
 						}
@@ -805,8 +858,7 @@ func (vm VirtualMachine) Execute(program inst.Sequence, input val.Value) (val.Va
 			case val.List:
 				if len(ls) == 0 {
 					return nil, err.ExecutionError{
-						fmt.Sprintf("first: empty list"),
-						nil,
+						Problem: fmt.Sprintf("first: empty list"),
 					}
 				}
 				stack.Push(ls[0])
@@ -823,8 +875,7 @@ func (vm VirtualMachine) Execute(program inst.Sequence, input val.Value) (val.Va
 				}
 				if out == nil {
 					return nil, err.ExecutionError{
-						fmt.Sprintf("first: empty list"),
-						nil,
+						Problem: fmt.Sprintf("first: empty list"),
 					}
 				}
 				stack.Push(out)
@@ -918,7 +969,7 @@ func (vm VirtualMachine) Execute(program inst.Sequence, input val.Value) (val.Va
 		case inst.AllReferrers:
 			v := unMeta(stack.Pop()).(val.Ref)
 			ls := make(val.List, 0, 64)
-			db.Bucket(definitions.PhargBucketBytes).Bucket(encodeVertex(v[0], v[1])).ForEach(func(k, _ []byte) error {
+			vm.RootBucket.Bucket(definitions.PhargBucketBytes).Bucket(encodeVertex(v[0], v[1])).ForEach(func(k, _ []byte) error {
 				m, i := decodeVertex(k)
 				ls = append(ls, val.Ref{m, i})
 				return nil
@@ -934,14 +985,12 @@ func (vm VirtualMachine) Execute(program inst.Sequence, input val.Value) (val.Va
 			offset := int(unMeta(stack.Pop()).(val.Int64))
 			if length < 0 {
 				return nil, err.ExecutionError{
-					`slice: negative length`,
-					nil,
+					Problem: `slice: negative length`,
 				}
 			}
 			if offset < 0 {
 				return nil, err.ExecutionError{
-					`slice: negative offset`,
-					nil,
+					Problem: `slice: negative offset`,
 				}
 			}
 			switch value := unMeta(stack.Pop()).(type) {
@@ -985,8 +1034,7 @@ func (vm VirtualMachine) Execute(program inst.Sequence, input val.Value) (val.Va
 			v := unMeta(stack.Pop())
 			if v == val.Null {
 				return nil, err.ExecutionError{
-					fmt.Sprintf(`assertPresent: value was absent`),
-					nil,
+					Problem: `assertPresent: value was absent`,
 				}
 			}
 			stack.Push(v)
@@ -1044,8 +1092,7 @@ func (vm VirtualMachine) Execute(program inst.Sequence, input val.Value) (val.Va
 			u := unMeta(stack.Pop()).(val.Union)
 			if u.Case != it.Case {
 				return nil, err.ExecutionError{
-					fmt.Sprintf(`assertCase: case is "%s", not "%s"`, u.Case, it.Case),
-					nil,
+					Problem: fmt.Sprintf(`assertCase: case was "%s", not "%s"`, u.Case, it.Case),
 				}
 			}
 			stack.Push(u.Value)
@@ -1060,19 +1107,12 @@ func (vm VirtualMachine) Execute(program inst.Sequence, input val.Value) (val.Va
 			m, ok := v.(val.Meta)
 			if !ok {
 				return nil, err.ExecutionError{
-					`assertModelRef: value is not persistent`,
-					nil,
-					// C: val.Map{"value": v},
+					Problem: `assertModelRef: value is not persistent`,
 				}
 			}
 			if m.Model[1] != it.Model {
 				return nil, err.ExecutionError{
-					`assertModelRef: assertion failed`,
-					nil,
-					// C: val.Map{
-					//  "expected": val.Ref{m.Model[0], it.Model},
-					//  "actual":   m.Model,
-					// },
+					Problem: `assertModelRef: assertion failed`,
 				}
 			}
 			stack.Push(v)
@@ -1082,16 +1122,14 @@ func (vm VirtualMachine) Execute(program inst.Sequence, input val.Value) (val.Va
 			m, ok := v.(val.Meta)
 			if !ok {
 				return nil, err.ExecutionError{
-					`switchModelRef: value is not persistent`,
-					nil,
-					// C: val.Map{"value": v},
+					Problem: `switchModelRef: value is not persistent`,
 				}
 			}
 			c, ok := it.Cases[m.Model[1]]
 			if !ok {
 				c = it.Default
 			}
-			v, e := vm.Execute(c, m)
+			v, e := vm.Execute(c, scope.Child(), m)
 			if e != nil {
 				return nil, e
 			}
@@ -1168,7 +1206,7 @@ func (vm VirtualMachine) Execute(program inst.Sequence, input val.Value) (val.Va
 			switch ls := unMeta(stack.Pop()).(type) {
 			case val.List:
 				for _, item := range ls {
-					comparable, e := vm.Execute(expr, item)
+					comparable, e := vm.Execute(expr, scope.Child(), item)
 					if e != nil {
 						return nil, e // TODO: add context
 					}
@@ -1176,7 +1214,7 @@ func (vm VirtualMachine) Execute(program inst.Sequence, input val.Value) (val.Va
 				}
 			case iteratorValue:
 				e := ls.iterator.forEach(func(item val.Value) err.Error {
-					comparable, e := vm.Execute(expr, item)
+					comparable, e := vm.Execute(expr, scope.Child(), item)
 					if e != nil {
 						return e
 					}
@@ -1338,14 +1376,12 @@ func (vm VirtualMachine) Execute(program inst.Sequence, input val.Value) (val.Va
 			}
 			if _, ok := a.(iteratorValue); ok {
 				return nil, err.ExecutionError{
-					`cannot compare persistent object collections`, // TODO: not always persistent stuff
-					nil,
+					Problem: `cannot compare persistent object collections`, // TODO: not always persistent stuff
 				}
 			}
 			if _, ok := b.(iteratorValue); ok {
 				return nil, err.ExecutionError{
-					`cannot compare persistent object collections`, // TODO: not always persistent stuff
-					nil,
+					Problem: `cannot compare persistent object collections`, // TODO: not always persistent stuff
 				}
 			}
 			stack.Push(val.Bool(
@@ -1759,34 +1795,14 @@ func (vm VirtualMachine) Execute(program inst.Sequence, input val.Value) (val.Va
 			c, ok := it[u.Case]
 			if !ok {
 				return nil, err.ExecutionError{
-					fmt.Sprintf(`switchCase: unexpected case: %s`, u.Case),
-					nil,
-					// C: val.Map{
-					//  "value": v,
-					// },
+					Problem: fmt.Sprintf(`switchCase: unexpected case: %s`, u.Case),
 				}
 			}
-			v, e := vm.Execute(c, u.Value)
+			v, e := vm.Execute(c, scope.Child(), u.Value)
 			if e != nil {
 				return nil, e
 			}
 			stack.Push(v)
-
-		case inst.MapSet:
-			v := unMeta(stack.Pop()).(val.Set)
-			c := make(val.Set, len(v))
-			for _, v := range v {
-				w, e := vm.Execute(it.Expression, v)
-				if e != nil {
-					return nil, e
-				}
-				if _, ok := w.(iteratorValue); ok {
-					c[rand.Uint64()] = w // always treat iterators as distinct
-				} else {
-					c[val.Hash(w, nil).Sum64()] = w
-				}
-			}
-			stack.Push(c)
 
 		default:
 			panic(fmt.Sprintf("unimplemented inst.Instruction: %#v", it))
@@ -1806,17 +1822,4 @@ func printDebugProgram(stack *Stack, program []inst.Instruction) {
 	pretty.Println("stack:", *stack)
 	pretty.Println("program:", program)
 	pretty.Println("=========================")
-}
-
-func flattenSequences(it inst.Instruction, bf []inst.Instruction) inst.Sequence {
-	if bf == nil {
-		bf = make([]inst.Instruction, 0, 32)
-	}
-	if sq, ok := it.(inst.Sequence); ok {
-		for _, is := range sq {
-			bf = flattenSequences(is, bf)
-		}
-		return bf
-	}
-	return append(bf, it)
 }

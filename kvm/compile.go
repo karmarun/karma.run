@@ -11,493 +11,444 @@ import (
 	"regexp"
 )
 
-// PRECONDITION: $typed obtained from error-less vm.TypeExpression
-func (vm VirtualMachine) Compile(typed xpr.TypedExpression) inst.Instruction {
+func (vm VirtualMachine) CompileFunction(f xpr.TypedFunction) inst.Sequence {
+
+	expressions := f.Expressions()
+
+	instructions := make(inst.Sequence, 0, (len(expressions) * 2))
+
+	for _, p := range f.Parameters() {
+		instructions = append(instructions, inst.Define(p))
+	}
+
+	for _, x := range expressions {
+		instructions = vm.CompileExpression(x.(xpr.TypedExpression), instructions)
+	}
+
+	return instructions
+}
+
+func (vm VirtualMachine) CompileExpression(typed xpr.TypedExpression, prev inst.Sequence) inst.Sequence {
+
+	if prev == nil {
+		prev = make(inst.Sequence, 0, 64)
+	}
 
 	if ca, ok := typed.Actual.(ConstantModel); ok {
-		return inst.Constant{ca.Value}
+		return append(prev, inst.Constant{ca.Value})
 	}
 
 	switch node := typed.Expression.(type) {
-	case xpr.Argument:
-		return inst.Identity{}
-
-	case xpr.CurrentUser:
-		return inst.CurrentUser{}
 
 	case xpr.Zero:
-		panic("vm.Compile: unfolded zero() call")
-
-	case xpr.Literal:
-		return inst.Constant{node.Value}
-
-	case xpr.NewBool:
-		return vm.Compile(node.Argument.(xpr.TypedExpression))
-
-	case xpr.NewInt8:
-		arg := node.Argument.(xpr.TypedExpression)
-		asm := vm.Compile(arg)
-		return inst.Sequence{asm, inst.ToInt8{}}
-
-	case xpr.NewInt16:
-		arg := node.Argument.(xpr.TypedExpression)
-		asm := vm.Compile(arg)
-		return inst.Sequence{asm, inst.ToInt16{}}
-
-	case xpr.NewInt32:
-		arg := node.Argument.(xpr.TypedExpression)
-		asm := vm.Compile(arg)
-		return inst.Sequence{asm, inst.ToInt32{}}
-
-	case xpr.NewInt64:
-		arg := node.Argument.(xpr.TypedExpression)
-		asm := vm.Compile(arg)
-		return inst.Sequence{asm, inst.ToInt64{}}
-
-	case xpr.NewUint8:
-		arg := node.Argument.(xpr.TypedExpression)
-		asm := vm.Compile(arg)
-		return inst.Sequence{asm, inst.ToUint8{}}
-
-	case xpr.NewUint16:
-		arg := node.Argument.(xpr.TypedExpression)
-		asm := vm.Compile(arg)
-		return inst.Sequence{asm, inst.ToUint16{}}
-
-	case xpr.NewUint32:
-		arg := node.Argument.(xpr.TypedExpression)
-		asm := vm.Compile(arg)
-		return inst.Sequence{asm, inst.ToUint32{}}
-
-	case xpr.NewUint64:
-		arg := node.Argument.(xpr.TypedExpression)
-		asm := vm.Compile(arg)
-		return inst.Sequence{asm, inst.ToUint64{}}
-
-	case xpr.NewFloat:
-		arg := node.Argument.(xpr.TypedExpression)
-		asm := vm.Compile(arg)
-		return inst.Sequence{asm, inst.ToFloat{}}
-
-	case xpr.NewString:
-		arg := node.Argument.(xpr.TypedExpression)
-		asm := vm.Compile(arg)
-		return inst.Sequence{asm, inst.ToString{}}
-
-	case xpr.NewDateTime:
-		return vm.Compile(node.Argument.(xpr.TypedExpression))
-
-	case xpr.NewRef:
-		return inst.Sequence{vm.Compile(node.Id.(xpr.TypedExpression)), inst.StringToRef{typed.Actual.(mdl.Ref).Model}}
-
-	case xpr.PresentOrZero:
-		return inst.Sequence{vm.Compile(node.Argument.(xpr.TypedExpression)), inst.PresentOrConstant{typed.Actual.Zero()}}
-
-	case xpr.AllReferrers:
-		return inst.Sequence{vm.Compile(node.Argument.(xpr.TypedExpression)), inst.AllReferrers{}}
-
-	case xpr.IsPresent:
-		return inst.Sequence{vm.Compile(node.Argument.(xpr.TypedExpression)), inst.IsPresent{}}
-
-	case xpr.AssertPresent:
-		return inst.Sequence{vm.Compile(node.Argument.(xpr.TypedExpression)), inst.AssertPresent{}}
-
-	case xpr.Model:
-		return inst.Sequence{vm.Compile(node.Argument.(xpr.TypedExpression)), inst.StringToRef{typed.Actual.(mdl.Ref).Model}}
-
-	case xpr.Tag:
-		return inst.Sequence{vm.Compile(node.Argument.(xpr.TypedExpression)), inst.Tag{}}
-
-	case xpr.All:
-		return inst.Sequence{vm.Compile(node.Argument.(xpr.TypedExpression)), inst.All{}}
-
-	case xpr.JoinStrings:
-		return inst.Sequence{vm.Compile(node.Strings.(xpr.TypedExpression)), vm.Compile(node.Separator.(xpr.TypedExpression)), inst.JoinStrings{}}
-
-	case xpr.StringToLower:
-		return inst.Sequence{vm.Compile(node.Argument.(xpr.TypedExpression)), inst.StringToLower{}}
-
-	case xpr.ReverseList:
-		return inst.Sequence{vm.Compile(node.Argument.(xpr.TypedExpression)), inst.ReverseList{}}
-
-	case xpr.ExtractStrings:
-		return inst.Sequence{vm.Compile(node.Argument.(xpr.TypedExpression)), inst.ExtractStrings{}}
-
-	case xpr.Delete:
-		return inst.Sequence{vm.Compile(node.Argument.(xpr.TypedExpression)), inst.Delete{}}
-
-	case xpr.ResolveAllRefs:
-		return inst.Sequence{vm.Compile(node.Argument.(xpr.TypedExpression)), inst.ResolveAllRefs{}}
-
-	case xpr.First:
-		return inst.Sequence{vm.Compile(node.Argument.(xpr.TypedExpression)), inst.First{}}
-
-	case xpr.Get:
-		return inst.Sequence{vm.Compile(node.Argument.(xpr.TypedExpression)), inst.Deref{}}
-
-	case xpr.Length:
-		return inst.Sequence{vm.Compile(node.Argument.(xpr.TypedExpression)), inst.Length{}}
-
-	case xpr.Not:
-		return inst.Sequence{vm.Compile(node.Argument.(xpr.TypedExpression)), inst.Not{}}
+		panic("vm.CompileExpression: uneliminated xpr.Zero") // should be gone by now
 
 	case xpr.ModelOf:
-		panic("vm.Compile: uneliminated ast.ModelOf")
+		panic("vm.CompileExpression: uneliminated xpr.ModelOf") // should be gone by now
+
+	case xpr.Define:
+		prev = vm.CompileExpression(node.Argument.(xpr.TypedExpression), prev)
+		return append(prev, inst.Define(node.Name))
+
+	case xpr.Scope:
+		return append(prev, inst.Scope(node))
+
+	case xpr.AddInt64:
+		prev = vm.CompileExpression(node[0].(xpr.TypedExpression), prev)
+		prev = vm.CompileExpression(node[1].(xpr.TypedExpression), prev)
+		return append(prev, inst.AddInt64{})
+
+	case xpr.AddInt32:
+		prev = vm.CompileExpression(node[0].(xpr.TypedExpression), prev)
+		prev = vm.CompileExpression(node[1].(xpr.TypedExpression), prev)
+		return append(prev, inst.AddInt32{})
+
+	case xpr.AddInt16:
+		prev = vm.CompileExpression(node[0].(xpr.TypedExpression), prev)
+		prev = vm.CompileExpression(node[1].(xpr.TypedExpression), prev)
+		return append(prev, inst.AddInt16{})
+
+	case xpr.AddInt8:
+		prev = vm.CompileExpression(node[0].(xpr.TypedExpression), prev)
+		prev = vm.CompileExpression(node[1].(xpr.TypedExpression), prev)
+		return append(prev, inst.AddInt8{})
+
+	case xpr.AddUint64:
+		prev = vm.CompileExpression(node[0].(xpr.TypedExpression), prev)
+		prev = vm.CompileExpression(node[1].(xpr.TypedExpression), prev)
+		return append(prev, inst.AddUint64{})
+
+	case xpr.AddUint32:
+		prev = vm.CompileExpression(node[0].(xpr.TypedExpression), prev)
+		prev = vm.CompileExpression(node[1].(xpr.TypedExpression), prev)
+		return append(prev, inst.AddUint32{})
+
+	case xpr.AddUint16:
+		prev = vm.CompileExpression(node[0].(xpr.TypedExpression), prev)
+		prev = vm.CompileExpression(node[1].(xpr.TypedExpression), prev)
+		return append(prev, inst.AddUint16{})
+
+	case xpr.AddUint8:
+		prev = vm.CompileExpression(node[0].(xpr.TypedExpression), prev)
+		prev = vm.CompileExpression(node[1].(xpr.TypedExpression), prev)
+		return append(prev, inst.AddUint8{})
+
+	case xpr.CurrentUser:
+		return append(prev, inst.CurrentUser{})
+
+	case xpr.Literal:
+		return append(prev, inst.Constant{node.Value})
+
+	// case xpr.NewBool:
+	// 	return vm.CompileExpression(node.Argument.(xpr.TypedExpression), prev)
+
+	// case xpr.NewInt8:
+	// 	prev = vm.CompileExpression(node.Argument.(xpr.TypedExpression), prev)
+	// 	return append(prev, inst.ToInt8{})
+
+	// case xpr.NewInt16:
+	// 	prev = vm.CompileExpression(node.Argument.(xpr.TypedExpression), prev)
+	// 	return append(prev, inst.ToInt16{})
+
+	// case xpr.NewInt32:
+	// 	prev = vm.CompileExpression(node.Argument.(xpr.TypedExpression), prev)
+	// 	return append(prev, inst.ToInt32{})
+
+	// case xpr.NewInt64:
+	// 	prev = vm.CompileExpression(node.Argument.(xpr.TypedExpression), prev)
+	// 	return append(prev, inst.ToInt64{})
+
+	// case xpr.NewUint8:
+	// 	prev = vm.CompileExpression(node.Argument.(xpr.TypedExpression), prev)
+	// 	return append(prev, inst.ToUint8{})
+
+	// case xpr.NewUint16:
+	// 	prev = vm.CompileExpression(node.Argument.(xpr.TypedExpression), prev)
+	// 	return append(prev, inst.ToUint16{})
+
+	// case xpr.NewUint32:
+	// 	prev = vm.CompileExpression(node.Argument.(xpr.TypedExpression), prev)
+	// 	return append(prev, inst.ToUint32{})
+
+	// case xpr.NewUint64:
+	// 	prev = vm.CompileExpression(node.Argument.(xpr.TypedExpression), prev)
+	// 	return append(prev, inst.ToUint64{})
+
+	// case xpr.NewFloat:
+	// 	prev = vm.CompileExpression(node.Argument.(xpr.TypedExpression), prev)
+	// 	return append(prev, inst.ToFloat{})
+
+	// case xpr.NewString:
+	// 	prev = vm.CompileExpression(node.Argument.(xpr.TypedExpression), prev)
+	// 	return append(prev, inst.ToString{})
+
+	// case xpr.NewDateTime:
+	// 	return vm.CompileExpression(node.Argument.(xpr.TypedExpression), prev)
+
+	case xpr.NewRef:
+		prev = vm.CompileExpression(node.Id.(xpr.TypedExpression), prev)
+		return append(prev, inst.StringToRef{typed.Actual.(mdl.Ref).Model})
+
+	case xpr.PresentOrZero:
+		prev = vm.CompileExpression(node.Argument.(xpr.TypedExpression), prev)
+		return append(prev, inst.PresentOrConstant{typed.Actual.Zero()})
+
+	case xpr.AllReferrers:
+		prev = vm.CompileExpression(node.Argument.(xpr.TypedExpression), prev)
+		return append(prev, inst.AllReferrers{})
+
+	case xpr.IsPresent:
+		prev = vm.CompileExpression(node.Argument.(xpr.TypedExpression), prev)
+		return append(prev, inst.IsPresent{})
+
+	case xpr.AssertPresent:
+		prev = vm.CompileExpression(node.Argument.(xpr.TypedExpression), prev)
+		return append(prev, inst.AssertPresent{})
+
+	case xpr.Model:
+		prev = vm.CompileExpression(node.Argument.(xpr.TypedExpression), prev)
+		return append(prev, inst.StringToRef{typed.Actual.(mdl.Ref).Model})
+
+	case xpr.Tag:
+		prev = vm.CompileExpression(node.Argument.(xpr.TypedExpression), prev)
+		return append(prev, inst.Tag{})
+
+	case xpr.All:
+		prev = vm.CompileExpression(node.Argument.(xpr.TypedExpression), prev)
+		return append(prev, inst.All{})
+
+	case xpr.StringToLower:
+		prev = vm.CompileExpression(node.Argument.(xpr.TypedExpression), prev)
+		return append(prev, inst.StringToLower{})
+
+	case xpr.ReverseList:
+		prev = vm.CompileExpression(node.Argument.(xpr.TypedExpression), prev)
+		return append(prev, inst.ReverseList{})
+
+	case xpr.ExtractStrings:
+		prev = vm.CompileExpression(node.Argument.(xpr.TypedExpression), prev)
+		return append(prev, inst.ExtractStrings{})
+
+	case xpr.Delete:
+		prev = vm.CompileExpression(node.Argument.(xpr.TypedExpression), prev)
+		return append(prev, inst.Delete{})
+
+	case xpr.ResolveAllRefs:
+		prev = vm.CompileExpression(node.Argument.(xpr.TypedExpression), prev)
+		return append(prev, inst.ResolveAllRefs{})
+
+	case xpr.First:
+		prev = vm.CompileExpression(node.Argument.(xpr.TypedExpression), prev)
+		return append(prev, inst.First{})
+
+	case xpr.Get:
+		prev = vm.CompileExpression(node.Argument.(xpr.TypedExpression), prev)
+		return append(prev, inst.Deref{})
+
+	case xpr.Length:
+		prev = vm.CompileExpression(node.Argument.(xpr.TypedExpression), prev)
+		return append(prev, inst.Length{})
+
+	case xpr.Not:
+		prev = vm.CompileExpression(node.Argument.(xpr.TypedExpression), prev)
+		return append(prev, inst.Not{})
 
 	case xpr.Metarialize:
-		return inst.Sequence{vm.Compile(node.Argument.(xpr.TypedExpression)), inst.Metarialize{}}
+		prev = vm.CompileExpression(node.Argument.(xpr.TypedExpression), prev)
+		return append(prev, inst.Metarialize{})
 
 	case xpr.RefTo:
-		return inst.Sequence{vm.Compile(node.Argument.(xpr.TypedExpression)), inst.Meta{"id"}}
+		prev = vm.CompileExpression(node.Argument.(xpr.TypedExpression), prev)
+		return append(prev, inst.Meta{"id"})
+
+	case xpr.JoinStrings:
+		prev = vm.CompileExpression(node.Strings.(xpr.TypedExpression), prev)
+		prev = vm.CompileExpression(node.Separator.(xpr.TypedExpression), prev)
+		return append(prev, inst.JoinStrings{})
 
 	case xpr.If:
-		condition := vm.Compile(node.Condition.(xpr.TypedExpression))
-		then := vm.Compile(node.Then.(xpr.TypedExpression))
-		elze := vm.Compile(node.Else.(xpr.TypedExpression))
-		return inst.Sequence{condition, inst.If{Then: flattenSequences(then, nil), Else: flattenSequences(elze, nil)}}
+		prev = vm.CompileExpression(node.Condition.(xpr.TypedExpression), prev)
+		return append(prev, inst.If{
+			Then: vm.CompileExpression(node.Then.(xpr.TypedExpression), nil),
+			Else: vm.CompileExpression(node.Else.(xpr.TypedExpression), nil),
+		})
 
 	case xpr.With:
-		value := vm.Compile(node.Value.(xpr.TypedExpression))
-		retrn := vm.Compile(node.Return.(xpr.TypedExpression))
-		return inst.Sequence{value, inst.With{flattenSequences(retrn, nil)}}
+		prev = vm.CompileExpression(node.Value.(xpr.TypedExpression), prev)
+		return append(prev, inst.With{
+			vm.CompileFunction(node.Return.(xpr.TypedFunction)),
+		})
 
 	case xpr.Update:
-		ref := vm.Compile(node.Ref.(xpr.TypedExpression))
-		value := vm.Compile(node.Value.(xpr.TypedExpression))
-		return inst.Sequence{ref, value, inst.Update{}}
+		prev = vm.CompileExpression(node.Ref.(xpr.TypedExpression), prev)
+		prev = vm.CompileExpression(node.Value.(xpr.TypedExpression), prev)
+		return append(prev, inst.Update{})
 
 	case xpr.Create:
-		value := vm.Compile(node.Value.(xpr.TypedExpression))
-		return inst.Sequence{
-			inst.CreateMultiple{
-				typed.Actual.(mdl.Ref).Model,
-				map[string]inst.Sequence{"self": flattenSequences(value, nil)},
+		return append(prev, inst.CreateMultiple{
+			Model: typed.Actual.(mdl.Ref).Model,
+			Values: map[string]inst.Sequence{
+				"self": vm.CompileExpression(node.Value.(xpr.TypedExpression), nil),
 			},
-		}
+		})
 
 	case xpr.InList:
-		in := vm.Compile(node.In.(xpr.TypedExpression))
-		value := vm.Compile(node.Value.(xpr.TypedExpression))
-		return inst.Sequence{in, value, inst.InList{}}
+		prev = vm.CompileExpression(node.In.(xpr.TypedExpression), prev)
+		prev = vm.CompileExpression(node.Value.(xpr.TypedExpression), prev)
+		return append(prev, inst.InList{})
 
 	case xpr.FilterList:
-		value := vm.Compile(node.Value.(xpr.TypedExpression))
-		expression := vm.Compile(node.Expression.(xpr.TypedExpression))
-		return inst.Sequence{value, inst.Filter{flattenSequences(expression, nil)}}
+		prev = vm.CompileExpression(node.Value.(xpr.TypedExpression), prev)
+		return append(prev, inst.Filter{
+			vm.CompileFunction(node.Filter.(xpr.TypedFunction)),
+		})
 
 	case xpr.AssertCase:
-		caze := node.Case.(xpr.TypedExpression).Actual.(ConstantModel).Value.(val.String)
-		value := vm.Compile(node.Value.(xpr.TypedExpression))
-		return inst.Sequence{value, inst.AssertCase{string(caze)}}
+		prev = vm.CompileExpression(node.Value.(xpr.TypedExpression), prev)
+		return append(prev, inst.AssertCase{
+			string(node.Case.(xpr.TypedExpression).Actual.(ConstantModel).Value.(val.String)),
+		})
 
 	case xpr.IsCase:
-		caze := vm.Compile(node.Case.(xpr.TypedExpression))
-		value := vm.Compile(node.Value.(xpr.TypedExpression))
-		return inst.Sequence{caze, value, inst.IsCase{}}
+		prev = vm.CompileExpression(node.Case.(xpr.TypedExpression), prev)
+		prev = vm.CompileExpression(node.Value.(xpr.TypedExpression), prev)
+		return append(prev, inst.IsCase{})
 
 	case xpr.MapMap:
-		value := vm.Compile(node.Value.(xpr.TypedExpression))
-		expression := vm.Compile(node.Expression.(xpr.TypedExpression))
-		return inst.Sequence{value, inst.MapMap{flattenSequences(expression, nil)}}
+		prev = vm.CompileExpression(node.Value.(xpr.TypedExpression), prev)
+		return append(prev, inst.MapMap{
+			vm.CompileFunction(node.Mapping.(xpr.TypedFunction)),
+		})
 
 	case xpr.MapList:
-		value := vm.Compile(node.Value.(xpr.TypedExpression))
-		expression := vm.Compile(node.Expression.(xpr.TypedExpression))
-		return inst.Sequence{value, inst.MapList{flattenSequences(expression, nil)}}
+		prev = vm.CompileExpression(node.Value.(xpr.TypedExpression), prev)
+		return append(prev, inst.MapList{
+			vm.CompileFunction(node.Mapping.(xpr.TypedFunction)),
+		})
+
+	case xpr.MapSet:
+		prev = vm.CompileExpression(node.Value.(xpr.TypedExpression), prev)
+		return append(prev, inst.MapSet{
+			vm.CompileFunction(node.Mapping.(xpr.TypedFunction)),
+		})
 
 	case xpr.ReduceList:
-		value := vm.Compile(node.Value.(xpr.TypedExpression))
-		expression := vm.Compile(node.Expression.(xpr.TypedExpression))
-		return inst.Sequence{value, inst.ReduceList{flattenSequences(expression, nil)}}
+		prev = vm.CompileExpression(node.Value.(xpr.TypedExpression), prev)
+		return append(prev, inst.ReduceList{
+			vm.CompileExpression(node.Expression.(xpr.TypedExpression), nil),
+		})
 
 	case xpr.ResolveRefs:
-		value := vm.Compile(node.Value.(xpr.TypedExpression))
+		prev = vm.CompileExpression(node.Value.(xpr.TypedExpression), prev)
 		mrefs := make(map[string]struct{}, len(node.Models))
 		for _, sub := range node.Models {
 			mref := sub.(xpr.TypedExpression).Actual.(ConstantModel).Value.(val.Ref)
 			mrefs[mref[1]] = struct{}{}
 		}
-		return inst.Sequence{value, inst.ResolveRefs{mrefs}}
+		return append(prev, inst.ResolveRefs{mrefs})
 
 	case xpr.SetField:
-		name := node.Name.(xpr.TypedExpression).Actual.(ConstantModel).Value.(val.String)
-		value := vm.Compile(node.Value.(xpr.TypedExpression))
-		in := vm.Compile(node.In.(xpr.TypedExpression))
-		return inst.Sequence{value, in, inst.SetField{string(name)}}
+		prev = vm.CompileExpression(node.Value.(xpr.TypedExpression), prev)
+		prev = vm.CompileExpression(node.In.(xpr.TypedExpression), prev)
+		return append(prev, inst.SetField{
+			string(node.Name.(xpr.TypedExpression).Actual.(ConstantModel).Value.(val.String)),
+		})
+
 	case xpr.SetKey:
-		name := node.Name.(xpr.TypedExpression).Actual.(ConstantModel).Value.(val.String)
-		value := vm.Compile(node.Value.(xpr.TypedExpression))
-		in := vm.Compile(node.In.(xpr.TypedExpression))
-		return inst.Sequence{value, in, inst.SetKey{string(name)}}
+		prev = vm.CompileExpression(node.Value.(xpr.TypedExpression), prev)
+		prev = vm.CompileExpression(node.In.(xpr.TypedExpression), prev)
+		return append(prev, inst.SetKey{
+			string(node.Name.(xpr.TypedExpression).Actual.(ConstantModel).Value.(val.String)),
+		})
+
 	case xpr.Field:
-		value := vm.Compile(node.Value.(xpr.TypedExpression))
-		name := node.Name.(xpr.TypedExpression).Actual.(ConstantModel).Value.(val.String)
-		return inst.Sequence{value, inst.Field{string(name)}}
+		prev = vm.CompileExpression(node.Value.(xpr.TypedExpression), prev)
+		return append(prev, inst.Field{
+			string(node.Name.(xpr.TypedExpression).Actual.(ConstantModel).Value.(val.String)),
+		})
 
 	case xpr.Key:
-		value := vm.Compile(node.Value.(xpr.TypedExpression))
-		name := vm.Compile(node.Name.(xpr.TypedExpression))
-		return inst.Sequence{value, name, inst.Key{}}
+		prev = vm.CompileExpression(node.Value.(xpr.TypedExpression), prev)
+		prev = vm.CompileExpression(node.Name.(xpr.TypedExpression), prev)
+		return append(prev, inst.Key{})
 
-	case xpr.Index:
-		value := vm.Compile(node.Value.(xpr.TypedExpression))
-		number := node.Number.(xpr.TypedExpression).Actual.(ConstantModel).Value.(val.Int64)
-		return inst.Sequence{value, inst.IndexTuple{int(number)}}
+	case xpr.IndexTuple:
+		prev = vm.CompileExpression(node.Value.(xpr.TypedExpression), prev)
+		return append(prev, inst.IndexTuple{
+			int(node.Number.(xpr.TypedExpression).Actual.(ConstantModel).Value.(val.Int64)),
+		})
 
 	case xpr.NewList:
-		is := make(inst.Sequence, 0, len(node)+1)
 		for _, sub := range node {
-			arg := vm.Compile(sub.(xpr.TypedExpression))
-			is = append(is, arg)
+			prev = vm.CompileExpression(sub.(xpr.TypedExpression), prev)
 		}
-		return append(is, inst.BuildList{len(node)})
+		return append(prev, inst.BuildList{len(node)})
 
 	case xpr.NewSet:
-		is := make(inst.Sequence, 0, len(node)+1)
 		for _, sub := range node {
-			arg := vm.Compile(sub.(xpr.TypedExpression))
-			is = append(is, arg)
+			prev = vm.CompileExpression(sub.(xpr.TypedExpression), prev)
 		}
-		return append(is, inst.BuildSet{len(node)})
+		return append(prev, inst.BuildSet{len(node)})
 
 	case xpr.NewTuple:
-		is := make(inst.Sequence, 0, len(node)+1)
 		for _, sub := range node {
-			arg := vm.Compile(sub.(xpr.TypedExpression))
-			is = append(is, arg)
+			prev = vm.CompileExpression(sub.(xpr.TypedExpression), prev)
 		}
-		return append(is, inst.BuildTuple{len(node)})
+		return append(prev, inst.BuildTuple{len(node)})
 
 	case xpr.NewMap:
-		is := make(inst.Sequence, 0, len(node)*2+1)
 		for k, sub := range node {
-			arg := vm.Compile(sub.(xpr.TypedExpression))
-			is = append(is, inst.Constant{val.String(k)}, arg)
+			prev = append(prev, inst.Constant{val.String(k)})
+			prev = vm.CompileExpression(sub.(xpr.TypedExpression), prev)
 		}
-		return append(is, inst.BuildMap{len(node)})
+		return append(prev, inst.BuildMap{len(node)})
 
 	case xpr.NewStruct:
-		is := make(inst.Sequence, 0, len(node)+1)
 		ks := make([]string, 0, len(node))
 		for k, sub := range node {
-			arg := vm.Compile(sub.(xpr.TypedExpression))
-			is = append(is, arg)
 			ks = append(ks, k)
+			prev = vm.CompileExpression(sub.(xpr.TypedExpression), prev)
 		}
-		return append(is, inst.BuildStruct{ks})
+		return append(prev, inst.BuildStruct{ks})
 
 	case xpr.NewUnion:
-		caze := node.Case.(xpr.TypedExpression).Actual.(ConstantModel).Value.(val.String)
-		value := vm.Compile(node.Value.(xpr.TypedExpression))
-		return inst.Sequence{value, inst.BuildUnion{string(caze)}}
+		prev = vm.CompileExpression(node.Value.(xpr.TypedExpression), prev)
+		return append(prev, inst.BuildUnion{
+			string(node.Case.(xpr.TypedExpression).Actual.(ConstantModel).Value.(val.String)),
+		})
 
 	case xpr.Referred:
 		mref := node.In.(xpr.TypedExpression).Actual.(ConstantModel).Value.(val.Ref)
-		from := vm.Compile(node.From.(xpr.TypedExpression))
-		return inst.Sequence{from, inst.Referred{mref[1]}}
+		prev = vm.CompileExpression(node.From.(xpr.TypedExpression), prev)
+		return append(prev, inst.Referred{mref[1]})
 
 	case xpr.RelocateRef:
 		mref := node.Model.(xpr.TypedExpression).Actual.(ConstantModel).Value.(val.Ref)
-		ref := vm.Compile(node.Ref.(xpr.TypedExpression))
-		return inst.Sequence{ref, inst.RelocateRef{mref[1]}}
+		prev = vm.CompileExpression(node.Ref.(xpr.TypedExpression), prev)
+		return append(prev, inst.RelocateRef{mref[1]})
 
 	case xpr.Referrers:
 		mref := node.In.(xpr.TypedExpression).Actual.(ConstantModel).Value.(val.Ref)
-		of := vm.Compile(node.Of.(xpr.TypedExpression))
-		return inst.Sequence{of, inst.Referrers{mref[1]}}
+		prev = vm.CompileExpression(node.Of.(xpr.TypedExpression), prev)
+		return append(prev, inst.Referrers{mref[1]})
 
 	case xpr.ConcatLists:
-		lhs := vm.Compile(node[0].(xpr.TypedExpression))
-		rhs := vm.Compile(node[1].(xpr.TypedExpression))
-		return inst.Sequence{lhs, rhs, inst.ConcatLists{}}
+		prev = vm.CompileExpression(node[0].(xpr.TypedExpression), prev)
+		prev = vm.CompileExpression(node[1].(xpr.TypedExpression), prev)
+		return append(prev, inst.ConcatLists{})
 
 	case xpr.After:
-		lhs := vm.Compile(node[0].(xpr.TypedExpression))
-		rhs := vm.Compile(node[1].(xpr.TypedExpression))
-		return inst.Sequence{lhs, rhs, inst.After{}}
+		prev = vm.CompileExpression(node[0].(xpr.TypedExpression), prev)
+		prev = vm.CompileExpression(node[1].(xpr.TypedExpression), prev)
+		return append(prev, inst.After{})
 
 	case xpr.Before:
-		lhs := vm.Compile(node[0].(xpr.TypedExpression))
-		rhs := vm.Compile(node[1].(xpr.TypedExpression))
-		return inst.Sequence{lhs, rhs, inst.Before{}}
+		prev = vm.CompileExpression(node[0].(xpr.TypedExpression), prev)
+		prev = vm.CompileExpression(node[1].(xpr.TypedExpression), prev)
+		return append(prev, inst.Before{})
 
 	case xpr.Equal:
-		lhs := vm.Compile(node[0].(xpr.TypedExpression))
-		rhs := vm.Compile(node[1].(xpr.TypedExpression))
-		return inst.Sequence{lhs, rhs, inst.Equal{}}
-
-	case xpr.Greater:
-		lhs := vm.Compile(node[0].(xpr.TypedExpression))
-		rhs := vm.Compile(node[1].(xpr.TypedExpression))
-		switch node[0].(xpr.TypedExpression).Actual.Concrete().(type) {
-		case mdl.Float:
-			return inst.Sequence{lhs, rhs, inst.GreaterFloat{}}
-		case mdl.Int8:
-			return inst.Sequence{lhs, rhs, inst.GreaterInt8{}}
-		case mdl.Int16:
-			return inst.Sequence{lhs, rhs, inst.GreaterInt16{}}
-		case mdl.Int32:
-			return inst.Sequence{lhs, rhs, inst.GreaterInt32{}}
-		case mdl.Int64:
-			return inst.Sequence{lhs, rhs, inst.GreaterInt64{}}
-		case mdl.Uint8:
-			return inst.Sequence{lhs, rhs, inst.GreaterUint8{}}
-		case mdl.Uint16:
-			return inst.Sequence{lhs, rhs, inst.GreaterUint16{}}
-		case mdl.Uint32:
-			return inst.Sequence{lhs, rhs, inst.GreaterUint32{}}
-		case mdl.Uint64:
-			return inst.Sequence{lhs, rhs, inst.GreaterUint64{}}
-		}
-	case xpr.Less:
-		lhs := vm.Compile(node[0].(xpr.TypedExpression))
-		rhs := vm.Compile(node[1].(xpr.TypedExpression))
-		switch node[0].(xpr.TypedExpression).Actual.Concrete().(type) {
-		case mdl.Float:
-			return inst.Sequence{lhs, rhs, inst.LessFloat{}}
-		case mdl.Int8:
-			return inst.Sequence{lhs, rhs, inst.LessInt8{}}
-		case mdl.Int16:
-			return inst.Sequence{lhs, rhs, inst.LessInt16{}}
-		case mdl.Int32:
-			return inst.Sequence{lhs, rhs, inst.LessInt32{}}
-		case mdl.Int64:
-			return inst.Sequence{lhs, rhs, inst.LessInt64{}}
-		case mdl.Uint8:
-			return inst.Sequence{lhs, rhs, inst.LessUint8{}}
-		case mdl.Uint16:
-			return inst.Sequence{lhs, rhs, inst.LessUint16{}}
-		case mdl.Uint32:
-			return inst.Sequence{lhs, rhs, inst.LessUint32{}}
-		case mdl.Uint64:
-			return inst.Sequence{lhs, rhs, inst.LessUint64{}}
-		}
-	case xpr.Add:
-		lhs := vm.Compile(node[0].(xpr.TypedExpression))
-		rhs := vm.Compile(node[1].(xpr.TypedExpression))
-		switch node[0].(xpr.TypedExpression).Actual.Concrete().(type) {
-		case mdl.Float:
-			return inst.Sequence{lhs, rhs, inst.AddFloat{}}
-		case mdl.Int8:
-			return inst.Sequence{lhs, rhs, inst.AddInt8{}}
-		case mdl.Int16:
-			return inst.Sequence{lhs, rhs, inst.AddInt16{}}
-		case mdl.Int32:
-			return inst.Sequence{lhs, rhs, inst.AddInt32{}}
-		case mdl.Int64:
-			return inst.Sequence{lhs, rhs, inst.AddInt64{}}
-		case mdl.Uint8:
-			return inst.Sequence{lhs, rhs, inst.AddUint8{}}
-		case mdl.Uint16:
-			return inst.Sequence{lhs, rhs, inst.AddUint16{}}
-		case mdl.Uint32:
-			return inst.Sequence{lhs, rhs, inst.AddUint32{}}
-		case mdl.Uint64:
-			return inst.Sequence{lhs, rhs, inst.AddUint64{}}
-		}
-	case xpr.Subtract:
-		lhs := vm.Compile(node[0].(xpr.TypedExpression))
-		rhs := vm.Compile(node[1].(xpr.TypedExpression))
-		switch node[0].(xpr.TypedExpression).Actual.Concrete().(type) {
-		case mdl.Float:
-			return inst.Sequence{lhs, rhs, inst.SubtractFloat{}}
-		case mdl.Int8:
-			return inst.Sequence{lhs, rhs, inst.SubtractInt8{}}
-		case mdl.Int16:
-			return inst.Sequence{lhs, rhs, inst.SubtractInt16{}}
-		case mdl.Int32:
-			return inst.Sequence{lhs, rhs, inst.SubtractInt32{}}
-		case mdl.Int64:
-			return inst.Sequence{lhs, rhs, inst.SubtractInt64{}}
-		case mdl.Uint8:
-			return inst.Sequence{lhs, rhs, inst.SubtractUint8{}}
-		case mdl.Uint16:
-			return inst.Sequence{lhs, rhs, inst.SubtractUint16{}}
-		case mdl.Uint32:
-			return inst.Sequence{lhs, rhs, inst.SubtractUint32{}}
-		case mdl.Uint64:
-			return inst.Sequence{lhs, rhs, inst.SubtractUint64{}}
-		}
-	case xpr.Multiply:
-		lhs := vm.Compile(node[0].(xpr.TypedExpression))
-		rhs := vm.Compile(node[1].(xpr.TypedExpression))
-		switch node[0].(xpr.TypedExpression).Actual.Concrete().(type) {
-		case mdl.Float:
-			return inst.Sequence{lhs, rhs, inst.MultiplyFloat{}}
-		case mdl.Int8:
-			return inst.Sequence{lhs, rhs, inst.MultiplyInt8{}}
-		case mdl.Int16:
-			return inst.Sequence{lhs, rhs, inst.MultiplyInt16{}}
-		case mdl.Int32:
-			return inst.Sequence{lhs, rhs, inst.MultiplyInt32{}}
-		case mdl.Int64:
-			return inst.Sequence{lhs, rhs, inst.MultiplyInt64{}}
-		case mdl.Uint8:
-			return inst.Sequence{lhs, rhs, inst.MultiplyUint8{}}
-		case mdl.Uint16:
-			return inst.Sequence{lhs, rhs, inst.MultiplyUint16{}}
-		case mdl.Uint32:
-			return inst.Sequence{lhs, rhs, inst.MultiplyUint32{}}
-		case mdl.Uint64:
-			return inst.Sequence{lhs, rhs, inst.MultiplyUint64{}}
-		}
-	case xpr.Divide:
-		lhs := vm.Compile(node[0].(xpr.TypedExpression))
-		rhs := vm.Compile(node[1].(xpr.TypedExpression))
-		switch node[0].(xpr.TypedExpression).Actual.Concrete().(type) {
-		case mdl.Float:
-			return inst.Sequence{lhs, rhs, inst.DivideFloat{}}
-		case mdl.Int8:
-			return inst.Sequence{lhs, rhs, inst.DivideInt8{}}
-		case mdl.Int16:
-			return inst.Sequence{lhs, rhs, inst.DivideInt16{}}
-		case mdl.Int32:
-			return inst.Sequence{lhs, rhs, inst.DivideInt32{}}
-		case mdl.Int64:
-			return inst.Sequence{lhs, rhs, inst.DivideInt64{}}
-		case mdl.Uint8:
-			return inst.Sequence{lhs, rhs, inst.DivideUint8{}}
-		case mdl.Uint16:
-			return inst.Sequence{lhs, rhs, inst.DivideUint16{}}
-		case mdl.Uint32:
-			return inst.Sequence{lhs, rhs, inst.DivideUint32{}}
-		case mdl.Uint64:
-			return inst.Sequence{lhs, rhs, inst.DivideUint64{}}
-		}
+		prev = vm.CompileExpression(node[0].(xpr.TypedExpression), prev)
+		prev = vm.CompileExpression(node[1].(xpr.TypedExpression), prev)
+		return append(prev, inst.Equal{})
 
 	case xpr.And:
-		is := make(inst.Sequence, 0, len(node)*2)
 		for i, sub := range node {
-			arg := vm.Compile(sub.(xpr.TypedExpression))
-			is = append(is, arg, inst.ShortCircuitAnd{Arity: len(node), Step: (i + 1)})
+			prev = vm.CompileExpression(sub.(xpr.TypedExpression), prev)
+			prev = append(prev, inst.ShortCircuitAnd{
+				Arity: len(node),
+				Step:  (i + 1),
+			})
 		}
-		return is
+		return prev
 
 	case xpr.Or:
-		is := make(inst.Sequence, 0, len(node)*2)
 		for i, sub := range node {
-			arg := vm.Compile(sub.(xpr.TypedExpression))
-			is = append(is, arg, inst.ShortCircuitOr{Arity: len(node), Step: (i + 1)})
+			prev = vm.CompileExpression(sub.(xpr.TypedExpression), prev)
+			prev = append(prev, inst.ShortCircuitOr{
+				Arity: len(node),
+				Step:  (i + 1),
+			})
 		}
-		return is
+		return prev
 
 	case xpr.CreateMultiple:
-		mref := node.In.(xpr.TypedExpression).Actual.(ConstantModel).Value.(val.Ref)
-		cm := inst.CreateMultiple{mref[1], make(map[string]inst.Sequence, len(node.Values))}
-		for k, sub := range node.Values {
-			arg := vm.Compile(sub.(xpr.TypedExpression))
-			cm.Values[k] = flattenSequences(arg, nil)
+		cm := inst.CreateMultiple{
+			Model:  node.In.(xpr.TypedExpression).Actual.(ConstantModel).Value.(val.Ref)[1],
+			Values: make(map[string]inst.Sequence, len(node.Values)),
 		}
-		return cm
+		for k, sub := range node.Values {
+			cm.Values[k] = vm.CompileExpression(sub.(xpr.TypedExpression), nil)
+		}
+		return append(prev, cm)
 
 	case xpr.Slice:
-		value := vm.Compile(node.Value.(xpr.TypedExpression))
-		offset := vm.Compile(node.Offset.(xpr.TypedExpression))
-		length := vm.Compile(node.Length.(xpr.TypedExpression))
-		return inst.Sequence{value, offset, length, inst.Slice{}}
+		prev = vm.CompileExpression(node.Value.(xpr.TypedExpression), prev)
+		prev = vm.CompileExpression(node.Offset.(xpr.TypedExpression), prev)
+		prev = vm.CompileExpression(node.Length.(xpr.TypedExpression), prev)
+		return append(prev, inst.Slice{})
 
 	case xpr.SearchAllRegex:
-		value := vm.Compile(node.Value.(xpr.TypedExpression))
 		regex := string(node.Regex.(xpr.TypedExpression).Actual.(ConstantModel).Value.(val.String))
 		if node.MultiLine.(xpr.TypedExpression).Actual.(ConstantModel).Value.(val.Bool) {
 			regex = `(?m)` + regex
@@ -506,10 +457,10 @@ func (vm VirtualMachine) Compile(typed xpr.TypedExpression) inst.Instruction {
 			regex = `(?i)` + regex
 		}
 		r := regexp.MustCompile(regex) // compilation previously checked
-		return inst.Sequence{value, inst.SearchAllRegex{r}}
+		prev = vm.CompileExpression(node.Value.(xpr.TypedExpression), prev)
+		return append(prev, inst.SearchAllRegex{r})
 
 	case xpr.SearchRegex:
-		value := vm.Compile(node.Value.(xpr.TypedExpression))
 		regex := string(node.Regex.(xpr.TypedExpression).Actual.(ConstantModel).Value.(val.String))
 		if node.MultiLine.(xpr.TypedExpression).Actual.(ConstantModel).Value.(val.Bool) {
 			regex = `(?m)` + regex
@@ -518,10 +469,10 @@ func (vm VirtualMachine) Compile(typed xpr.TypedExpression) inst.Instruction {
 			regex = `(?i)` + regex
 		}
 		r := regexp.MustCompile(regex) // compilation previously checked
-		return inst.Sequence{value, inst.SearchRegex{r}}
+		prev = vm.CompileExpression(node.Value.(xpr.TypedExpression), prev)
+		return append(prev, inst.SearchRegex{r})
 
 	case xpr.MatchRegex:
-		value := vm.Compile(node.Value.(xpr.TypedExpression))
 		regex := string(node.Regex.(xpr.TypedExpression).Actual.(ConstantModel).Value.(val.String))
 		if node.MultiLine.(xpr.TypedExpression).Actual.(ConstantModel).Value.(val.Bool) {
 			regex = `(?m)` + regex
@@ -530,23 +481,26 @@ func (vm VirtualMachine) Compile(typed xpr.TypedExpression) inst.Instruction {
 			regex = `(?i)` + regex
 		}
 		r := regexp.MustCompile(regex) // compilation previously checked
-		return inst.Sequence{value, inst.MatchRegex{r}}
+		prev = vm.CompileExpression(node.Value.(xpr.TypedExpression), prev)
+		return append(prev, inst.MatchRegex{r})
 
 	case xpr.AssertModelRef:
-		value := vm.Compile(node.Value.(xpr.TypedExpression))
-		mref := node.Ref.(xpr.TypedExpression).Actual.(ConstantModel).Value.(val.Ref)
-		return inst.Sequence{value, inst.AssertModelRef{mref[1]}}
+		prev = vm.CompileExpression(node.Value.(xpr.TypedExpression), prev)
+		return append(prev, inst.AssertModelRef{
+			node.Ref.(xpr.TypedExpression).Actual.(ConstantModel).Value.(val.Ref)[1],
+		})
 
 	case xpr.SwitchModelRef:
 		cases := make(map[string]inst.Sequence, len(node.Cases))
 		for _, sub := range node.Cases {
 			mref := sub.Match.(xpr.TypedExpression).Actual.(ConstantModel).Value.(val.Ref)
-			it := vm.Compile(sub.Return.(xpr.TypedExpression))
-			cases[mref[1]] = flattenSequences(it, nil)
+			cases[mref[1]] = vm.CompileExpression(sub.Return.(xpr.TypedExpression), nil)
 		}
-		value := vm.Compile(node.Value.(xpr.TypedExpression))
-		deflt := vm.Compile(node.Default.(xpr.TypedExpression))
-		return inst.Sequence{value, inst.SwitchModelRef{Cases: cases, Default: flattenSequences(deflt, nil)}}
+		prev = vm.CompileExpression(node.Value.(xpr.TypedExpression), prev)
+		return append(prev, inst.SwitchModelRef{
+			Cases:   cases,
+			Default: vm.CompileExpression(node.Default.(xpr.TypedExpression), nil),
+		})
 
 	case xpr.GraphFlow:
 		flow := make(map[string]inst.GraphFlowParam, len(node.Flow))
@@ -576,31 +530,22 @@ func (vm VirtualMachine) Compile(typed xpr.TypedExpression) inst.Instruction {
 			flow[mref[1]] = param
 
 		}
-		start := vm.Compile(node.Start.(xpr.TypedExpression))
-		return inst.Sequence{start, inst.GraphFlow{flow}}
+		prev = vm.CompileExpression(node.Start.(xpr.TypedExpression), prev)
+		return append(prev, inst.GraphFlow{flow})
 
 	case xpr.SwitchCase:
-		instruction := make(inst.SwitchCase, len(node.Cases))
+		switchCase := make(inst.SwitchCase, len(node.Cases))
 		for k, v := range node.Cases {
-			instruction[k] = flattenSequences(vm.Compile(v.(xpr.TypedExpression)), nil)
+			switchCase[k] = vm.CompileExpression(v.(xpr.TypedExpression), nil)
 		}
-		return inst.Sequence{vm.Compile(node.Value.(xpr.TypedExpression)), instruction}
+		prev = vm.CompileExpression(node.Value.(xpr.TypedExpression), prev)
+		return append(prev, switchCase)
 
 	case xpr.MemSort:
-		return inst.Sequence{
-			vm.Compile(node.Value.(xpr.TypedExpression)),
-			inst.MemSort{
-				flattenSequences(vm.Compile(node.Expression.(xpr.TypedExpression)), nil),
-			},
-		}
-
-	case xpr.MapSet:
-		return inst.Sequence{
-			vm.Compile(node.Value.(xpr.TypedExpression)),
-			inst.MapSet{
-				flattenSequences(vm.Compile(node.Expression.(xpr.TypedExpression)), nil),
-			},
-		}
+		prev = vm.CompileExpression(node.Value.(xpr.TypedExpression), prev)
+		return append(prev, inst.MemSort{
+			vm.CompileFunction(node.Order.(xpr.TypedFunction)),
+		})
 
 	}
 	panic(fmt.Sprintf("unhandled case: %T", typed.Expression))

@@ -13,6 +13,7 @@ import (
 	"karma.run/definitions"
 	"karma.run/kvm"
 	"karma.run/kvm/err"
+	"karma.run/kvm/mdl"
 	"karma.run/kvm/val"
 	"karma.run/kvm/xpr"
 	"log"
@@ -221,7 +222,7 @@ func HttpHandler(rw http.ResponseWriter, rq *http.Request) {
 		return
 	}
 
-	vm := &kvm.VirtualMachine{RootBucket: bk, Codec: cdc, UserID: string(userId)}
+	vm := &kvm.VirtualMachine{RootBucket: bk, UserID: string(userId)}
 
 	if txt == TxTypeWrite {
 		if e := vm.UpdateModels(); e != nil {
@@ -229,7 +230,7 @@ func HttpHandler(rw http.ResponseWriter, rq *http.Request) {
 		}
 	}
 
-	res, _, ke := vm.ParseCompileAndExecute(expr, nil, nil)
+	res, _, ke := vm.ParseCompileAndExecute(expr, nil, []mdl.Model{}, nil)
 	if ke != nil {
 		writeError(rw, cdc, err.HumanReadableError{ke})
 		return

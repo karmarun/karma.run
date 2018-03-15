@@ -10,7 +10,6 @@ import (
 	"hash"
 	"hash/fnv" // FNV-1 has a very low collision rate
 	"karma.run/cc"
-	"karma.run/codec"
 	"karma.run/codec/karma.v2"
 	"karma.run/common"
 	"karma.run/definitions"
@@ -28,7 +27,6 @@ const SeparatorByte = '~'
 type VirtualMachine struct {
 	UserID     string
 	RootBucket *bolt.Bucket
-	Codec      codec.Interface
 
 	permissions    *permissions
 	permRecursions map[string]struct{}
@@ -110,14 +108,14 @@ func (vm *VirtualMachine) MigrationModelId() string {
 	return s
 }
 
-func (vm VirtualMachine) ParseCompileAndExecute(v val.Value, argument, expected mdl.Model) (val.Value, mdl.Model, err.Error) {
+func (vm VirtualMachine) ParseCompileAndExecute(v val.Value, scope *ModelScope, parameters []mdl.Model, expect mdl.Model, arguments ...val.Value) (val.Value, mdl.Model, err.Error) {
 
-	instructions, model, e := vm.ParseAndCompile(v, argument, expected)
+	instructions, model, e := vm.ParseAndCompile(v, scope, parameters, expect)
 	if e != nil {
 		return nil, nil, e
 	}
 
-	v, e = vm.Execute(flattenSequences(instructions, nil), nil)
+	v, e = vm.Execute(instructions, nil, arguments...)
 	if e != nil {
 		return nil, nil, e
 	}
@@ -126,21 +124,7 @@ func (vm VirtualMachine) ParseCompileAndExecute(v val.Value, argument, expected 
 	return v, model, e
 }
 
-func (vm VirtualMachine) CompileAndExecute(node xpr.Expression, argument, expected mdl.Model) (val.Value, mdl.Model, err.Error) {
-	typed, e := vm.TypeExpression(node, argument, expected)
-	if e != nil {
-		return nil, nil, e
-	}
-	instructions := flattenSequences(vm.Compile(typed), nil)
-	v, e := vm.Execute(instructions, nil)
-	if e != nil {
-		return nil, nil, e
-	}
-	v, e = slurpIterators(v)
-	return v, typed.Actual, e
-}
-
-func (vm VirtualMachine) ParseAndCompile(v val.Value, argument, expected mdl.Model) (inst.Sequence, mdl.Model, err.Error) {
+func (vm VirtualMachine) ParseAndCompile(v val.Value, scope *ModelScope, parameters []mdl.Model, expect mdl.Model) (inst.Sequence, mdl.Model, err.Error) {
 
 	cacheKey := vm.MetaModelId() + string(val.Hash(v, nil).Sum(nil))
 
@@ -149,26 +133,31 @@ func (vm VirtualMachine) ParseAndCompile(v val.Value, argument, expected mdl.Mod
 		return entry.i, entry.m, entry.e
 	}
 
-	typed, e := vm.Parse(v, argument, expected)
+	typed, e := vm.Parse(v, scope, parameters, expect)
 	if e != nil {
 		compilerCache.Set(cacheKey, compilerCacheEntry{nil, nil, e})
 		return nil, nil, e
 	}
 
-	instruction, model := vm.Compile(typed), typed.Actual
-	instructions := flattenSequences(instruction, nil)
+	instructions, model := vm.CompileFunction(typed), typed.Actual
 	compilerCache.Set(cacheKey, compilerCacheEntry{instructions, model, nil})
 	return instructions, model, nil
 
 }
 
-func (vm VirtualMachine) Parse(v val.Value, argument, expected mdl.Model) (xpr.TypedExpression, err.Error) {
-	ast := xpr.ExpressionFromValue(v)
-	typed, e := vm.TypeExpression(ast, argument, expected)
+// NOTE: parameters == nil means don't check argument types. parameters == []mdl.Mode{} means check for niladic function.
+func (vm VirtualMachine) Parse(v val.Value, scope *ModelScope, parameters []mdl.Model, expect mdl.Model) (xpr.TypedFunction, err.Error) {
+	ast := xpr.FunctionFromValue(v)
+	typed, e := vm.TypeFunction(ast, scope, expect)
 	if e != nil {
-		return xpr.TypedExpression{}, e
+		return xpr.TypedFunction{}, e
 	}
-	return FoldConstants(typed), nil
+	if parameters != nil {
+		if e := checkArgumentTypes(typed, parameters...); e != nil {
+			return typed, e
+		}
+	}
+	return typed, nil
 }
 
 type compilerCacheEntry struct {
@@ -182,17 +171,6 @@ var compilerCache = cc.NewLru(1024)
 // clears compiler cache (for all databases)
 func ClearCompilerCache() {
 	compilerCache.Clear()
-}
-
-func FoldConstants(n xpr.TypedExpression) xpr.TypedExpression {
-	return n.Transform(func(n xpr.Expression) xpr.Expression {
-		if tx, ok := n.(xpr.TypedExpression); ok {
-			if cm, ok := tx.Actual.(ConstantModel); ok {
-				return xpr.TypedExpression{xpr.Literal{cm.Value}, tx.Expected, tx.Actual}
-			}
-		}
-		return n
-	}).(xpr.TypedExpression)
 }
 
 func convertNumericType(v val.Value, m mdl.Model) val.Value {
@@ -491,7 +469,7 @@ func (vm *VirtualMachine) CheckPermission(p Permission, v val.Meta) err.Error {
 	vm.permRecursions[recKey] = struct{}{}
 	defer delete(vm.permRecursions, recKey)
 
-	bv, e := vm.Execute(is, v)
+	bv, e := vm.Execute(is, nil, v)
 	if e != nil {
 		return e
 	}
@@ -589,23 +567,6 @@ func (vm VirtualMachine) newReadPermissionFilterIterator(sub iterator) iterator 
 		}
 		return true, nil
 	})
-}
-
-type Stack []val.Value
-
-func (s *Stack) Push(v val.Value) {
-	(*s) = append((*s), v)
-}
-
-func (s *Stack) Pop() val.Value {
-	l := s.Len()
-	v := (*s)[l-1]
-	(*s) = (*s)[:l-1]
-	return v
-}
-
-func (s Stack) Len() int {
-	return len(s)
 }
 
 func (vm VirtualMachine) UpdateModels() error {
@@ -788,7 +749,9 @@ func (vm VirtualMachine) InitDB() error {
 		trueExpr, e := vm.Execute(inst.Sequence{
 			inst.CreateMultiple{vm.ExpressionModelId(), map[string]inst.Sequence{
 				"self": inst.Sequence{
-					inst.Constant{val.Union{"data", val.Union{"bool", val.Bool(true)}}},
+					inst.Constant{
+						xpr.ValueFromFunction(xpr.NewFunction([]string{"_"}, xpr.Literal{val.Bool(true)})),
+					},
 				},
 			}},
 			inst.Constant{val.String("self")},
@@ -1151,14 +1114,14 @@ func (vm VirtualMachine) Write(mid string, values map[string]val.Meta) err.Error
 		}
 
 		if mid == vm.ExpressionModelId() {
-			typed, e := vm.Parse(v.Value, AnyModel, AnyModel)
+			fun, e := vm.Parse(v.Value, nil, nil, nil)
 			if e != nil {
 				return err.ExecutionError{
-					Problem: `there was an error compiling the expression to be persisted`,
+					Problem: `there was an error compiling the function to be persisted`,
 					Child_:  e,
 				}
 			}
-			v.Value = xpr.ValueFromExpression(typed)
+			v.Value = xpr.ValueFromFunction(fun)
 		}
 
 		if uniqs := uniqueHashes(md, v.Value); len(uniqs) > 0 {
@@ -1403,153 +1366,15 @@ func (vm VirtualMachine) Write(mid string, values map[string]val.Meta) err.Error
 				expr := (val.Value)(nil)
 
 				if expression := object.Field("expression").(val.Union); expression.Case == "auto" {
-
-					transformation, e := findAutoTransformation(sourceModel, targetModel)
-					if e != nil {
-						return err.ExecutionError{
-							fmt.Sprintf(`failed inferring automatic migration for source model "%s" to target model "%s"`, sourceMID, targetMID),
-							nil,
-							// C: val.Map{
-							// 	"source": source,
-							// 	"target": target,
-							// 	"error":  e.ToValue(),
-							// },
-						}
-					}
-
-					transformation = xpr.With{
-						Value:  xpr.AssertModelRef{Value: xpr.Argument{}, Ref: xpr.Literal{source}},
-						Return: transformation,
-					}
-
-					xid := common.RandomId()
-
-					expr = xpr.ValueFromExpression(transformation)
-
-					e = vm.Write(vm.ExpressionModelId(), map[string]val.Meta{
-						xid: vm.WrapValueInMeta(expr, xid, vm.ExpressionModelId()),
-					})
-					if e != nil {
-						return e
-					}
-
-					exprRef = val.Ref{vm.ExpressionModelId(), xid}
-					expr = expr
-
-					object.Set("expression", val.Union{"manual", exprRef})
-
-				} else {
-
-					exprRef = expression.Value.(val.Ref)
-
-					exprMeta, e := vm.Get(exprRef[0], exprRef[1])
-					if e != nil {
-						return e
-					}
-
-					expr = exprMeta.Value
-
-					// TODO: either revise mdl.Fits definition or truncate information content of outModel to targetModel
-					//       in case of manual migration (auto is guaranteed to deliver sensible result)
-
-					// TODO: check that expr doesn't create, delete or update data
 				}
 
-				instructions, outModel, e := vm.ParseAndCompile(expr, sourceModel, targetModel.Model)
-				if e != nil {
-					return e
-				}
+				panic("todo")
 
-				if e := checkType(outModel, targetModel.Model); e != nil {
-					return err.ExecutionError{
-						Problem: `migration expression output does not fit target model`,
-						Child_:  e,
-					}
-				}
-
-				{ // register migration
-					sourceBucket, e := migs.CreateBucketIfNotExists([]byte(sourceMID))
-					if e != nil {
-						log.Panicln(e)
-					}
-					if e := sourceBucket.Put([]byte(targetMID), []byte(exprRef[1])); e != nil {
-						log.Panicln(e)
-					}
-					targetBucket, e := sgim.CreateBucketIfNotExists([]byte(targetMID))
-					if e != nil {
-						log.Panicln(e)
-					}
-					if e := targetBucket.Put([]byte(sourceMID), []byte(exprRef[1])); e != nil {
-						log.Panicln(e)
-					}
-				}
-
-				{ // actual object migration loop
-
-					todo := make([]string, 0, 16)
-					done := make(map[string]struct{})
-					bundle := make(map[string]val.Meta, 16) // interdependent target objects
-					sourceBucket := db.Bucket([]byte(sourceMID))
-
-					e := sourceBucket.ForEach(func(k, _ []byte) error {
-						id := string(k)
-						if _, ok := done[id]; ok {
-							return nil
-						}
-						todo = append(todo, id)
-						for len(todo) > 0 {
-							id := todo[0]
-							todo = todo[1:]
-							bs := sourceBucket.Get([]byte(id))
-							v, _ := karma.Decode(bs, vm.WrapModelInMeta(sourceMID, sourceModel.Model))
-							mv := DematerializeMeta(v.(val.Struct))
-							migrated, e := vm.Execute(instructions, mv)
-							if e != nil {
-								return e
-							}
-							migrated, e = slurpIterators(migrated)
-							if e != nil {
-								return e
-							}
-							for _, rf := range extractRefs(migrated) {
-								if rf[0] == targetMID {
-									if _, ok := done[rf[1]]; !ok {
-										todo = append(todo, rf[1])
-									}
-								}
-							}
-							out := mv.Copy().(val.Meta)
-							out.Id = val.Ref{targetMID, id}
-							out.Model = val.Ref{vm.MetaModelId(), targetMID}
-							out.Value = migrated
-							bundle[id] = out
-							done[id] = struct{}{}
-						}
-						if e := vm.Write(targetMID, bundle); e != nil {
-							return e
-						}
-						for k, _ := range bundle { // clear bundle
-							delete(bundle, k)
-						}
-						return nil
-					})
-
-					if e != nil {
-						if ke, ok := e.(err.Error); ok {
-							return err.ExecutionError{
-								Problem: `error during migration`,
-								Child_:  ke,
-								// C: val.Map{
-								// 	"source": source,
-								// 	"target": target,
-								// 	"error":  ke.ToValue(),
-								// },
-							}
-						} else {
-							log.Panicln(e)
-						}
-					}
-				}
+				_ = sgim
+				_ = sourceModel
+				_ = targetModel
+				_ = exprRef
+				_ = expr
 
 			}
 
@@ -1688,7 +1513,7 @@ func decodeVertex(bs []byte) (string, string) {
 type migrationNode struct {
 	InModel   mdl.Model
 	InValue   val.Value
-	Migration val.Value // an expression
+	Migration val.Value // a function
 	Children  map[string]*migrationNode
 }
 
@@ -1704,12 +1529,12 @@ func (vm VirtualMachine) applyMigrationTree(id string, tree map[string]*migratio
 
 	for mid, node := range tree {
 
-		it, mm, e := vm.ParseAndCompile(node.Migration, node.InModel, nil)
+		it, mm, e := vm.ParseAndCompile(node.Migration, nil, []mdl.Model{node.InModel}, nil)
 		if e != nil {
 			log.Panicln(pretty.Sprint(e)) // TODO: should theoretically never happen, but... add lots of contextual info in case it does
 		}
 
-		vl, e := vm.Execute(it, node.InValue)
+		vl, e := vm.Execute(it, nil, node.InValue)
 		if e != nil {
 			log.Panicln(pretty.Sprint(e)) // TODO: should theoretically never happen, but... add lots of contextual info in case it does
 		}
@@ -1884,13 +1709,17 @@ func (vm *VirtualMachine) permissionsForUserId(uid string) (*permissions, err.Er
 		inst.Deref{},
 		inst.Field{Key: "roles"},
 		inst.MapList{inst.Sequence{
-			inst.Identity{},
+			inst.Define("i"),
+			inst.Define("role"),
+			inst.Scope("role"),
 			inst.Deref{},
 			inst.Field{Key: "permissions"},
 			inst.MapStruct{inst.Sequence{
-				inst.Identity{},
-				inst.Field{Key: "value"},
+				inst.Define("k"),
+				inst.Define("permission"),
+				inst.Scope("permission"),
 				inst.Deref{},
+				// inst.Field{Key: "value"},
 			}},
 		}},
 	}, nil)
@@ -1909,8 +1738,8 @@ func (vm *VirtualMachine) permissionsForUserId(uid string) (*permissions, err.Er
 		u = append(u, unMeta(s.Field("update")))
 		d = append(d, unMeta(s.Field("delete")))
 	}
-	im := mdl.Any{}
-	ci, cm, ce := vm.ParseAndCompile(orExpressions(c), im, mdl.Bool{})
+
+	ci, cm, ce := vm.ParseAndCompile(orExpressions(c), nil, []mdl.Model{AnyModel}, mdl.Bool{})
 	if ce != nil {
 		return nil, err.ExecutionError{
 			Problem: `failed compiling create permissions`,
@@ -1923,7 +1752,7 @@ func (vm *VirtualMachine) permissionsForUserId(uid string) (*permissions, err.Er
 			nil,
 		}
 	}
-	ri, rm, re := vm.ParseAndCompile(orExpressions(r), im, mdl.Bool{})
+	ri, rm, re := vm.ParseAndCompile(orExpressions(r), nil, []mdl.Model{AnyModel}, mdl.Bool{})
 	if re != nil {
 		return nil, err.ExecutionError{
 			Problem: `failed compiling read permissions`,
@@ -1936,7 +1765,7 @@ func (vm *VirtualMachine) permissionsForUserId(uid string) (*permissions, err.Er
 			nil,
 		}
 	}
-	ui, um, ue := vm.ParseAndCompile(orExpressions(u), im, mdl.Bool{})
+	ui, um, ue := vm.ParseAndCompile(orExpressions(u), nil, []mdl.Model{AnyModel}, mdl.Bool{})
 	if re != nil {
 		return nil, err.ExecutionError{
 			Problem: `failed compiling update permissions`,
@@ -1949,7 +1778,7 @@ func (vm *VirtualMachine) permissionsForUserId(uid string) (*permissions, err.Er
 			nil,
 		}
 	}
-	di, dm, de := vm.ParseAndCompile(orExpressions(d), im, mdl.Bool{})
+	di, dm, de := vm.ParseAndCompile(orExpressions(d), nil, []mdl.Model{AnyModel}, mdl.Bool{})
 	if de != nil {
 		return nil, err.ExecutionError{
 			Problem: `failed compiling delete permissions`,
@@ -1963,10 +1792,10 @@ func (vm *VirtualMachine) permissionsForUserId(uid string) (*permissions, err.Er
 		}
 	}
 	return &permissions{
-		create: flattenSequences(ci, nil),
-		read:   flattenSequences(ri, nil),
-		update: flattenSequences(ui, nil),
-		delete: flattenSequences(di, nil),
+		create: ci,
+		read:   ri,
+		update: ui,
+		delete: di,
 	}, nil
 }
 

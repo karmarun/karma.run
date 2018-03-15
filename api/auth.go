@@ -92,7 +92,7 @@ func AuthHttpHandler(rw http.ResponseWriter, rq *http.Request) {
 		return
 	}
 
-	findUser := xpr.Metarialize{
+	findUser := xpr.NewFunction(nil, xpr.Metarialize{
 		xpr.First{
 			xpr.FilterList{
 				Value: xpr.All{
@@ -100,20 +100,25 @@ func AuthHttpHandler(rw http.ResponseWriter, rq *http.Request) {
 						xpr.Literal{val.String("_user")},
 					},
 				},
-				Expression: xpr.Equal{
+				Filter: xpr.NewFunction([]string{"user"}, xpr.Equal{
 					xpr.Literal{val.String(username)},
 					xpr.Field{
 						Name:  xpr.Literal{val.String("username")},
-						Value: xpr.Argument{},
+						Value: xpr.Scope("user"),
 					},
-				},
+				}),
 			},
 		},
+	})
+
+	vm := &kvm.VirtualMachine{RootBucket: rb}
+
+	typedFindUser, e := vm.TypeFunction(findUser, nil, nil)
+	if e != nil {
+		panic(e)
 	}
 
-	vm := &kvm.VirtualMachine{RootBucket: rb, Codec: cdc}
-
-	mv, _, ke := vm.CompileAndExecute(findUser, nil, nil)
+	mv, ke := vm.Execute(vm.CompileFunction(typedFindUser), nil)
 	if ke != nil {
 		rw.WriteHeader(http.StatusForbidden)
 		rw.Write(cdc.Encode(err.PermissionDeniedError{}.Value()))

@@ -6,10 +6,21 @@ import (
 	"karma.run/kvm/val"
 )
 
-type Argument struct{}
+type function struct {
+	args  []string
+	exprs []Expression
+}
 
-func (x Argument) Transform(f func(Expression) Expression) Expression {
-	return f(x)
+func NewFunction(args []string, exprs ...Expression) Function {
+	return function{args, exprs}
+}
+
+func (f function) Parameters() []string {
+	return f.args
+}
+
+func (f function) Expressions() []Expression {
+	return f.exprs
 }
 
 type CurrentUser struct{}
@@ -297,11 +308,12 @@ func (x NewRef) Transform(f func(Expression) Expression) Expression {
 }
 
 type With struct {
-	Value, Return Expression
+	Value  Expression
+	Return Function
 }
 
 func (x With) Transform(f func(Expression) Expression) Expression {
-	return f(With{x.Value.Transform(f), x.Return.Transform(f)})
+	return f(With{x.Value.Transform(f), x.Return})
 }
 
 type If struct {
@@ -345,11 +357,12 @@ func (x InList) Transform(f func(Expression) Expression) Expression {
 }
 
 type FilterList struct {
-	Value, Expression Expression
+	Value  Expression
+	Filter Function
 }
 
 func (x FilterList) Transform(f func(Expression) Expression) Expression {
-	return f(FilterList{x.Value.Transform(f), x.Expression.Transform(f)})
+	return f(FilterList{x.Value.Transform(f), x.Filter})
 }
 
 type AssertCase struct {
@@ -369,19 +382,21 @@ func (x IsCase) Transform(f func(Expression) Expression) Expression {
 }
 
 type MapMap struct {
-	Value, Expression Expression
+	Value   Expression
+	Mapping Function
 }
 
 func (x MapMap) Transform(f func(Expression) Expression) Expression {
-	return f(MapMap{x.Value.Transform(f), x.Expression.Transform(f)})
+	return f(MapMap{x.Value.Transform(f), x.Mapping})
 }
 
 type MapList struct {
-	Value, Expression Expression
+	Value   Expression
+	Mapping Function
 }
 
 func (x MapList) Transform(f func(Expression) Expression) Expression {
-	return f(MapList{x.Value.Transform(f), x.Expression.Transform(f)})
+	return f(MapList{x.Value.Transform(f), x.Mapping})
 }
 
 type ReduceList struct {
@@ -537,12 +552,12 @@ func (x Key) Transform(f func(Expression) Expression) Expression {
 	return f(Key{x.Value.Transform(f), x.Name.Transform(f)})
 }
 
-type Index struct {
+type IndexTuple struct {
 	Value, Number Expression
 }
 
-func (x Index) Transform(f func(Expression) Expression) Expression {
-	return f(Index{x.Value.Transform(f), x.Number.Transform(f)})
+func (x IndexTuple) Transform(f func(Expression) Expression) Expression {
+	return f(IndexTuple{x.Value.Transform(f), x.Number.Transform(f)})
 }
 
 type NewSet []Expression
@@ -632,40 +647,52 @@ func (x Equal) Transform(f func(Expression) Expression) Expression {
 	return f(Equal{f(x[0]), f(x[1])})
 }
 
-type Greater [2]Expression
+type AddInt64 [2]Expression
 
-func (x Greater) Transform(f func(Expression) Expression) Expression {
-	return f(Greater{f(x[0]), f(x[1])})
+func (x AddInt64) Transform(f func(Expression) Expression) Expression {
+	return f(AddInt64{x[0].Transform(f), x[1].Transform(f)})
 }
 
-type Less [2]Expression
+type AddInt32 [2]Expression
 
-func (x Less) Transform(f func(Expression) Expression) Expression {
-	return f(Less{f(x[0]), f(x[1])})
+func (x AddInt32) Transform(f func(Expression) Expression) Expression {
+	return f(AddInt32{x[0].Transform(f), x[1].Transform(f)})
 }
 
-type Add [2]Expression
+type AddInt16 [2]Expression
 
-func (x Add) Transform(f func(Expression) Expression) Expression {
-	return f(Add{f(x[0]), f(x[1])})
+func (x AddInt16) Transform(f func(Expression) Expression) Expression {
+	return f(AddInt16{x[0].Transform(f), x[1].Transform(f)})
 }
 
-type Subtract [2]Expression
+type AddInt8 [2]Expression
 
-func (x Subtract) Transform(f func(Expression) Expression) Expression {
-	return f(Subtract{f(x[0]), f(x[1])})
+func (x AddInt8) Transform(f func(Expression) Expression) Expression {
+	return f(AddInt8{x[0].Transform(f), x[1].Transform(f)})
 }
 
-type Multiply [2]Expression
+type AddUint64 [2]Expression
 
-func (x Multiply) Transform(f func(Expression) Expression) Expression {
-	return f(Multiply{f(x[0]), f(x[1])})
+func (x AddUint64) Transform(f func(Expression) Expression) Expression {
+	return f(AddUint64{x[0].Transform(f), x[1].Transform(f)})
 }
 
-type Divide [2]Expression
+type AddUint32 [2]Expression
 
-func (x Divide) Transform(f func(Expression) Expression) Expression {
-	return f(Divide{f(x[0]), f(x[1])})
+func (x AddUint32) Transform(f func(Expression) Expression) Expression {
+	return f(AddUint32{x[0].Transform(f), x[1].Transform(f)})
+}
+
+type AddUint16 [2]Expression
+
+func (x AddUint16) Transform(f func(Expression) Expression) Expression {
+	return f(AddUint16{x[0].Transform(f), x[1].Transform(f)})
+}
+
+type AddUint8 [2]Expression
+
+func (x AddUint8) Transform(f func(Expression) Expression) Expression {
+	return f(AddUint8{x[0].Transform(f), x[1].Transform(f)})
 }
 
 type And []Expression
@@ -699,19 +726,34 @@ func (x SwitchCase) Transform(f func(Expression) Expression) Expression {
 }
 
 type MapSet struct {
-	Value      Expression
-	Expression Expression
+	Value   Expression
+	Mapping Function
 }
 
 func (x MapSet) Transform(f func(Expression) Expression) Expression {
-	return f(MapSet{x.Value.Transform(f), x.Expression.Transform(f)})
+	return f(MapSet{x.Value.Transform(f), x.Mapping})
 }
 
 type MemSort struct {
-	Value      Expression
-	Expression Expression
+	Value Expression
+	Order Function
 }
 
 func (x MemSort) Transform(f func(Expression) Expression) Expression {
-	return f(MemSort{x.Value.Transform(f), x.Expression.Transform(f)})
+	return f(MemSort{x.Value.Transform(f), x.Order})
+}
+
+type Define struct {
+	Name     string
+	Argument Expression
+}
+
+func (x Define) Transform(f func(Expression) Expression) Expression {
+	return f(Define{x.Name, x.Argument.Transform(f)})
+}
+
+type Scope string
+
+func (x Scope) Transform(f func(Expression) Expression) Expression {
+	return f(x)
 }

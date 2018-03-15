@@ -280,6 +280,8 @@ func (m Float) Equals(n Model) bool {
 	return ok
 }
 
+var EmptyStruct = NewStruct(0)
+
 type Struct struct{ lm *logMapStringModel }
 
 func StructFromMap(mp map[string]Model) Struct {

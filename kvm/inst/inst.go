@@ -11,6 +11,10 @@ type Instruction interface {
 	_inst() // private interface
 }
 
+type Scope string
+
+type Define string
+
 type Slice struct{}
 
 type Substring struct{}
@@ -28,8 +32,6 @@ type Metarialize struct{}
 type Length struct{}
 
 type Pop struct{}
-
-type PopToInput struct{}
 
 type Not struct{}
 
@@ -64,8 +66,6 @@ type First struct{}
 type StringToRef struct {
 	Model string
 }
-
-type Identity struct{}
 
 type CurrentUser struct{}
 
@@ -243,8 +243,6 @@ type SwitchModelRef struct {
 	Default Sequence
 }
 
-type DebugPrintStack struct{}
-
 type ToFloat struct{}
 type ToInt struct{}
 type ToInt8 struct{}
@@ -339,7 +337,6 @@ type With struct {
 	Expression Sequence
 }
 
-func (Identity) _inst()          {}
 func (AddFloats) _inst()         {}
 func (AddInts) _inst()           {}
 func (All) _inst()               {}
@@ -395,10 +392,8 @@ func (ResolveAllRefs) _inst()    {}
 func (Referred) _inst()          {}
 func (ReduceList) _inst()        {}
 func (IndexTuple) _inst()        {}
-func (PopToInput) _inst()        {}
 func (SwitchModelRef) _inst()    {}
 func (IsPresent) _inst()         {}
-func (DebugPrintStack) _inst()   {}
 func (CurrentUser) _inst()       {}
 func (GreaterFloat) _inst()      {}
 func (GreaterInt) _inst()        {}
@@ -498,3 +493,5 @@ func (ToString) _inst()          {}
 func (With) _inst()              {}
 func (AllReferrers) _inst()      {}
 func (BuildSet) _inst()          {}
+func (Scope) _inst()             {}
+func (Define) _inst()            {}
