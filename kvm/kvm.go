@@ -1728,7 +1728,9 @@ func (vm *VirtualMachine) permissionsForUserId(uid string) (*permissions, err.Er
 	}, nil)
 	if e != nil {
 		if _, ok := e.(err.ObjectNotFoundError); ok {
-			// TODO: better message for "user not found"
+			return nil, err.ExecutionError{
+				Problem: `user id not found`,
+			}
 		}
 		return nil, e
 	}
@@ -1741,7 +1743,6 @@ func (vm *VirtualMachine) permissionsForUserId(uid string) (*permissions, err.Er
 		u = append(u, unMeta(s.Field("update")))
 		d = append(d, unMeta(s.Field("delete")))
 	}
-
 	ci, cm, ce := vm.ParseAndCompile(orExpressions(c), nil, []mdl.Model{AnyModel}, mdl.Bool{})
 	if ce != nil {
 		return nil, err.ExecutionError{
@@ -1794,12 +1795,7 @@ func (vm *VirtualMachine) permissionsForUserId(uid string) (*permissions, err.Er
 			nil,
 		}
 	}
-	return &permissions{
-		create: ci,
-		read:   ri,
-		update: ui,
-		delete: di,
-	}, nil
+	return &permissions{create: ci, read: ri, update: ui, delete: di}, nil
 }
 
 func orExpressions(xs val.List /* of val.Unions */) val.Value {

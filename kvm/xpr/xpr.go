@@ -198,8 +198,8 @@ func ExpressionFromValue(v val.Value) Expression {
 		return Update{ExpressionFromValue(arg.Field("ref")), ExpressionFromValue(arg.Field("value"))}
 
 	case "create":
-		arg := u.Value.(val.Struct)
-		return Create{ExpressionFromValue(arg.Field("in")), ExpressionFromValue(arg.Field("value"))}
+		arg := u.Value.(val.Tuple)
+		return Create{ExpressionFromValue(arg[0]), FunctionFromValue(arg[1])}
 
 	case "mapMap":
 		arg := u.Value.(val.Tuple)
@@ -372,12 +372,12 @@ func ExpressionFromValue(v val.Value) Expression {
 		return nod
 
 	case "key":
-		arg := u.Value.(val.Struct)
-		return Key{ExpressionFromValue(arg.Field("value")), ExpressionFromValue(arg.Field("name"))}
+		arg := u.Value.(val.Tuple)
+		return Key{ExpressionFromValue(arg[0]), ExpressionFromValue(arg[1])}
 
 	case "field":
-		arg := u.Value.(val.Struct)
-		return Field{ExpressionFromValue(arg.Field("value")), ExpressionFromValue(arg.Field("name"))}
+		arg := u.Value.(val.Tuple)
+		return Field{string(arg[0].(val.String)), ExpressionFromValue(arg[1])}
 
 	case "indexTuple":
 		arg := u.Value.(val.Struct)
@@ -425,7 +425,7 @@ func DataExpressionFromValue(v val.Value) Expression {
 
 	switch u := v.(val.Union); u.Case {
 
-	case "expression":
+	case "expr":
 		return ExpressionFromValue(u.Value)
 
 	case "null":
@@ -472,13 +472,13 @@ func DataExpressionFromValue(v val.Value) Expression {
 
 	case "union":
 		arg := u.Value.(val.Tuple)
-		return NewUnion{Literal{arg[0].(val.String)}, ExpressionFromValue(arg[1])}
+		return NewUnion{Literal{arg[0].(val.String)}, DataExpressionFromValue(arg[1])}
 
 	case "map":
 		arg := u.Value.(val.Map)
 		ret := make(NewMap, arg.Len())
 		arg.ForEach(func(k string, w val.Value) bool {
-			ret[k] = ExpressionFromValue(w)
+			ret[k] = DataExpressionFromValue(w)
 			return true
 		})
 		return ret
@@ -487,7 +487,7 @@ func DataExpressionFromValue(v val.Value) Expression {
 		arg := u.Value.(val.Set)
 		ret := make(NewSet, 0, len(arg))
 		for _, w := range arg {
-			ret = append(ret, ExpressionFromValue(w))
+			ret = append(ret, DataExpressionFromValue(w))
 		}
 		return ret
 
@@ -495,7 +495,7 @@ func DataExpressionFromValue(v val.Value) Expression {
 		arg := u.Value.(val.List)
 		ret := make(NewTuple, len(arg))
 		for i, w := range arg {
-			ret[i] = ExpressionFromValue(w)
+			ret[i] = DataExpressionFromValue(w)
 		}
 		return ret
 
@@ -503,7 +503,7 @@ func DataExpressionFromValue(v val.Value) Expression {
 		arg := u.Value.(val.List)
 		ret := make(NewList, len(arg))
 		for i, w := range arg {
-			ret[i] = ExpressionFromValue(w)
+			ret[i] = DataExpressionFromValue(w)
 		}
 		return ret
 
@@ -511,14 +511,14 @@ func DataExpressionFromValue(v val.Value) Expression {
 		arg := u.Value.(val.Map)
 		ret := make(NewStruct, arg.Len())
 		arg.ForEach(func(k string, w val.Value) bool {
-			ret[k] = ExpressionFromValue(w)
+			ret[k] = DataExpressionFromValue(w)
 			return true
 		})
 		return ret
 
 	case "ref":
 		arg := u.Value.(val.Tuple)
-		return NewRef{ExpressionFromValue(arg[0]), ExpressionFromValue(arg[1])}
+		return NewRef{DataExpressionFromValue(arg[0]), DataExpressionFromValue(arg[1])}
 
 	default:
 		panic(fmt.Sprintf("unhandled constructor: %s", u.Case))
@@ -721,10 +721,7 @@ func ValueFromExpression(x Expression) val.Value {
 		})}
 
 	case Create:
-		return val.Union{"create", val.StructFromMap(map[string]val.Value{
-			"in":    ValueFromExpression(node.In),
-			"value": ValueFromExpression(node.Value),
-		})}
+		return val.Union{"create", val.Tuple{ValueFromExpression(node.In), ValueFromFunction(node.Value)}}
 
 	case InList:
 		return val.Union{"inList", val.StructFromMap(map[string]val.Value{
@@ -776,16 +773,10 @@ func ValueFromExpression(x Expression) val.Value {
 		})}
 
 	case Field:
-		return val.Union{"field", val.StructFromMap(map[string]val.Value{
-			"name":  ValueFromExpression(node.Name),
-			"value": ValueFromExpression(node.Value),
-		})}
+		return val.Union{"field", val.Tuple{val.String(node.Name), ValueFromExpression(node.Value)}}
 
 	case Key:
-		return val.Union{"key", val.StructFromMap(map[string]val.Value{
-			"name":  ValueFromExpression(node.Name),
-			"value": ValueFromExpression(node.Value),
-		})}
+		return val.Union{"key", val.Tuple{ValueFromExpression(node.Name), ValueFromExpression(node.Value)}}
 
 	case IndexTuple:
 		return val.Union{"indexTuple", val.StructFromMap(map[string]val.Value{
@@ -1103,5 +1094,5 @@ func DataValueFromExpression(x Expression) val.Value {
 			panic(fmt.Sprintf("unhandled literal type %T", node.Value))
 		}
 	}
-	return val.Union{"expression", ValueFromExpression(x)}
+	return val.Union{"expr", ValueFromExpression(x)}
 }

@@ -40,30 +40,30 @@ var (
 
 func NewMetaModelValue(metaId string) val.Value {
 	return val.Union{"recursion", val.StructFromMap(map[string]val.Value{
-		"label": val.String("x"),
+		"label": val.String("model"),
 		"model": val.Union{"union", val.MapFromMap(map[string]val.Value{
 			"recursive": val.Union{"struct", val.MapFromMap(map[string]val.Value{
 				"top":    val.Union{"string", val.Struct{}},
-				"models": val.Union{"map", val.Union{"recurse", val.String("x")}},
+				"models": val.Union{"map", val.Union{"recurse", val.String("model")}},
 			})},
 			"recursion": val.Union{"struct", val.MapFromMap(map[string]val.Value{
 				"label": val.Union{"string", val.Struct{}},
-				"model": val.Union{"recurse", val.String("x")},
+				"model": val.Union{"recurse", val.String("model")},
 			})},
 			"recurse": val.Union{"string", val.Struct{}},
 			"annotation": val.Union{"struct", val.MapFromMap(map[string]val.Value{
 				"value": val.Union{"string", val.Struct{}},
-				"model": val.Union{"recurse", val.String("x")},
+				"model": val.Union{"recurse", val.String("model")},
 			})},
-			"set":      val.Union{"recurse", val.String("x")},
-			"list":     val.Union{"recurse", val.String("x")},
-			"tuple":    val.Union{"list", val.Union{"recurse", val.String("x")}},
-			"struct":   val.Union{"map", val.Union{"recurse", val.String("x")}},
-			"union":    val.Union{"map", val.Union{"recurse", val.String("x")}},
+			"set":      val.Union{"recurse", val.String("model")},
+			"list":     val.Union{"recurse", val.String("model")},
+			"tuple":    val.Union{"list", val.Union{"recurse", val.String("model")}},
+			"struct":   val.Union{"map", val.Union{"recurse", val.String("model")}},
+			"union":    val.Union{"map", val.Union{"recurse", val.String("model")}},
 			"ref":      val.Union{"ref", val.Ref{metaId, metaId}},
-			"map":      val.Union{"recurse", val.String("x")},
-			"optional": val.Union{"recurse", val.String("x")},
-			"unique":   val.Union{"recurse", val.String("x")},
+			"map":      val.Union{"recurse", val.String("model")},
+			"optional": val.Union{"recurse", val.String("model")},
+			"unique":   val.Union{"recurse", val.String("model")},
 			"enum":     val.Union{"set", val.Union{"string", val.Struct{}}},
 			"bool":     val.Union{"struct", val.Map{}},
 			"dateTime": val.Union{"struct", val.Map{}},

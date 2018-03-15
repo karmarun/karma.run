@@ -251,9 +251,9 @@ func (vm VirtualMachine) CompileExpression(typed xpr.TypedExpression, prev inst.
 		return append(prev, inst.CreateMultiple{
 			Model: typed.Actual.(mdl.Ref).Model,
 			Values: map[string]inst.Sequence{
-				"self": vm.CompileExpression(node.Value.(xpr.TypedExpression), nil),
+				"self": vm.CompileFunction(node.Value.(xpr.TypedFunction)),
 			},
-		})
+		}, inst.Constant{val.String("self")}, inst.Key{})
 
 	case xpr.InList:
 		prev = vm.CompileExpression(node.In.(xpr.TypedExpression), prev)
@@ -326,9 +326,7 @@ func (vm VirtualMachine) CompileExpression(typed xpr.TypedExpression, prev inst.
 
 	case xpr.Field:
 		prev = vm.CompileExpression(node.Value.(xpr.TypedExpression), prev)
-		return append(prev, inst.Field{
-			string(node.Name.(xpr.TypedExpression).Actual.(ConstantModel).Value.(val.String)),
-		})
+		return append(prev, inst.Field{node.Name})
 
 	case xpr.Key:
 		prev = vm.CompileExpression(node.Value.(xpr.TypedExpression), prev)

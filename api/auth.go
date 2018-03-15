@@ -102,10 +102,7 @@ func AuthHttpHandler(rw http.ResponseWriter, rq *http.Request) {
 				},
 				Filter: xpr.NewFunction([]string{"user"}, xpr.Equal{
 					xpr.Literal{val.String(username)},
-					xpr.Field{
-						Name:  xpr.Literal{val.String("username")},
-						Value: xpr.Scope("user"),
-					},
+					xpr.Field{"username", xpr.Scope("user")},
 				}),
 			},
 		},

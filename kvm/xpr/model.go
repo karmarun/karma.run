@@ -84,10 +84,14 @@ var LanguageModel = mdl.DefineRecursion("function", func(function *mdl.Recursion
 			"before":      mdl.Tuple{expression, expression},
 			"equal":       mdl.Tuple{expression, expression},
 			"concatLists": mdl.Tuple{expression, expression},
+			"field":       mdl.Tuple{mdl.String{}, expression},
+			"key":         mdl.Tuple{expression, expression},
 
 			"mapSet":  mdl.Tuple{expression, function},
 			"mapList": mdl.Tuple{expression, function},
 			"mapMap":  mdl.Tuple{expression, function},
+
+			"create": mdl.Tuple{expression, function},
 
 			"setField": mdl.StructFromMap(map[string]mdl.Model{
 				"name":  mdl.String{},
@@ -100,14 +104,6 @@ var LanguageModel = mdl.DefineRecursion("function", func(function *mdl.Recursion
 				"name":  mdl.String{},
 				"value": expression,
 				"in":    expression,
-			}),
-			"field": mdl.StructFromMap(map[string]mdl.Model{
-				"name":  mdl.String{},
-				"value": expression,
-			}),
-			"key": mdl.StructFromMap(map[string]mdl.Model{
-				"name":  mdl.String{},
-				"value": expression,
 			}),
 			"relocateRef": mdl.StructFromMap(map[string]mdl.Model{
 				"ref":   expression,
@@ -209,10 +205,6 @@ var LanguageModel = mdl.DefineRecursion("function", func(function *mdl.Recursion
 			"indexTuple": mdl.StructFromMap(map[string]mdl.Model{
 				"value":  expression,
 				"number": mdl.Int64{},
-			}),
-			"create": mdl.StructFromMap(map[string]mdl.Model{
-				"in":    expression,
-				"value": expression,
 			}),
 			"update": mdl.StructFromMap(map[string]mdl.Model{
 				"ref":   expression,

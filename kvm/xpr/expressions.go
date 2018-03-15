@@ -349,11 +349,12 @@ func (x Update) Transform(f func(Expression) Expression) Expression {
 }
 
 type Create struct {
-	In, Value Expression
+	In    Expression
+	Value Function
 }
 
 func (x Create) Transform(f func(Expression) Expression) Expression {
-	return f(Create{x.In.Transform(f), x.Value.Transform(f)})
+	return f(Create{x.In.Transform(f), x.Value})
 }
 
 type InList struct {
@@ -545,19 +546,20 @@ func (x SetKey) Transform(f func(Expression) Expression) Expression {
 }
 
 type Field struct {
-	Value, Name Expression
+	Name  string
+	Value Expression
 }
 
 func (x Field) Transform(f func(Expression) Expression) Expression {
-	return f(Field{x.Value.Transform(f), x.Name.Transform(f)})
+	return f(Field{x.Name, x.Value.Transform(f)})
 }
 
 type Key struct {
-	Value, Name Expression
+	Name, Value Expression
 }
 
 func (x Key) Transform(f func(Expression) Expression) Expression {
-	return f(Key{x.Value.Transform(f), x.Name.Transform(f)})
+	return f(Key{x.Name.Transform(f), x.Value.Transform(f)})
 }
 
 type IndexTuple struct {

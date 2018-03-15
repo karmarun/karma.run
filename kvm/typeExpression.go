@@ -76,6 +76,14 @@ func (vm VirtualMachine) TypeFunction(f xpr.Function, scope *ModelScope, expecte
 		expected = AnyModel
 	}
 
+	if _, ok := expected.(BucketModel); ok {
+		panic("INVARIANT: expected is never BucketModel")
+	}
+
+	if _, ok := expected.(ConstantModel); ok {
+		panic("INVARIANT: expected is never ConstantModel")
+	}
+
 	params, functionScope := f.Parameters(), scope.Child()
 
 	for i, l := 0, len(params); i < l; i++ {
@@ -342,16 +350,23 @@ func (vm VirtualMachine) TypeExpression(node xpr.Expression, scope *ModelScope, 
 			}
 		}
 
-		caseString := string(cc.Value.(val.String))
+		scase := string(cc.Value.(val.String))
 
-		value, e := vm.TypeExpression(node.Value, scope, AnyModel)
+		subExpect := mdl.Model(AnyModel)
+		if eu, ok := expected.Concrete().(mdl.Union); ok {
+			if m, ok := eu.Get(scase); ok {
+				subExpect = m
+			}
+		}
+
+		value, e := vm.TypeExpression(node.Value, scope, subExpect)
 		if e != nil {
 			return value, e
 		}
 		node.Value = value
 
 		model := mdl.NewUnion(1)
-		model.Set(caseString, value.Actual.Unwrap())
+		model.Set(scase, value.Actual.Unwrap())
 
 		retNode = xpr.TypedExpression{node, expected, model}
 
@@ -935,11 +950,13 @@ func (vm VirtualMachine) TypeExpression(node xpr.Expression, scope *ModelScope, 
 		retNode = xpr.TypedExpression{node, expected, mdl.Ref{mid}}
 
 	case xpr.Create:
+
 		in, e := vm.TypeExpression(node.In, scope, mdl.Ref{vm.MetaModelId()})
 		if e != nil {
 			return in, e
 		}
 		node.In = in
+
 		ci, ok := in.Actual.(ConstantModel)
 		if !ok {
 			return ZeroTypedExpression, err.CompilationError{
@@ -947,19 +964,26 @@ func (vm VirtualMachine) TypeExpression(node xpr.Expression, scope *ModelScope, 
 				Program: xpr.ValueFromExpression(in),
 			}
 		}
+
 		mid := ci.Value.(val.Ref)[1]
 		subExpect, e := vm.Model(mid)
 		if e != nil {
 			return ZeroTypedExpression, e
 		}
-		panic("todo")
-		// subArg := mdl.NewStruct(1)
-		// subArg.Set("self", mdl.Ref{mid})
-		value, e := vm.TypeExpression(node.Value, scope, UnwrapBucket(subExpect))
+
+		value, e := vm.TypeFunction(node.Value, scope, subExpect.Model)
 		if e != nil {
-			return value, e
+			return ZeroTypedExpression, e
 		}
 		node.Value = value
+
+		subArg := mdl.NewStruct(1)
+		subArg.Set("self", mdl.Ref{mid})
+
+		if e := checkArgumentTypes(value, subArg); e != nil {
+			return ZeroTypedExpression, e
+		}
+
 		retNode = xpr.TypedExpression{node, expected, mdl.Ref{mid}}
 
 	case xpr.InList:
@@ -1526,24 +1550,8 @@ func (vm VirtualMachine) TypeExpression(node xpr.Expression, scope *ModelScope, 
 
 	case xpr.Field:
 
-		name, e := vm.TypeExpression(node.Name, scope, StringModel)
-		if e != nil {
-			return name, e
-		}
-		node.Name = name
-
-		cn, ok := name.Actual.(ConstantModel)
-		if !ok {
-			return ZeroTypedExpression, err.CompilationError{
-				Problem: `field: name argument must be constant expression`,
-				Program: xpr.ValueFromExpression(name),
-			}
-		}
-
-		field := string(cn.Value.(val.String))
-
 		subExpect := mdl.NewStruct(1)
-		subExpect.Set(field, expected)
+		subExpect.Set(node.Name, expected)
 
 		value, e := vm.TypeExpression(node.Value, scope, subExpect)
 		if e != nil {
@@ -1551,23 +1559,26 @@ func (vm VirtualMachine) TypeExpression(node xpr.Expression, scope *ModelScope, 
 		}
 		node.Value = value
 
-		model := value.Actual.Concrete().(mdl.Struct).Field(field)
+		model := value.Actual.Concrete().(mdl.Struct).Field(node.Name)
 		if cv, ok := value.Actual.(ConstantModel); ok {
-			model = ConstantModel{model, cv.Value.(val.Struct).Field(field)}
+			model = ConstantModel{model, cv.Value.(val.Struct).Field(node.Name)}
 		}
 		retNode = xpr.TypedExpression{node, expected, model}
 
 	case xpr.Key:
+
 		name, e := vm.TypeExpression(node.Name, scope, StringModel)
 		if e != nil {
 			return name, e
 		}
 		node.Name = name
+
 		value, e := vm.TypeExpression(node.Value, scope, mdl.Map{expected})
 		if e != nil {
 			return value, e
 		}
 		node.Value = value
+
 		model := mdl.Model(mdl.Optional{value.Actual.Concrete().(mdl.Map).Elements})
 		if cv, ok := value.Actual.(ConstantModel); ok {
 			if cn, ok := name.Actual.(ConstantModel); ok {
