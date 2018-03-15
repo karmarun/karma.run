@@ -55,6 +55,9 @@ func ExpressionFromValue(v val.Value) Expression {
 
 	switch u := v.(val.Union); u.Case {
 
+	case "signature":
+		return FunctionSignature{FunctionFromValue(u.Value)}
+
 	case "data":
 		return DataExpressionFromValue(u.Value)
 
@@ -556,6 +559,9 @@ func ValueFromExpression(x Expression) val.Value {
 
 	case TypedExpression:
 		return ValueFromExpression(node.Expression)
+
+	case FunctionSignature:
+		return val.Union{"signature", ValueFromFunction(node.Function)}
 
 	case AddInt64:
 		return val.Union{"addInt64", val.Tuple{

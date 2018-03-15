@@ -18,11 +18,14 @@ func (vm VirtualMachine) CompileFunction(f xpr.TypedFunction) inst.Sequence {
 	instructions := make(inst.Sequence, 0, (len(expressions) * 2))
 
 	for _, p := range f.Parameters() {
-		instructions = append(instructions, inst.Define(p))
+		instructions = append(instructions, inst.Define(p), inst.Pop{})
 	}
 
-	for _, x := range expressions {
+	for i, x := range expressions {
 		instructions = vm.CompileExpression(x.(xpr.TypedExpression), instructions)
+		if i < len(expressions)-1 {
+			instructions = append(instructions, inst.Pop{}) // discard intermediate stack values
+		}
 	}
 
 	return instructions

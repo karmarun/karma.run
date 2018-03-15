@@ -1710,16 +1710,19 @@ func (vm *VirtualMachine) permissionsForUserId(uid string) (*permissions, err.Er
 		inst.Field{Key: "roles"},
 		inst.MapList{inst.Sequence{
 			inst.Define("i"),
+			inst.Pop{},
 			inst.Define("role"),
+			inst.Pop{},
 			inst.Scope("role"),
 			inst.Deref{},
 			inst.Field{Key: "permissions"},
 			inst.MapStruct{inst.Sequence{
 				inst.Define("k"),
+				inst.Pop{},
 				inst.Define("permission"),
+				inst.Pop{},
 				inst.Scope("permission"),
 				inst.Deref{},
-				// inst.Field{Key: "value"},
 			}},
 		}},
 	}, nil)

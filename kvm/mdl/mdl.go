@@ -70,6 +70,8 @@ func ValueFromModel(metaId string, model Model, recursions map[*Recursion]struct
 		recursions = make(map[*Recursion]struct{})
 	}
 
+	model = model.Unwrap()
+
 	// catch top-level recursions and, if we have more than one recursion
 	// involved in the model, use "recursive" constructor instead of "recursion"
 	if top, ok := model.(*Recursion); ok && len(recursions) == 0 {
@@ -202,6 +204,11 @@ func ValueFromModel(metaId string, model Model, recursions map[*Recursion]struct
 
 	case Ref:
 		return val.Union{"ref", val.Ref{metaId, m.Model}}
+
+	case Any:
+		// note: any occurs in signatures and return types from expressions and must therefore
+		//       be encoded. however, it is not a legal model constructor coming from the client.
+		return val.Union{"any", val.Struct{}}
 
 	}
 	panic(fmt.Sprintf(`Unhandled model: %T`, model))

@@ -153,6 +153,20 @@ func (vm VirtualMachine) TypeExpression(node xpr.Expression, scope *ModelScope, 
 
 	switch node := node.(type) {
 
+	case xpr.FunctionSignature:
+		typed, e := vm.TypeFunction(node.Function, scope, expected)
+		if e != nil {
+			return ZeroTypedExpression, e
+		}
+		node.Function = typed
+		params := typed.Parameters()
+		argStruct := val.NewStruct(len(params))
+		for i, param := range params {
+			argStruct.Set(param, mdl.ValueFromModel(vm.MetaModelId(), typed.Arguments[i], nil))
+		}
+		retTuple := val.Tuple{argStruct, mdl.ValueFromModel(vm.MetaModelId(), typed.Actual, nil)}
+		return vm.TypeExpression(xpr.Literal{retTuple}, scope, expected)
+
 	case xpr.AddInt64:
 		lhs, e := vm.TypeExpression(node[0], scope, mdl.Int64{})
 		if e != nil {
@@ -270,7 +284,7 @@ func (vm VirtualMachine) TypeExpression(node xpr.Expression, scope *ModelScope, 
 		}
 		node.Argument = arg
 		scope.Set(node.Name, arg.Actual)
-		retNode = xpr.TypedExpression{node, expected, mdl.Null{}} // define() returns null
+		retNode = xpr.TypedExpression{node, expected, mdl.Null{}} // define returns null
 
 	case xpr.Scope:
 		name := string(node)
@@ -284,9 +298,16 @@ func (vm VirtualMachine) TypeExpression(node xpr.Expression, scope *ModelScope, 
 		if model == nil {
 			model = expected
 		} else {
-			model = mdl.Either(model, expected, nil)
-			if _, ok := model.(mdl.Any); ok {
-				// TODO: return good error message
+			// note: naively doing mdl.Either would discard ConstantModel information here.
+			if e := checkType(model, expected); e != nil {
+				model = mdl.Either(model, expected, nil)
+				if _, ok := model.(mdl.Any); ok {
+					return ZeroTypedExpression, err.CompilationError{
+						Problem: fmt.Sprintf(`inconsistent typing of name: "%s"`, name),
+						Program: xpr.ValueFromExpression(node),
+						Child_:  e,
+					}
+				}
 			}
 		}
 		scope.Set(name, model)

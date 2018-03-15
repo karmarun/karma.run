@@ -85,7 +85,7 @@ func (s Stack) Peek() val.Value {
 	return s[len(s)-1]
 }
 
-// scope may be nil, that's fine, scope.Child() will allocate when needed.
+// scope may be nil, that's fine -- will be allocated when needed.
 func (vm VirtualMachine) Execute(program inst.Sequence, scope *ValueScope, args ...val.Value) (val.Value, err.Error) {
 
 	if len(program) == 0 {
@@ -114,11 +114,18 @@ func (vm VirtualMachine) Execute(program inst.Sequence, scope *ValueScope, args 
 
 		switch it := program[pc].(type) {
 
+		case inst.Sequence:
+			log.Panicln("vm.Execute: nested inst.Sequence")
+
+		case inst.Pop:
+			stack.Pop()
+
 		case inst.Define:
 			if scope == nil {
 				scope = NewValueScope()
 			}
 			scope.Set(string(it), stack.Pop())
+			stack.Push(val.Null)
 
 		case inst.Scope:
 			v, ok := scope.Get(string(it))
@@ -128,9 +135,6 @@ func (vm VirtualMachine) Execute(program inst.Sequence, scope *ValueScope, args 
 				}
 			}
 			stack.Push(v)
-
-		case inst.Sequence:
-			log.Panicln("vm.Execute: nested inst.Sequence")
 
 		case inst.CurrentUser:
 			stack.Push(val.Ref{vm.UserModelId(), vm.UserID})
@@ -1811,7 +1815,7 @@ func (vm VirtualMachine) Execute(program inst.Sequence, scope *ValueScope, args 
 	}
 
 	if stack.Len() != 1 {
-		log.Panicf("Execute: stack had %d elements after execution: %s.", stack.Len(), pretty.Sprint(stack))
+		log.Panicf("Execute: stack had %d elements after execution.", stack.Len())
 	}
 
 	return stack.Pop(), nil

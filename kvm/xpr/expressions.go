@@ -43,6 +43,14 @@ func (x Literal) Transform(f func(Expression) Expression) Expression {
 	return f(x)
 }
 
+type FunctionSignature struct {
+	Function Function
+}
+
+func (x FunctionSignature) Transform(f func(Expression) Expression) Expression {
+	return f(FunctionSignature{x.Function})
+}
+
 type AllReferrers struct {
 	Argument Expression
 }
