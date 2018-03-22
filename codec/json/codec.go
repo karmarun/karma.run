@@ -56,7 +56,7 @@ func encode(value val.Value, buffer JSON) JSON {
 		log.Panicln("json/codec.encode: value == nil")
 	}
 	if value == val.Null {
-		return JSON(`null`)
+		return append(buffer, JSON(`null`)...)
 	}
 	switch v := value.(type) {
 	case val.Meta:
