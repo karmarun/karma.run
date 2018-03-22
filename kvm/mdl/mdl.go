@@ -493,7 +493,7 @@ func RollOr(ms []Model) Model {
 
 // UnrollOr returns all individual submodels in an Or tree as a list.
 func UnrollOr(m Model, c []Model) []Model {
-	if o, ok := m.(Or); ok {
+	if o, ok := m.Concrete().(Or); ok {
 		return UnrollOr(o[1], UnrollOr(o[0], c))
 	}
 	return append(c, m)
