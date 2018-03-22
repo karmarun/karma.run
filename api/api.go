@@ -115,7 +115,7 @@ func HttpHandler(rw http.ResponseWriter, rq *http.Request) {
 	}
 
 	if pprof {
-		fmt.Println("resolved codec", time.Now().Sub(start))
+		log.Println("resolved codec", time.Now().Sub(start))
 	}
 
 	rq = rq.WithContext(context.WithValue(rq.Context(), ContextKeyCodec, cdc))
@@ -129,7 +129,7 @@ func HttpHandler(rw http.ResponseWriter, rq *http.Request) {
 	}
 
 	if pprof {
-		fmt.Println("opened database", time.Now().Sub(start))
+		log.Println("opened database", time.Now().Sub(start))
 	}
 
 	rq = rq.WithContext(context.WithValue(rq.Context(), ContextKeyDatabase, dtbs))
@@ -159,7 +159,7 @@ func HttpHandler(rw http.ResponseWriter, rq *http.Request) {
 	}
 
 	if pprof {
-		fmt.Println("parsed signature", time.Now().Sub(start))
+		log.Println("parsed signature", time.Now().Sub(start), "\n")
 	}
 
 	rq = rq.WithContext(context.WithValue(rq.Context(), ContextKeyUserId, string(userId)))
@@ -188,7 +188,7 @@ func HttpHandler(rw http.ResponseWriter, rq *http.Request) {
 	defer payload.Close()
 
 	if pprof {
-		fmt.Println("read payload", time.Now().Sub(start))
+		log.Println("read payload", time.Now().Sub(start))
 	}
 
 	expr, ke := cdc.Decode(payload, xpr.LanguageModel)
@@ -198,7 +198,7 @@ func HttpHandler(rw http.ResponseWriter, rq *http.Request) {
 	}
 
 	if pprof {
-		fmt.Println("decoded payload", time.Now().Sub(start))
+		log.Println("decoded payload", time.Now().Sub(start))
 	}
 
 	txt := TxTypeRead
@@ -223,7 +223,7 @@ func HttpHandler(rw http.ResponseWriter, rq *http.Request) {
 	defer tx.Rollback()
 
 	if pprof {
-		fmt.Println("started transaction", time.Now().Sub(start))
+		log.Println("started transaction", time.Now().Sub(start))
 	}
 
 	defer func() {
@@ -257,7 +257,7 @@ func HttpHandler(rw http.ResponseWriter, rq *http.Request) {
 			log.Panicln(e)
 		}
 		if pprof {
-			fmt.Println("upgraded models", time.Now().Sub(start))
+			log.Println("upgraded models", time.Now().Sub(start))
 		}
 	}
 
@@ -268,13 +268,17 @@ func HttpHandler(rw http.ResponseWriter, rq *http.Request) {
 	}
 
 	if pprof {
-		fmt.Println("compiled and executed", time.Now().Sub(start))
+		log.Println("compiled and executed", time.Now().Sub(start))
 	}
 
 	rw.Write(cdc.Encode(res))
 
 	if pprof {
-		fmt.Println("response written", time.Now().Sub(start))
+		log.Println("encoded response", time.Now().Sub(start))
+	}
+
+	if pprof {
+		log.Println("response written", time.Now().Sub(start))
 	}
 
 	if tx.Writable() {
@@ -284,7 +288,7 @@ func HttpHandler(rw http.ResponseWriter, rq *http.Request) {
 	}
 
 	if pprof {
-		fmt.Println("closed transaction", time.Now().Sub(start))
+		log.Println("closed transaction", time.Now().Sub(start), "\n")
 	}
 
 }
