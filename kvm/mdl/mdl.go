@@ -493,7 +493,7 @@ func RollOr(ms []Model) Model {
 
 // UnrollOr returns all individual submodels in an Or tree as a list.
 func UnrollOr(m Model, c []Model) []Model {
-	if o, ok := m.Concrete().(Or); ok {
+	if o, ok := m.Unwrap().(Or); ok {
 		return UnrollOr(o[1], UnrollOr(o[0], c))
 	}
 	return append(c, m)
@@ -596,8 +596,43 @@ func Either(l, r Model, m map[*Recursion]*Recursion) Model {
 	{ // handle "or" cases
 		_, lok := l.(Or)
 		_, rok := r.(Or)
-		if lok || rok {
-			return eitherOr(l, r, m)
+		switch {
+		case lok && rok:
+			lunrolled, runrolled := UnrollOr(r, nil), UnrollOr(r, nil)
+		router:
+			for _, r := range runrolled {
+				for j, l := range lunrolled {
+					if x, ok := Either(l, r, m).(Or); !ok {
+						lunrolled[j] = x
+						continue router
+					}
+				}
+				lunrolled = append(lunrolled, r)
+			}
+			return RollOr(lunrolled)
+
+		case lok && !rok:
+			unrolled := UnrollOr(l, nil)
+			for i, w := range unrolled {
+				if x, ok := Either(r, w, m).(Or); !ok {
+					unrolled[i] = x
+					return RollOr(unrolled)
+				}
+			}
+			return RollOr(append(unrolled, r))
+
+		case !lok && rok:
+			unrolled := UnrollOr(r, nil)
+			for i, w := range unrolled {
+				if x, ok := Either(l, w, m).(Or); !ok {
+					unrolled[i] = x
+					return RollOr(unrolled)
+				}
+			}
+			return RollOr(append(unrolled, l))
+
+		case !lok && !rok:
+			// do nothing
 		}
 	}
 
@@ -836,35 +871,4 @@ func couldRecurseInfinitely(m Model, seen map[*Recursion]struct{}) bool {
 		return couldRecurseInfinitely(m[0], seen) || couldRecurseInfinitely(m[1], seen)
 	}
 	return false
-}
-
-func eitherOr(a, b Model, recs map[*Recursion]*Recursion) Model {
-	inputs := make([]Model, 0, 16)
-	for _, m := range UnrollOr(a, nil) {
-		inputs = append(inputs, m)
-	}
-	for _, m := range UnrollOr(b, nil) {
-		inputs = append(inputs, m)
-	}
-	outputs := inputs[:0]
-	for _, m := range inputs {
-		alreadyInSet := false
-		for _, w := range outputs {
-			if m.Equals(w) {
-				alreadyInSet = true
-				break
-			}
-		}
-		if !alreadyInSet {
-			outputs = append(outputs, m)
-		}
-	}
-	if len(outputs) == 1 {
-		return outputs[0]
-	}
-	bottom := outputs[0]
-	for _, m := range outputs[1:] {
-		bottom = Either(m, bottom, recs)
-	}
-	return bottom
 }
