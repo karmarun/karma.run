@@ -598,7 +598,7 @@ func Either(l, r Model, m map[*Recursion]*Recursion) Model {
 		_, rok := r.(Or)
 		switch {
 		case lok && rok:
-			lunrolled, runrolled := UnrollOr(r, nil), UnrollOr(r, nil)
+			lunrolled, runrolled := UnrollOr(l, nil), UnrollOr(r, nil)
 		router:
 			for _, r := range runrolled {
 				for j, l := range lunrolled {
