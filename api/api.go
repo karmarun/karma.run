@@ -22,6 +22,7 @@ import (
 	"runtime/debug"
 	"strings"
 	"sync"
+	"time"
 
 	_ "net/http/pprof"
 )
@@ -72,7 +73,9 @@ const (
 
 func HttpHandler(rw http.ResponseWriter, rq *http.Request) {
 
-	if len(os.Getenv("PPROF")) > 0 && strings.HasPrefix(rq.URL.Path, "/debug/pprof") {
+	pprof := len(os.Getenv("PPROF")) > 0
+
+	if pprof && strings.HasPrefix(rq.URL.Path, "/debug/pprof") {
 		http.DefaultServeMux.ServeHTTP(rw, rq)
 		return
 	}
@@ -101,12 +104,18 @@ func HttpHandler(rw http.ResponseWriter, rq *http.Request) {
 		return
 	}
 
+	start := time.Now()
+
 	cdc := codec.Get(rq.Header.Get(CodecHeader))
 	if cdc == nil {
 		msg := fmt.Sprintf(`invalid codec requested (%s header). available codecs: %s`, CodecHeader, strings.Join(codec.Available(), ", "))
 		rw.WriteHeader(http.StatusBadRequest)
 		rw.Write([]byte(msg))
 		return
+	}
+
+	if pprof {
+		fmt.Println("resolved codec", time.Now().Sub(start))
 	}
 
 	rq = rq.WithContext(context.WithValue(rq.Context(), ContextKeyCodec, cdc))
@@ -117,6 +126,10 @@ func HttpHandler(rw http.ResponseWriter, rq *http.Request) {
 		rw.Write(cdc.Encode(err.InternalError{Problem: "failed opening database"}.Value()))
 		log.Println(e)
 		return
+	}
+
+	if pprof {
+		fmt.Println("opened database", time.Now().Sub(start))
 	}
 
 	rq = rq.WithContext(context.WithValue(rq.Context(), ContextKeyDatabase, dtbs))
@@ -145,6 +158,10 @@ func HttpHandler(rw http.ResponseWriter, rq *http.Request) {
 		return
 	}
 
+	if pprof {
+		fmt.Println("parsed signature", time.Now().Sub(start))
+	}
+
 	rq = rq.WithContext(context.WithValue(rq.Context(), ContextKeyUserId, string(userId)))
 
 	if len(path) >= len(ResetPrefix) && path[:len(ResetPrefix)] == ResetPrefix {
@@ -170,10 +187,18 @@ func HttpHandler(rw http.ResponseWriter, rq *http.Request) {
 	payload := payloadFromRequest(rq)
 	defer payload.Close()
 
+	if pprof {
+		fmt.Println("read payload", time.Now().Sub(start))
+	}
+
 	expr, ke := cdc.Decode(payload, xpr.LanguageModel)
 	if ke != nil {
 		writeError(rw, cdc, err.HumanReadableError{ke})
 		return
+	}
+
+	if pprof {
+		fmt.Println("decoded payload", time.Now().Sub(start))
 	}
 
 	txt := TxTypeRead
@@ -196,6 +221,10 @@ func HttpHandler(rw http.ResponseWriter, rq *http.Request) {
 	}
 
 	defer tx.Rollback()
+
+	if pprof {
+		fmt.Println("started transaction", time.Now().Sub(start))
+	}
 
 	defer func() {
 		if v := recover(); v != nil {
@@ -227,6 +256,9 @@ func HttpHandler(rw http.ResponseWriter, rq *http.Request) {
 		if e := vm.UpdateModels(); e != nil {
 			log.Panicln(e)
 		}
+		if pprof {
+			fmt.Println("upgraded models", time.Now().Sub(start))
+		}
 	}
 
 	res, _, ke := vm.ParseCompileAndExecute(expr, nil, nil)
@@ -235,12 +267,24 @@ func HttpHandler(rw http.ResponseWriter, rq *http.Request) {
 		return
 	}
 
+	if pprof {
+		fmt.Println("compiled and executed", time.Now().Sub(start))
+	}
+
 	rw.Write(cdc.Encode(res))
+
+	if pprof {
+		fmt.Println("response written", time.Now().Sub(start))
+	}
 
 	if tx.Writable() {
 		if e := tx.Commit(); e != nil {
 			log.Panicln(e)
 		}
+	}
+
+	if pprof {
+		fmt.Println("closed transaction", time.Now().Sub(start))
 	}
 
 }
