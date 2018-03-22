@@ -602,7 +602,8 @@ func Either(l, r Model, m map[*Recursion]*Recursion) Model {
 		router:
 			for _, r := range runrolled {
 				for j, l := range lunrolled {
-					if x, ok := Either(l, r, m).(Or); !ok {
+					x := Either(l, r, m)
+					if _, ok := x.(Or); !ok {
 						lunrolled[j] = x
 						continue router
 					}
@@ -614,7 +615,8 @@ func Either(l, r Model, m map[*Recursion]*Recursion) Model {
 		case lok && !rok:
 			unrolled := UnrollOr(l, nil)
 			for i, w := range unrolled {
-				if x, ok := Either(r, w, m).(Or); !ok {
+				x := Either(w, r, m)
+				if _, ok := x.(Or); !ok {
 					unrolled[i] = x
 					return RollOr(unrolled)
 				}
@@ -624,7 +626,8 @@ func Either(l, r Model, m map[*Recursion]*Recursion) Model {
 		case !lok && rok:
 			unrolled := UnrollOr(r, nil)
 			for i, w := range unrolled {
-				if x, ok := Either(l, w, m).(Or); !ok {
+				x := Either(w, r, m)
+				if _, ok := x.(Or); !ok {
 					unrolled[i] = x
 					return RollOr(unrolled)
 				}

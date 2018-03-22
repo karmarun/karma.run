@@ -2303,10 +2303,9 @@ func (vm VirtualMachine) TypeExpression(node xpr.Expression, argument, expected 
 			}
 			node.Cases[k] = subNode
 			if model == nil {
-				model = subNode.Actual.Concrete() // TODO: .Concrete() correct because of .Union()?
+				model = subNode.Actual
 			} else {
-				model = mdl.Either(model, subNode.Actual.Concrete(), nil)
-				// model = model.Union(subNode.Actual.Concrete()) // TODO: .Concrete() correct because of .Union()?
+				model = mdl.Either(model, subNode.Actual, nil)
 			}
 		}
 
