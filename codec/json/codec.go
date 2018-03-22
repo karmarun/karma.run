@@ -74,8 +74,11 @@ func encode(value val.Value, buffer JSON) JSON {
 
 	case val.Set:
 		buffer = append(buffer, '[')
-		for i, w := range v {
-			if i > 0 {
+		first := true
+		for _, w := range v {
+			if first {
+				first = false
+			} else {
 				buffer = append(buffer, ',')
 			}
 			buffer = encode(w, buffer)
