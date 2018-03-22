@@ -626,7 +626,7 @@ func Either(l, r Model, m map[*Recursion]*Recursion) Model {
 		case !lok && rok:
 			unrolled := UnrollOr(r, nil)
 			for i, w := range unrolled {
-				x := Either(w, r, m)
+				x := Either(l, w, m)
 				if _, ok := x.(Or); !ok {
 					unrolled[i] = x
 					return RollOr(unrolled)
