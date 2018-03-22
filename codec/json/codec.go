@@ -60,7 +60,7 @@ func encode(value val.Value, buffer JSON) JSON {
 	}
 	switch v := value.(type) {
 	case val.Meta:
-		return encode(v.Value, nil)
+		return encode(v.Value, buffer)
 
 	case val.Tuple:
 		buffer = append(buffer, '[')
