@@ -48,88 +48,122 @@ func (j JSON) String() string {
 }
 
 func Encode(value val.Value) JSON {
+	return encode(value, make(JSON, 0, 4096))
+}
+
+func encode(value val.Value, buffer JSON) JSON {
 	if value == nil {
-		log.Panicln("json/codec.Encode: value == nil")
+		log.Panicln("json/codec.encode: value == nil")
 	}
 	if value == val.Null {
 		return JSON(`null`)
 	}
 	switch v := value.(type) {
 	case val.Meta:
-		return Encode(v.Value)
+		return encode(v.Value, nil)
 
 	case val.Tuple:
-		u := make([]JSON, len(v), len(v))
-		for i, _ := range v {
-			u[i] = Encode(v[i])
+		buffer = append(buffer, '[')
+		for i, w := range v {
+			if i > 0 {
+				buffer = append(buffer, ',')
+			}
+			buffer = encode(w, buffer)
 		}
-		return mustMarshal(u)
+		return append(buffer, ']')
 
 	case val.Set:
-		u := make([]JSON, 0, len(v))
-		for _, w := range v {
-			u = append(u, Encode(w))
+		buffer = append(buffer, '[')
+		for i, w := range v {
+			if i > 0 {
+				buffer = append(buffer, ',')
+			}
+			buffer = encode(w, buffer)
 		}
-		return mustMarshal(u)
+		return append(buffer, ']')
 
 	case val.List:
-		u := make([]JSON, len(v), len(v))
-		for i, _ := range v {
-			u[i] = Encode(v[i])
+		buffer = append(buffer, '[')
+		for i, w := range v {
+			if i > 0 {
+				buffer = append(buffer, ',')
+			}
+			buffer = encode(w, buffer)
 		}
-		return mustMarshal(u)
+		return append(buffer, ']')
 
 	case val.Union:
-		u := make(map[string]JSON, 1)
-		u[v.Case] = Encode(v.Value)
-		return mustMarshal(u)
+		buffer = append(buffer, '{')
+		buffer = append(buffer, mustMarshal(v.Case)...)
+		buffer = append(buffer, ':')
+		buffer = encode(v.Value, buffer)
+		return append(buffer, '}')
+
 	case val.Struct:
-		u := make(map[string]JSON, v.Len())
+		buffer = append(buffer, '{')
+		first := true
 		v.ForEach(func(k string, q val.Value) bool {
 			if q == val.Null {
 				return true // omit optional null elements in structs
 			}
-			u[k] = Encode(q)
+			if first {
+				first = false
+			} else {
+				buffer = append(buffer, ',')
+			}
+			buffer = append(buffer, mustMarshal(k)...)
+			buffer = append(buffer, ':')
+			buffer = encode(q, buffer)
 			return true
 		})
-		return mustMarshal(u)
+		return append(buffer, '}')
+
 	case val.Map:
-		u := make(map[string]JSON, v.Len())
-		v.ForEach(func(k string, w val.Value) bool {
-			u[k] = Encode(w)
+		buffer = append(buffer, '{')
+		first := true
+		v.ForEach(func(k string, q val.Value) bool {
+			if first {
+				first = false
+			} else {
+				buffer = append(buffer, ',')
+			}
+			buffer = append(buffer, mustMarshal(k)...)
+			buffer = append(buffer, ':')
+			buffer = encode(q, buffer)
 			return true
 		})
-		return mustMarshal(u)
+		return append(buffer, '}')
+
 	case val.Raw:
-		return JSON(v)
+		return append(buffer, JSON(v)...)
 	case val.Float:
-		return mustMarshal(v)
+		return append(buffer, mustMarshal(v)...)
 	case val.Bool:
-		return mustMarshal(v)
+		return append(buffer, mustMarshal(v)...)
 	case val.Symbol:
-		return mustMarshal(v)
+		return append(buffer, mustMarshal(v)...)
 	case val.String:
-		return mustMarshal(v)
+		return append(buffer, mustMarshal(v)...)
 	case val.Ref:
-		return mustMarshal(v[1])
+		return append(buffer, mustMarshal(v[1])...)
 	case val.DateTime:
-		return mustMarshal(v.Format(mdl.FormatDateTime))
+		return append(buffer, mustMarshal(v.Format(mdl.FormatDateTime))...)
 	case val.Int8:
-		return mustMarshal(v)
+		return append(buffer, mustMarshal(v)...)
 	case val.Int16:
-		return mustMarshal(v)
+		return append(buffer, mustMarshal(v)...)
 	case val.Int32:
-		return mustMarshal(v)
+		return append(buffer, mustMarshal(v)...)
 	case val.Int64:
-		return mustMarshal(v)
+		return append(buffer, mustMarshal(v)...)
 	case val.Uint8:
-		return mustMarshal(v)
+		return append(buffer, mustMarshal(v)...)
 	case val.Uint16:
-		return mustMarshal(v)
+		return append(buffer, mustMarshal(v)...)
 	case val.Uint32:
-		return mustMarshal(v)
+		return append(buffer, mustMarshal(v)...)
 	case val.Uint64:
-		return mustMarshal(v)
+		return append(buffer, mustMarshal(v)...)
 	}
 	panic(fmt.Sprintf(`JSON encoding unimplemented for type: %T`, value))
 }
