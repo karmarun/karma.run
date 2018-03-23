@@ -16,7 +16,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
-	"sync"
+	// "sync"
 	"time"
 )
 
@@ -27,11 +27,9 @@ func unMeta(value val.Value) val.Value {
 	return value
 }
 
-var StackPool = &sync.Pool{
-	New: func() interface{} {
-		s := make(Stack, 0, 32)
-		return &s
-	},
+func NewStack(capacity int) *Stack {
+	s := make(Stack, 0, capacity)
+	return &s
 }
 
 func (vm VirtualMachine) Execute(program inst.Sequence, input val.Value) (val.Value, err.Error) {
@@ -50,17 +48,7 @@ func (vm VirtualMachine) Execute(program inst.Sequence, input val.Value) (val.Va
 		return nil, e
 	}
 
-	stack := StackPool.Get().(*Stack)
-
-	defer func() {
-		s := *stack
-		s = s[:cap(s)]
-		for i, _ := range s {
-			s[i] = nil
-		}
-		s = s[:0]
-		StackPool.Put(&s)
-	}()
+	stack := NewStack(len(program))
 
 	// pretty.Println(input)
 	// printDebugProgram(stack, program)
@@ -83,7 +71,7 @@ func (vm VirtualMachine) Execute(program inst.Sequence, input val.Value) (val.Va
 					nil,
 				}
 			}
-			stack.Push(input.Copy())
+			stack.Push(input)
 
 		case inst.CurrentUser:
 			stack.Push(val.Ref{vm.UserModelId(), vm.UserID})
@@ -282,7 +270,7 @@ func (vm VirtualMachine) Execute(program inst.Sequence, input val.Value) (val.Va
 			}
 
 		case inst.PopToInput:
-			input = stack.Pop().Copy()
+			input = stack.Pop()
 
 		case inst.CreateMultiple:
 
@@ -307,7 +295,7 @@ func (vm VirtualMachine) Execute(program inst.Sequence, input val.Value) (val.Va
 
 				id := string(im[k].(val.Ref)[1])
 
-				v = unMeta(v).Transform(func(v val.Value) val.Value {
+				v = unMeta(v).Copy().Transform(func(v val.Value) val.Value {
 					if r, ok := v.(val.Ref); ok {
 						if id, ok := im[r[1]]; ok {
 							return id
@@ -576,7 +564,7 @@ func (vm VirtualMachine) Execute(program inst.Sequence, input val.Value) (val.Va
 
 		case inst.ResolveRefs:
 
-			v := unMeta(stack.Pop()).Transform(func(v val.Value) val.Value {
+			v := unMeta(stack.Pop()).Copy().Transform(func(v val.Value) val.Value {
 				if r, ok := v.(val.Ref); ok {
 					if _, ok := it.Models[r[0]]; ok {
 						w, e := vm.Get(r[0], r[1])
@@ -593,7 +581,7 @@ func (vm VirtualMachine) Execute(program inst.Sequence, input val.Value) (val.Va
 
 		case inst.ResolveAllRefs:
 
-			v := unMeta(stack.Pop()).Transform(func(v val.Value) val.Value {
+			v := unMeta(stack.Pop()).Copy().Transform(func(v val.Value) val.Value {
 				if r, ok := v.(val.Ref); ok {
 					w, e := vm.Get(r[0], r[1])
 					if e != nil {
