@@ -87,6 +87,7 @@ func HttpHandler(rw http.ResponseWriter, rq *http.Request) {
 		gz, _ := gzip.NewWriterLevel(rw, gzip.BestSpeed)
 		rw = gzipResponseWriter{rw, gz}
 		rw.Header().Set("Content-Encoding", "gzip")
+		defer gz.Close()
 	}
 
 	pprof := len(os.Getenv("PPROF")) > 0
