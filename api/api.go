@@ -3,6 +3,7 @@
 package api
 
 import (
+	"compress/gzip"
 	"context"
 	"encoding/base64"
 	"fmt"
@@ -71,7 +72,22 @@ const (
 	SecretHeader    = `X-Karma-Secret`
 )
 
+type gzipResponseWriter struct {
+	http.ResponseWriter
+	gzip *gzip.Writer
+}
+
+func (w gzipResponseWriter) Write(bs []byte) (int, error) {
+	return w.gzip.Write(bs)
+}
+
 func HttpHandler(rw http.ResponseWriter, rq *http.Request) {
+
+	if strings.Contains(rq.Header.Get("Accept-Encoding"), "gzip") {
+		gz, _ := gzip.NewWriterLevel(rw, gzip.BestSpeed)
+		rw = gzipResponseWriter{rw, gz}
+		rw.Header().Set("Content-Encoding", "gzip")
+	}
 
 	pprof := len(os.Getenv("PPROF")) > 0
 
@@ -106,7 +122,11 @@ func HttpHandler(rw http.ResponseWriter, rq *http.Request) {
 
 	start := time.Now()
 
-	cdc := codec.Get(rq.Header.Get(CodecHeader))
+	codecName := rq.Header.Get(CodecHeader)
+	if codecName == "json" {
+		rw.Header().Set("Content-Type", "application/json; charset=utf-8")
+	}
+	cdc := codec.Get(codecName)
 	if cdc == nil {
 		msg := fmt.Sprintf(`invalid codec requested (%s header). available codecs: %s`, CodecHeader, strings.Join(codec.Available(), ", "))
 		rw.WriteHeader(http.StatusBadRequest)
