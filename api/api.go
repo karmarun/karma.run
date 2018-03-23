@@ -3,6 +3,7 @@
 package api
 
 import (
+	"compress/gzip"
 	"context"
 	"encoding/base64"
 	"fmt"
@@ -22,7 +23,6 @@ import (
 	"path"
 	"runtime/debug"
 	"strings"
-	"sync"
 
 	_ "net/http/pprof"
 )
@@ -31,21 +31,7 @@ var version = `0.5-beta.deterministic`
 
 type Payload []byte
 
-func (p Payload) Close() {
-	copy(p, ZeroPayload)
-	PayloadPool.Put(p[:MaxPayloadBytes])
-}
-
 const MaxPayloadBytes = 1 * 1024 * 1024 // 1MB
-
-var (
-	PayloadPool = &sync.Pool{
-		New: func() interface{} {
-			return make(Payload, MaxPayloadBytes, MaxPayloadBytes)
-		},
-	}
-	ZeroPayload = make(Payload, MaxPayloadBytes, MaxPayloadBytes)
-)
 
 type TxType byte
 
@@ -71,7 +57,23 @@ const (
 	SecretHeader    = `X-Karma-Secret`
 )
 
+type gzipResponseWriter struct {
+	http.ResponseWriter
+	gzip *gzip.Writer
+}
+
+func (w gzipResponseWriter) Write(bs []byte) (int, error) {
+	return w.gzip.Write(bs)
+}
+
 func HttpHandler(rw http.ResponseWriter, rq *http.Request) {
+
+	if strings.Contains(rq.Header.Get("Accept-Encoding"), "gzip") {
+		gz, _ := gzip.NewWriterLevel(rw, gzip.BestSpeed)
+		rw = gzipResponseWriter{rw, gz}
+		rw.Header().Set("Content-Encoding", "gzip")
+		defer gz.Close()
+	}
 
 	if len(os.Getenv("PPROF")) > 0 && strings.HasPrefix(rq.URL.Path, "/debug/pprof") {
 		http.DefaultServeMux.ServeHTTP(rw, rq)
@@ -101,8 +103,11 @@ func HttpHandler(rw http.ResponseWriter, rq *http.Request) {
 		http.ServeFile(rw, rq, path)
 		return
 	}
-
-	cdc := codec.Get(rq.Header.Get(CodecHeader))
+	codecName := rq.Header.Get(CodecHeader)
+	if codecName == "json" {
+		rw.Header().Set("Content-Type", "application/json; charset=utf-8")
+	}
+	cdc := codec.Get(codecName)
 	if cdc == nil {
 		msg := fmt.Sprintf(`invalid codec requested (%s header). available codecs: %s`, CodecHeader, strings.Join(codec.Available(), ", "))
 		rw.WriteHeader(http.StatusBadRequest)
@@ -169,7 +174,6 @@ func HttpHandler(rw http.ResponseWriter, rq *http.Request) {
 	}
 
 	payload := payloadFromRequest(rq)
-	defer payload.Close()
 
 	expr, ke := cdc.Decode(payload, xpr.LanguageModel)
 	if ke != nil {
@@ -262,12 +266,13 @@ func stringsContain(ss []string, s string) bool {
 }
 
 func payloadFromRequest(rq *http.Request) Payload {
-	defer rq.Body.Close()
-	return payloadFromReader(rq.Body)
+	payload := payloadFromReader(rq.Body)
+	rq.Body.Close()
+	return payload
 }
 
 func payloadFromReader(r io.Reader) Payload {
-	payload := PayloadPool.Get().(Payload)
+	payload := make(Payload, MaxPayloadBytes, MaxPayloadBytes)
 	readLength := 0
 	for readLength < MaxPayloadBytes {
 		n, e := r.Read(payload[readLength:])

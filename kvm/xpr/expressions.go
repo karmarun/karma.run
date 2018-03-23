@@ -727,12 +727,13 @@ func (x RelocateRef) Transform(f func(Expression) Expression) Expression {
 }
 
 type SwitchCase struct {
-	Value Expression
-	Cases map[string]Expression
+	Value   Expression
+	Default Expression
+	Cases   map[string]Function
 }
 
 func (x SwitchCase) Transform(f func(Expression) Expression) Expression {
-	return f(SwitchCase{x.Value.Transform(f), mapExpressionMap(x.Cases, f)})
+	return f(SwitchCase{x.Value.Transform(f), x.Default.Transform(f), x.Cases})
 }
 
 type MapSet struct {

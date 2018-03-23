@@ -646,7 +646,7 @@ func (vm VirtualMachine) Execute(program inst.Sequence, scope *ValueScope, args 
 
 		case inst.ResolveRefs:
 
-			v := unMeta(stack.Pop()).Transform(func(v val.Value) val.Value {
+			v := unMeta(stack.Pop()).Copy().Transform(func(v val.Value) val.Value {
 				if r, ok := v.(val.Ref); ok {
 					if _, ok := it.Models[r[0]]; ok {
 						w, e := vm.Get(r[0], r[1])
@@ -663,7 +663,7 @@ func (vm VirtualMachine) Execute(program inst.Sequence, scope *ValueScope, args 
 
 		case inst.ResolveAllRefs:
 
-			v := unMeta(stack.Pop()).Transform(func(v val.Value) val.Value {
+			v := unMeta(stack.Pop()).Copy().Transform(func(v val.Value) val.Value {
 				if r, ok := v.(val.Ref); ok {
 					w, e := vm.Get(r[0], r[1])
 					if e != nil {
@@ -830,8 +830,8 @@ func (vm VirtualMachine) Execute(program inst.Sequence, scope *ValueScope, args 
 			switch ls := unMeta(stack.Pop()).(type) {
 			case val.List:
 				cp := make(val.List, 0, len(ls))
-				for _, value := range ls {
-					keep, e := vm.Execute(it.Expression, scope.Child(), value)
+				for i, value := range ls {
+					keep, e := vm.Execute(it.Expression, scope.Child(), val.Uint64(i), value)
 					if e != nil {
 						return nil, e
 					}
@@ -842,12 +842,14 @@ func (vm VirtualMachine) Execute(program inst.Sequence, scope *ValueScope, args 
 				stack.Push(cp)
 
 			case iteratorValue:
+				i := 0
 				stack.Push(iteratorValue{
 					newFilterIterator(ls.iterator, func(value val.Value) (bool, err.Error) {
-						v, e := vm.Execute(it.Expression, scope.Child(), value)
+						v, e := vm.Execute(it.Expression, scope.Child(), val.Uint64(i), value)
 						if e != nil {
 							return false, e
 						}
+						i++
 						return bool(v.(val.Bool)), nil
 					}),
 				})
@@ -1794,19 +1796,17 @@ func (vm VirtualMachine) Execute(program inst.Sequence, scope *ValueScope, args 
 			stack.Push(lhs / rhs)
 
 		case inst.SwitchCase:
-			v := unMeta(stack.Pop())
-			u := v.(val.Union)
-			c, ok := it[u.Case]
-			if !ok {
-				return nil, err.ExecutionError{
-					Problem: fmt.Sprintf(`switchCase: unexpected case: %s`, u.Case),
+			d := unMeta(stack.Pop())             // default
+			u := unMeta(stack.Pop()).(val.Union) // union value
+			if c, ok := it[u.Case]; ok {
+				v, e := vm.Execute(c, scope.Child(), u.Value)
+				if e != nil {
+					return nil, e
 				}
+				stack.Push(v)
+			} else {
+				stack.Push(d)
 			}
-			v, e := vm.Execute(c, scope.Child(), u.Value)
-			if e != nil {
-				return nil, e
-			}
-			stack.Push(v)
 
 		default:
 			panic(fmt.Sprintf("unimplemented inst.Instruction: %#v", it))

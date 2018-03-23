@@ -61,10 +61,9 @@ func AuthHttpHandler(rw http.ResponseWriter, rq *http.Request) {
 		return
 	}
 
-	pld := payloadFromRequest(rq)
-	defer pld.Close()
+	payload := payloadFromRequest(rq)
 
-	atv, ke := cdc.Decode([]byte(pld), AuthRequestModel)
+	atv, ke := cdc.Decode([]byte(payload), AuthRequestModel)
 	if ke != nil {
 		writeError(rw, cdc, err.HumanReadableError{ke})
 		return
@@ -100,7 +99,7 @@ func AuthHttpHandler(rw http.ResponseWriter, rq *http.Request) {
 						xpr.Literal{val.String("_user")},
 					},
 				},
-				Filter: xpr.NewFunction([]string{"user"}, xpr.Equal{
+				Filter: xpr.NewFunction([]string{"i", "user"}, xpr.Equal{
 					xpr.Literal{val.String(username)},
 					xpr.Field{"username", xpr.Scope("user")},
 				}),
@@ -121,6 +120,8 @@ func AuthHttpHandler(rw http.ResponseWriter, rq *http.Request) {
 		rw.Write(cdc.Encode(err.PermissionDeniedError{}.Value()))
 		return
 	}
+
+	fmt.Println(err.ValueToHuman(mv))
 
 	us := mv.(val.Struct).Field("value").(val.Struct)
 

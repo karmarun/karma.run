@@ -265,8 +265,8 @@ func ExpressionFromValue(v val.Value) Expression {
 		return InList{ExpressionFromValue(arg.Field("value")), ExpressionFromValue(arg.Field("in"))}
 
 	case "filterList":
-		arg := u.Value.(val.Struct)
-		return FilterList{ExpressionFromValue(arg.Field("value")), FunctionFromValue(arg.Field("expression"))}
+		arg := u.Value.(val.Tuple)
+		return FilterList{ExpressionFromValue(arg[0]), FunctionFromValue(arg[1])}
 
 	case "first":
 		return First{ExpressionFromValue(u.Value)}
@@ -397,14 +397,15 @@ func ExpressionFromValue(v val.Value) Expression {
 
 	case "switchCase":
 		arg := u.Value.(val.Struct)
-		cases := make(map[string]Expression)
+		cases := make(map[string]Function)
 		arg.Field("cases").(val.Map).ForEach(func(k string, v val.Value) bool {
-			cases[k] = ExpressionFromValue(v)
+			cases[k] = FunctionFromValue(v)
 			return true
 		})
 		return SwitchCase{
-			Value: ExpressionFromValue(arg.Field("value")),
-			Cases: cases,
+			Value:   ExpressionFromValue(arg.Field("value")),
+			Default: ExpressionFromValue(arg.Field("default")),
+			Cases:   cases,
 		}
 
 	case "memSort":
@@ -415,7 +416,7 @@ func ExpressionFromValue(v val.Value) Expression {
 		}
 
 	default:
-		panic(fmt.Sprintf("unhandled function: %s", u.Case))
+		panic(fmt.Sprintf("unhandled expression: %s", u.Case))
 
 	}
 
@@ -730,10 +731,7 @@ func ValueFromExpression(x Expression) val.Value {
 		})}
 
 	case FilterList:
-		return val.Union{"filterList", val.StructFromMap(map[string]val.Value{
-			"value":      ValueFromExpression(node.Value),
-			"expression": ValueFromFunction(node.Filter),
-		})}
+		return val.Union{"filterList", val.Tuple{ValueFromExpression(node.Value), ValueFromFunction(node.Filter)}}
 
 	case AssertCase:
 		return val.Union{"assertCase", val.StructFromMap(map[string]val.Value{
@@ -926,11 +924,12 @@ func ValueFromExpression(x Expression) val.Value {
 	case SwitchCase:
 		cases := val.NewMap(len(node.Cases))
 		for k, v := range node.Cases {
-			cases.Set(k, ValueFromExpression(v))
+			cases.Set(k, ValueFromFunction(v))
 		}
 		return val.Union{"switchCase", val.StructFromMap(map[string]val.Value{
-			"value": ValueFromExpression(node.Value),
-			"cases": cases,
+			"value":   ValueFromExpression(node.Value),
+			"default": ValueFromExpression(node.Default),
+			"cases":   cases,
 		})}
 
 	case MemSort:

@@ -21,9 +21,11 @@ func (vm VirtualMachine) CompileFunction(f xpr.TypedFunction) inst.Sequence {
 		instructions = append(instructions, inst.Define(p), inst.Pop{})
 	}
 
+	last := len(expressions) - 1
+
 	for i, x := range expressions {
 		instructions = vm.CompileExpression(x.(xpr.TypedExpression), instructions)
-		if i < len(expressions)-1 {
+		if i < last {
 			instructions = append(instructions, inst.Pop{}) // discard intermediate stack values
 		}
 	}
@@ -537,9 +539,10 @@ func (vm VirtualMachine) CompileExpression(typed xpr.TypedExpression, prev inst.
 	case xpr.SwitchCase:
 		switchCase := make(inst.SwitchCase, len(node.Cases))
 		for k, v := range node.Cases {
-			switchCase[k] = vm.CompileExpression(v.(xpr.TypedExpression), nil)
+			switchCase[k] = vm.CompileFunction(v.(xpr.TypedFunction))
 		}
 		prev = vm.CompileExpression(node.Value.(xpr.TypedExpression), prev)
+		prev = vm.CompileExpression(node.Default.(xpr.TypedExpression), prev)
 		return append(prev, switchCase)
 
 	case xpr.MemSort:

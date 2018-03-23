@@ -91,15 +91,25 @@ var LanguageModel = mdl.DefineRecursion("function", func(function *mdl.Recursion
 			"mapList": mdl.Tuple{expression, function},
 			"mapMap":  mdl.Tuple{expression, function},
 
-			"create": mdl.Tuple{expression, function},
+			"and": mdl.Set{expression},
+			"or":  mdl.Set{expression},
+
+			"create":     mdl.Tuple{expression, function},
+			"filterList": mdl.Tuple{expression, function},
+
+			// < 3 parameters = tuple, 2 > parameters = struct
+
+			"switchCase": mdl.StructFromMap(map[string]mdl.Model{
+				"value":   expression,
+				"default": expression,
+				"cases":   mdl.Map{function},
+			}),
 
 			"setField": mdl.StructFromMap(map[string]mdl.Model{
 				"name":  mdl.String{},
 				"value": expression,
 				"in":    expression,
 			}),
-			"and": mdl.Set{expression},
-			"or":  mdl.Set{expression},
 			"setKey": mdl.StructFromMap(map[string]mdl.Model{
 				"name":  mdl.String{},
 				"value": expression,
@@ -160,11 +170,7 @@ var LanguageModel = mdl.DefineRecursion("function", func(function *mdl.Recursion
 				"value": expression,
 				"ref":   expression,
 			}),
-			"switchCase": mdl.StructFromMap(map[string]mdl.Model{
-				"value":   expression,
-				"default": expression,
-				"cases":   mdl.Map{expression},
-			}),
+
 			"switchModelRef": mdl.StructFromMap(map[string]mdl.Model{
 				"value":   expression,
 				"default": expression,
@@ -194,10 +200,7 @@ var LanguageModel = mdl.DefineRecursion("function", func(function *mdl.Recursion
 				"value":      expression,
 				"expression": expression,
 			}),
-			"filterList": mdl.StructFromMap(map[string]mdl.Model{
-				"value":      expression,
-				"expression": expression,
-			}),
+
 			"reduceList": mdl.StructFromMap(map[string]mdl.Model{
 				"value":      expression,
 				"expression": expression,

@@ -66,6 +66,21 @@ func (s *ModelScope) Child() *ModelScope {
 	return c
 }
 
+// for debugging purposes only
+func (s *ModelScope) Flat() map[string]mdl.Model {
+	if s == nil {
+		return nil
+	}
+	out := make(map[string]mdl.Model)
+	for k, v := range s.parent.Flat() {
+		out[k] = v
+	}
+	for k, v := range s.scope {
+		out[k] = v
+	}
+	return out
+}
+
 var ZeroTypedExpression = xpr.TypedExpression{}
 var ZeroTypedFunction = xpr.TypedFunction{}
 
@@ -116,16 +131,6 @@ func (vm VirtualMachine) TypeFunction(f xpr.Function, scope *ModelScope, expecte
 	}
 
 	arguments := make([]mdl.Model, len(params), len(params))
-
-	// unused arguments can be anything
-	for i, name := range params {
-		model, _ := functionScope.Get(name)
-		if model == nil {
-			model = AnyModel
-			functionScope.Set(name, model)
-		}
-		arguments[i] = model
-	}
 
 	typedFunction := xpr.TypedFunction{
 		Function:  xpr.NewFunction(params, typedExpressions...),
@@ -1827,7 +1832,7 @@ func (vm VirtualMachine) TypeExpression(node xpr.Expression, scope *ModelScope, 
 		if len(node.Cases) == 0 {
 			return ZeroTypedExpression, err.CompilationError{
 				Problem: fmt.Sprintf(`switchCase: zero cases specified`),
-				// TODO: program
+				Program: xpr.ValueFromExpression(node),
 			}
 		}
 
@@ -1836,13 +1841,38 @@ func (vm VirtualMachine) TypeExpression(node xpr.Expression, scope *ModelScope, 
 			subExpect.Set(k, AnyModel)
 		}
 
+		// fmt.Printf("%#v\n", scope.Flat())
+
 		value, e := vm.TypeExpression(node.Value, scope, subExpect)
 		if e != nil {
 			return value, e
 		}
 		node.Value = value
 
-		panic("todo")
+		// fmt.Printf("%#v\n", value.Actual)
+
+		dflt, e := vm.TypeExpression(node.Default, scope, AnyModel)
+		if e != nil {
+			return dflt, e
+		}
+		node.Default = dflt
+
+		union := value.Actual.Concrete().(mdl.Union)
+		model := dflt.Actual.Unwrap()
+
+		for k, sub := range node.Cases {
+			fun, e := vm.TypeFunction(sub, scope, AnyModel)
+			if e != nil {
+				return ZeroTypedExpression, e
+			}
+			model = mdl.Either(model, fun.Actual.Unwrap(), nil)
+			if e := checkArgumentTypes(fun, union.Case(k)); e != nil {
+				return ZeroTypedExpression, e
+			}
+			node.Cases[k] = fun
+		}
+
+		retNode = xpr.TypedExpression{node, expected, model}
 
 	case xpr.MemSort:
 
@@ -1947,7 +1977,11 @@ func checkArgumentTypes(f xpr.TypedFunction, args ...mdl.Model) err.Error {
 	}
 
 	for i, l := 0, len(params); i < l; i++ {
-		am, em := args[i], f.Arguments[i]
+		// em and am seem swapped, but it's correct: argument contravariance.
+		em, am := args[i], f.Arguments[i]
+		if am == nil {
+			continue // argument is unused
+		}
 		if e := checkType(am, em); e != nil {
 			return err.CompilationError{
 				Problem: fmt.Sprintf(`function argument type mismatch in parameter "%s"`, params[i]),
