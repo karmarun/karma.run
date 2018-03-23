@@ -383,11 +383,21 @@ func decode(json JSON, model mdl.Model) (val.Value, JSON, err.Error) {
 		return val.DateTime{t}, json, nil
 
 	case mdl.Int8:
-		n, json, e := readJsonNumber(json)
-		if e != nil {
-			return nil, json, e
+		str := ""
+		if len(json) > 0 && json[0] == '"' {
+			n, j, e := readString(json)
+			if e != nil {
+				return nil, j, e
+			}
+			str, json = string(n), j
+		} else {
+			n, j, e := readJsonNumber(json)
+			if e != nil {
+				return nil, j, e
+			}
+			str, json = string(n), j
 		}
-		x, e_ := strconv.ParseInt(string(n), 10, 8)
+		x, e_ := strconv.ParseInt(str, 10, 8)
 		if e_ != nil {
 			ne := e_.(*strconv.NumError)
 			if ne.Err == strconv.ErrRange {
@@ -404,11 +414,21 @@ func decode(json JSON, model mdl.Model) (val.Value, JSON, err.Error) {
 		return val.Int8(x), json, nil
 
 	case mdl.Int16:
-		n, json, e := readJsonNumber(json)
-		if e != nil {
-			return nil, json, e
+		str := ""
+		if len(json) > 0 && json[0] == '"' {
+			n, j, e := readString(json)
+			if e != nil {
+				return nil, j, e
+			}
+			str, json = string(n), j
+		} else {
+			n, j, e := readJsonNumber(json)
+			if e != nil {
+				return nil, j, e
+			}
+			str, json = string(n), j
 		}
-		x, e_ := strconv.ParseInt(string(n), 10, 16)
+		x, e_ := strconv.ParseInt(str, 10, 16)
 		if e_ != nil {
 			ne := e_.(*strconv.NumError)
 			if ne.Err == strconv.ErrRange {
@@ -425,11 +445,21 @@ func decode(json JSON, model mdl.Model) (val.Value, JSON, err.Error) {
 		return val.Int16(x), json, nil
 
 	case mdl.Int32:
-		n, json, e := readJsonNumber(json)
-		if e != nil {
-			return nil, json, e
+		str := ""
+		if len(json) > 0 && json[0] == '"' {
+			n, j, e := readString(json)
+			if e != nil {
+				return nil, j, e
+			}
+			str, json = string(n), j
+		} else {
+			n, j, e := readJsonNumber(json)
+			if e != nil {
+				return nil, j, e
+			}
+			str, json = string(n), j
 		}
-		x, e_ := strconv.ParseInt(string(n), 10, 32)
+		x, e_ := strconv.ParseInt(str, 10, 32)
 		if e_ != nil {
 			ne := e_.(*strconv.NumError)
 			if ne.Err == strconv.ErrRange {
@@ -446,11 +476,21 @@ func decode(json JSON, model mdl.Model) (val.Value, JSON, err.Error) {
 		return val.Int32(x), json, nil
 
 	case mdl.Int64:
-		n, json, e := readJsonNumber(json)
-		if e != nil {
-			return nil, json, e
+		str := ""
+		if len(json) > 0 && json[0] == '"' {
+			n, j, e := readString(json)
+			if e != nil {
+				return nil, j, e
+			}
+			str, json = string(n), j
+		} else {
+			n, j, e := readJsonNumber(json)
+			if e != nil {
+				return nil, j, e
+			}
+			str, json = string(n), j
 		}
-		x, e_ := strconv.ParseInt(string(n), 10, 64)
+		x, e_ := strconv.ParseInt(str, 10, 64)
 		if e_ != nil {
 			ne := e_.(*strconv.NumError)
 			if ne.Err == strconv.ErrRange {
@@ -467,11 +507,21 @@ func decode(json JSON, model mdl.Model) (val.Value, JSON, err.Error) {
 		return val.Int64(x), json, nil
 
 	case mdl.Uint8:
-		n, json, e := readJsonNumber(json)
-		if e != nil {
-			return nil, json, e
+		str := ""
+		if len(json) > 0 && json[0] == '"' {
+			n, j, e := readString(json)
+			if e != nil {
+				return nil, j, e
+			}
+			str, json = string(n), j
+		} else {
+			n, j, e := readJsonNumber(json)
+			if e != nil {
+				return nil, j, e
+			}
+			str, json = string(n), j
 		}
-		x, e_ := strconv.ParseUint(string(n), 10, 8)
+		x, e_ := strconv.ParseUint(str, 10, 8)
 		if e_ != nil {
 			ne := e_.(*strconv.NumError)
 			if ne.Err == strconv.ErrRange {
@@ -488,11 +538,21 @@ func decode(json JSON, model mdl.Model) (val.Value, JSON, err.Error) {
 		return val.Uint8(x), json, nil
 
 	case mdl.Uint16:
-		n, json, e := readJsonNumber(json)
-		if e != nil {
-			return nil, json, e
+		str := ""
+		if len(json) > 0 && json[0] == '"' {
+			n, j, e := readString(json)
+			if e != nil {
+				return nil, j, e
+			}
+			str, json = string(n), j
+		} else {
+			n, j, e := readJsonNumber(json)
+			if e != nil {
+				return nil, j, e
+			}
+			str, json = string(n), j
 		}
-		x, e_ := strconv.ParseUint(string(n), 10, 16)
+		x, e_ := strconv.ParseUint(str, 10, 16)
 		if e_ != nil {
 			ne := e_.(*strconv.NumError)
 			if ne.Err == strconv.ErrRange {
@@ -509,11 +569,21 @@ func decode(json JSON, model mdl.Model) (val.Value, JSON, err.Error) {
 		return val.Uint16(x), json, nil
 
 	case mdl.Uint32:
-		n, json, e := readJsonNumber(json)
-		if e != nil {
-			return nil, json, e
+		str := ""
+		if len(json) > 0 && json[0] == '"' {
+			n, j, e := readString(json)
+			if e != nil {
+				return nil, j, e
+			}
+			str, json = string(n), j
+		} else {
+			n, j, e := readJsonNumber(json)
+			if e != nil {
+				return nil, j, e
+			}
+			str, json = string(n), j
 		}
-		x, e_ := strconv.ParseUint(string(n), 10, 32)
+		x, e_ := strconv.ParseUint(str, 10, 32)
 		if e_ != nil {
 			ne := e_.(*strconv.NumError)
 			if ne.Err == strconv.ErrRange {
@@ -530,11 +600,21 @@ func decode(json JSON, model mdl.Model) (val.Value, JSON, err.Error) {
 		return val.Uint32(x), json, nil
 
 	case mdl.Uint64:
-		n, json, e := readJsonNumber(json)
-		if e != nil {
-			return nil, json, e
+		str := ""
+		if len(json) > 0 && json[0] == '"' {
+			n, j, e := readString(json)
+			if e != nil {
+				return nil, j, e
+			}
+			str, json = string(n), j
+		} else {
+			n, j, e := readJsonNumber(json)
+			if e != nil {
+				return nil, j, e
+			}
+			str, json = string(n), j
 		}
-		x, e_ := strconv.ParseUint(string(n), 10, 64)
+		x, e_ := strconv.ParseUint(str, 10, 64)
 		if e_ != nil {
 			ne := e_.(*strconv.NumError)
 			if ne.Err == strconv.ErrRange {
@@ -551,11 +631,21 @@ func decode(json JSON, model mdl.Model) (val.Value, JSON, err.Error) {
 		return val.Uint64(x), json, nil
 
 	case mdl.Float:
-		n, json, e := readJsonNumber(json)
-		if e != nil {
-			return nil, json, e
+		str := ""
+		if len(json) > 0 && json[0] == '"' {
+			n, j, e := readString(json)
+			if e != nil {
+				return nil, j, e
+			}
+			str, json = string(n), j
+		} else {
+			n, j, e := readJsonNumber(json)
+			if e != nil {
+				return nil, j, e
+			}
+			str, json = string(n), j
 		}
-		x, e_ := strconv.ParseFloat(string(n), 64)
+		x, e_ := strconv.ParseFloat(str, 64)
 		if e_ != nil {
 			return nil, json, err.InputParsingError{
 				Problem: `malformed float`,
