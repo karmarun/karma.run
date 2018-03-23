@@ -438,20 +438,17 @@ func (vm VirtualMachine) Execute(program inst.Sequence, scope *ValueScope, args 
 
 		case inst.ReduceList:
 
+			initial := unMeta(stack.Pop())
+
 			value, e := slurpIterators(unMeta(stack.Pop()))
 			if e != nil {
 				return nil, e
 			}
 
 			vs := value.(val.List)
-			if len(vs) == 0 {
-				return nil, err.ExecutionError{
-					Problem: `reduce: empty list value`,
-				}
-			}
 
-			v := vs[0]
-			for _, w := range vs[1:] {
+			v := initial
+			for _, w := range vs {
 				x, e := vm.Execute(it.Expression, scope.Child(), v, w)
 				if e != nil {
 					return nil, e

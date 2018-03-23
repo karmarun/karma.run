@@ -131,6 +131,10 @@ func (vm VirtualMachine) TypeFunction(f xpr.Function, scope *ModelScope, expecte
 	}
 
 	arguments := make([]mdl.Model, len(params), len(params))
+	for i, l := 0, len(params); i < l; i++ {
+		m, _ := functionScope.Get(params[i])
+		arguments[i] = m
+	}
 
 	typedFunction := xpr.TypedFunction{
 		Function:  xpr.NewFunction(params, typedExpressions...),
@@ -1163,7 +1167,28 @@ func (vm VirtualMachine) TypeExpression(node xpr.Expression, scope *ModelScope, 
 		}
 		node.Value = value
 
-		panic("todo")
+		initial, e := vm.TypeExpression(node.Initial, scope, AnyModel)
+		if e != nil {
+			return initial, e
+		}
+		node.Initial = initial
+
+		reducer, e := vm.TypeFunction(node.Reducer, scope, AnyModel)
+		if e != nil {
+			return ZeroTypedExpression, e
+		}
+		node.Reducer = reducer
+
+		subArg := mdl.Either(
+			value.Actual.Concrete().(mdl.List).Elements,
+			initial.Actual.Unwrap(),
+			nil,
+		)
+		if e := checkArgumentTypes(reducer, subArg, subArg); e != nil {
+			return ZeroTypedExpression, e
+		}
+
+		retNode = xpr.TypedExpression{node, expected, reducer.Actual}
 
 	case xpr.ResolveRefs:
 
@@ -1841,15 +1866,13 @@ func (vm VirtualMachine) TypeExpression(node xpr.Expression, scope *ModelScope, 
 			subExpect.Set(k, AnyModel)
 		}
 
-		// fmt.Printf("%#v\n", scope.Flat())
+		// TODO: ^ will not work for anything but a switchCase with all cases defined
 
 		value, e := vm.TypeExpression(node.Value, scope, subExpect)
 		if e != nil {
 			return value, e
 		}
 		node.Value = value
-
-		// fmt.Printf("%#v\n", value.Actual)
 
 		dflt, e := vm.TypeExpression(node.Default, scope, AnyModel)
 		if e != nil {
@@ -1977,9 +2000,8 @@ func checkArgumentTypes(f xpr.TypedFunction, args ...mdl.Model) err.Error {
 	}
 
 	for i, l := 0, len(params); i < l; i++ {
-		// em and am seem swapped, but it's correct: argument contravariance.
-		em, am := args[i], f.Arguments[i]
-		if am == nil {
+		am, em := args[i], f.Arguments[i]
+		if em == nil {
 			continue // argument is unused
 		}
 		if e := checkType(am, em); e != nil {

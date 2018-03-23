@@ -299,8 +299,9 @@ func (vm VirtualMachine) CompileExpression(typed xpr.TypedExpression, prev inst.
 
 	case xpr.ReduceList:
 		prev = vm.CompileExpression(node.Value.(xpr.TypedExpression), prev)
+		prev = vm.CompileExpression(node.Initial.(xpr.TypedExpression), prev)
 		return append(prev, inst.ReduceList{
-			vm.CompileExpression(node.Expression.(xpr.TypedExpression), nil),
+			vm.CompileFunction(node.Reducer.(xpr.TypedFunction)),
 		})
 
 	case xpr.ResolveRefs:

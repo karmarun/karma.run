@@ -97,7 +97,11 @@ var LanguageModel = mdl.DefineRecursion("function", func(function *mdl.Recursion
 			"create":     mdl.Tuple{expression, function},
 			"filterList": mdl.Tuple{expression, function},
 
-			// < 3 parameters = tuple, 2 > parameters = struct
+			"reduceList": mdl.StructFromMap(map[string]mdl.Model{
+				"value":   expression,
+				"initial": expression,
+				"reducer": function,
+			}),
 
 			"switchCase": mdl.StructFromMap(map[string]mdl.Model{
 				"value":   expression,
@@ -201,10 +205,6 @@ var LanguageModel = mdl.DefineRecursion("function", func(function *mdl.Recursion
 				"expression": expression,
 			}),
 
-			"reduceList": mdl.StructFromMap(map[string]mdl.Model{
-				"value":      expression,
-				"expression": expression,
-			}),
 			"indexTuple": mdl.StructFromMap(map[string]mdl.Model{
 				"value":  expression,
 				"number": mdl.Int64{},

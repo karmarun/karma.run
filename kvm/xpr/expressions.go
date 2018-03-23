@@ -409,11 +409,13 @@ func (x MapList) Transform(f func(Expression) Expression) Expression {
 }
 
 type ReduceList struct {
-	Value, Expression Expression
+	Value   Expression
+	Initial Expression
+	Reducer Function
 }
 
 func (x ReduceList) Transform(f func(Expression) Expression) Expression {
-	return f(ReduceList{x.Value.Transform(f), x.Expression.Transform(f)})
+	return f(ReduceList{x.Value.Transform(f), x.Initial.Transform(f), x.Reducer})
 }
 
 type ResolveRefs struct {

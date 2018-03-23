@@ -215,7 +215,11 @@ func ExpressionFromValue(v val.Value) Expression {
 
 	case "reduceList":
 		arg := u.Value.(val.Struct)
-		return ReduceList{ExpressionFromValue(arg.Field("value")), ExpressionFromValue(arg.Field("expression"))}
+		return ReduceList{
+			ExpressionFromValue(arg.Field("value")),
+			ExpressionFromValue(arg.Field("initial")),
+			FunctionFromValue(arg.Field("reducer")),
+		}
 
 	case "graphFlow":
 		arg := u.Value.(val.Struct)
@@ -756,8 +760,9 @@ func ValueFromExpression(x Expression) val.Value {
 
 	case ReduceList:
 		return val.Union{"reduceList", val.StructFromMap(map[string]val.Value{
-			"value":      ValueFromExpression(node.Value),
-			"expression": ValueFromExpression(node.Expression),
+			"value":   ValueFromExpression(node.Value),
+			"initial": ValueFromExpression(node.Initial),
+			"reducer": ValueFromFunction(node.Reducer),
 		})}
 
 	case ResolveRefs:
