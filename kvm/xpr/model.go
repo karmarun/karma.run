@@ -91,6 +91,26 @@ var LanguageModel = mdl.DefineRecursion("function", func(function *mdl.Recursion
 			"subUint16": mdl.Tuple{expression, expression},
 			"subUint8":  mdl.Tuple{expression, expression},
 
+			"divFloat":  mdl.Tuple{expression, expression},
+			"divInt64":  mdl.Tuple{expression, expression},
+			"divInt32":  mdl.Tuple{expression, expression},
+			"divInt16":  mdl.Tuple{expression, expression},
+			"divInt8":   mdl.Tuple{expression, expression},
+			"divUint64": mdl.Tuple{expression, expression},
+			"divUint32": mdl.Tuple{expression, expression},
+			"divUint16": mdl.Tuple{expression, expression},
+			"divUint8":  mdl.Tuple{expression, expression},
+
+			"mulFloat":  mdl.Tuple{expression, expression},
+			"mulInt64":  mdl.Tuple{expression, expression},
+			"mulInt32":  mdl.Tuple{expression, expression},
+			"mulInt16":  mdl.Tuple{expression, expression},
+			"mulInt8":   mdl.Tuple{expression, expression},
+			"mulUint64": mdl.Tuple{expression, expression},
+			"mulUint32": mdl.Tuple{expression, expression},
+			"mulUint16": mdl.Tuple{expression, expression},
+			"mulUint8":  mdl.Tuple{expression, expression},
+
 			"after":       mdl.Tuple{expression, expression},
 			"before":      mdl.Tuple{expression, expression},
 			"equal":       mdl.Tuple{expression, expression},
@@ -107,6 +127,8 @@ var LanguageModel = mdl.DefineRecursion("function", func(function *mdl.Recursion
 
 			"create":     mdl.Tuple{expression, function},
 			"filterList": mdl.Tuple{expression, function},
+
+			"createMultiple": mdl.Tuple{expression, mdl.Map{function}},
 
 			"reduceList": mdl.StructFromMap(map[string]mdl.Model{
 				"value":   expression,
@@ -224,10 +246,7 @@ var LanguageModel = mdl.DefineRecursion("function", func(function *mdl.Recursion
 				"ref":   expression,
 				"value": expression,
 			}),
-			"createMultiple": mdl.StructFromMap(map[string]mdl.Model{
-				"in":     expression,
-				"values": mdl.Map{expression},
-			}),
+
 			"joinStrings": mdl.StructFromMap(map[string]mdl.Model{
 				"strings":   expression,
 				"separator": expression,

@@ -69,6 +69,114 @@ func ExpressionFromValue(v val.Value) Expression {
 	case "scope":
 		return Scope(u.Value.(val.String))
 
+	case "mulFloat":
+		args := u.Value.(val.Tuple)
+		lhs := ExpressionFromValue(args[0])
+		rhs := ExpressionFromValue(args[1])
+		return MulFloat{lhs, rhs}
+
+	case "mulInt64":
+		args := u.Value.(val.Tuple)
+		lhs := ExpressionFromValue(args[0])
+		rhs := ExpressionFromValue(args[1])
+		return MulInt64{lhs, rhs}
+
+	case "mulInt32":
+		args := u.Value.(val.Tuple)
+		lhs := ExpressionFromValue(args[0])
+		rhs := ExpressionFromValue(args[1])
+		return MulInt32{lhs, rhs}
+
+	case "mulInt16":
+		args := u.Value.(val.Tuple)
+		lhs := ExpressionFromValue(args[0])
+		rhs := ExpressionFromValue(args[1])
+		return MulInt16{lhs, rhs}
+
+	case "mulInt8":
+		args := u.Value.(val.Tuple)
+		lhs := ExpressionFromValue(args[0])
+		rhs := ExpressionFromValue(args[1])
+		return MulInt8{lhs, rhs}
+
+	case "mulUint64":
+		args := u.Value.(val.Tuple)
+		lhs := ExpressionFromValue(args[0])
+		rhs := ExpressionFromValue(args[1])
+		return MulUint64{lhs, rhs}
+
+	case "mulUint32":
+		args := u.Value.(val.Tuple)
+		lhs := ExpressionFromValue(args[0])
+		rhs := ExpressionFromValue(args[1])
+		return MulUint32{lhs, rhs}
+
+	case "mulUint16":
+		args := u.Value.(val.Tuple)
+		lhs := ExpressionFromValue(args[0])
+		rhs := ExpressionFromValue(args[1])
+		return MulUint16{lhs, rhs}
+
+	case "mulUint8":
+		args := u.Value.(val.Tuple)
+		lhs := ExpressionFromValue(args[0])
+		rhs := ExpressionFromValue(args[1])
+		return MulUint8{lhs, rhs}
+
+	case "divFloat":
+		args := u.Value.(val.Tuple)
+		lhs := ExpressionFromValue(args[0])
+		rhs := ExpressionFromValue(args[1])
+		return DivFloat{lhs, rhs}
+
+	case "divInt64":
+		args := u.Value.(val.Tuple)
+		lhs := ExpressionFromValue(args[0])
+		rhs := ExpressionFromValue(args[1])
+		return DivInt64{lhs, rhs}
+
+	case "divInt32":
+		args := u.Value.(val.Tuple)
+		lhs := ExpressionFromValue(args[0])
+		rhs := ExpressionFromValue(args[1])
+		return DivInt32{lhs, rhs}
+
+	case "divInt16":
+		args := u.Value.(val.Tuple)
+		lhs := ExpressionFromValue(args[0])
+		rhs := ExpressionFromValue(args[1])
+		return DivInt16{lhs, rhs}
+
+	case "divInt8":
+		args := u.Value.(val.Tuple)
+		lhs := ExpressionFromValue(args[0])
+		rhs := ExpressionFromValue(args[1])
+		return DivInt8{lhs, rhs}
+
+	case "divUint64":
+		args := u.Value.(val.Tuple)
+		lhs := ExpressionFromValue(args[0])
+		rhs := ExpressionFromValue(args[1])
+		return DivUint64{lhs, rhs}
+
+	case "divUint32":
+		args := u.Value.(val.Tuple)
+		lhs := ExpressionFromValue(args[0])
+		rhs := ExpressionFromValue(args[1])
+		return DivUint32{lhs, rhs}
+
+	case "divUint16":
+		args := u.Value.(val.Tuple)
+		lhs := ExpressionFromValue(args[0])
+		rhs := ExpressionFromValue(args[1])
+		return DivUint16{lhs, rhs}
+
+	case "divUint8":
+		args := u.Value.(val.Tuple)
+		lhs := ExpressionFromValue(args[0])
+		rhs := ExpressionFromValue(args[1])
+		return DivUint8{lhs, rhs}
+
 	case "subInt64":
 		args := u.Value.(val.Tuple)
 		lhs := ExpressionFromValue(args[0])
@@ -236,14 +344,14 @@ func ExpressionFromValue(v val.Value) Expression {
 		return Delete{ExpressionFromValue(u.Value)}
 
 	case "createMultiple":
-		arg := u.Value.(val.Struct)
-		vls := arg.Field("values").(val.Map)
-		mvs := make(map[string]Expression, vls.Len())
+		args := u.Value.(val.Tuple)
+		vls := args[1].(val.Map)
+		mvs := make(map[string]Function, vls.Len())
 		vls.ForEach(func(k string, v val.Value) bool {
-			mvs[k] = ExpressionFromValue(v)
+			mvs[k] = FunctionFromValue(v)
 			return true
 		})
-		return CreateMultiple{ExpressionFromValue(arg.Field("in")), mvs}
+		return CreateMultiple{ExpressionFromValue(args[0]), mvs}
 
 	case "if":
 		arg := u.Value.(val.Struct)
@@ -619,6 +727,97 @@ func ValueFromExpression(x Expression) val.Value {
 	case FunctionSignature:
 		return val.Union{"signature", ValueFromFunction(node.Function)}
 
+	case MulFloat:
+		return val.Union{"mulFloat", val.Tuple{
+			ValueFromExpression(node[0]),
+			ValueFromExpression(node[1]),
+		}}
+	case MulInt64:
+		return val.Union{"mulInt64", val.Tuple{
+			ValueFromExpression(node[0]),
+			ValueFromExpression(node[1]),
+		}}
+	case MulInt32:
+		return val.Union{"mulInt32", val.Tuple{
+			ValueFromExpression(node[0]),
+			ValueFromExpression(node[1]),
+		}}
+	case MulInt16:
+		return val.Union{"mulInt16", val.Tuple{
+			ValueFromExpression(node[0]),
+			ValueFromExpression(node[1]),
+		}}
+	case MulInt8:
+		return val.Union{"mulInt8", val.Tuple{
+			ValueFromExpression(node[0]),
+			ValueFromExpression(node[1]),
+		}}
+	case MulUint64:
+		return val.Union{"mulUint64", val.Tuple{
+			ValueFromExpression(node[0]),
+			ValueFromExpression(node[1]),
+		}}
+	case MulUint32:
+		return val.Union{"mulUint32", val.Tuple{
+			ValueFromExpression(node[0]),
+			ValueFromExpression(node[1]),
+		}}
+	case MulUint16:
+		return val.Union{"mulUint16", val.Tuple{
+			ValueFromExpression(node[0]),
+			ValueFromExpression(node[1]),
+		}}
+	case MulUint8:
+		return val.Union{"mulUint8", val.Tuple{
+			ValueFromExpression(node[0]),
+			ValueFromExpression(node[1]),
+		}}
+	case DivFloat:
+		return val.Union{"divFloat", val.Tuple{
+			ValueFromExpression(node[0]),
+			ValueFromExpression(node[1]),
+		}}
+	case DivInt64:
+		return val.Union{"divInt64", val.Tuple{
+			ValueFromExpression(node[0]),
+			ValueFromExpression(node[1]),
+		}}
+	case DivInt32:
+		return val.Union{"divInt32", val.Tuple{
+			ValueFromExpression(node[0]),
+			ValueFromExpression(node[1]),
+		}}
+	case DivInt16:
+		return val.Union{"divInt16", val.Tuple{
+			ValueFromExpression(node[0]),
+			ValueFromExpression(node[1]),
+		}}
+	case DivInt8:
+		return val.Union{"divInt8", val.Tuple{
+			ValueFromExpression(node[0]),
+			ValueFromExpression(node[1]),
+		}}
+	case DivUint64:
+		return val.Union{"divUint64", val.Tuple{
+			ValueFromExpression(node[0]),
+			ValueFromExpression(node[1]),
+		}}
+	case DivUint32:
+		return val.Union{"divUint32", val.Tuple{
+			ValueFromExpression(node[0]),
+			ValueFromExpression(node[1]),
+		}}
+	case DivUint16:
+		return val.Union{"divUint16", val.Tuple{
+			ValueFromExpression(node[0]),
+			ValueFromExpression(node[1]),
+		}}
+	case DivUint8:
+		return val.Union{"divUint8", val.Tuple{
+			ValueFromExpression(node[0]),
+			ValueFromExpression(node[1]),
+		}}
+
 	case SubFloat:
 		return val.Union{"subFloat", val.Tuple{
 			ValueFromExpression(node[0]),
@@ -953,12 +1152,12 @@ func ValueFromExpression(x Expression) val.Value {
 	case CreateMultiple:
 		values := val.NewMap(len(node.Values))
 		for k, sub := range node.Values {
-			values.Set(k, ValueFromExpression(sub))
+			values.Set(k, ValueFromFunction(sub))
 		}
-		return val.Union{"createMultiple", val.StructFromMap(map[string]val.Value{
-			"in":     ValueFromExpression(node.In),
-			"values": values,
-		})}
+		return val.Union{"createMultiple", val.Tuple{
+			ValueFromExpression(node.In),
+			values,
+		}}
 
 	case Slice:
 		arg := val.StructFromMap(map[string]val.Value{

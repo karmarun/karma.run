@@ -58,6 +58,96 @@ func (vm VirtualMachine) CompileExpression(typed xpr.TypedExpression, prev inst.
 	case xpr.Scope:
 		return append(prev, inst.Scope(node))
 
+	case xpr.MulFloat:
+		prev = vm.CompileExpression(node[0].(xpr.TypedExpression), prev)
+		prev = vm.CompileExpression(node[1].(xpr.TypedExpression), prev)
+		return append(prev, inst.MultiplyFloat{})
+
+	case xpr.MulInt64:
+		prev = vm.CompileExpression(node[0].(xpr.TypedExpression), prev)
+		prev = vm.CompileExpression(node[1].(xpr.TypedExpression), prev)
+		return append(prev, inst.MultiplyInt64{})
+
+	case xpr.MulInt32:
+		prev = vm.CompileExpression(node[0].(xpr.TypedExpression), prev)
+		prev = vm.CompileExpression(node[1].(xpr.TypedExpression), prev)
+		return append(prev, inst.MultiplyInt32{})
+
+	case xpr.MulInt16:
+		prev = vm.CompileExpression(node[0].(xpr.TypedExpression), prev)
+		prev = vm.CompileExpression(node[1].(xpr.TypedExpression), prev)
+		return append(prev, inst.MultiplyInt16{})
+
+	case xpr.MulInt8:
+		prev = vm.CompileExpression(node[0].(xpr.TypedExpression), prev)
+		prev = vm.CompileExpression(node[1].(xpr.TypedExpression), prev)
+		return append(prev, inst.MultiplyInt8{})
+
+	case xpr.MulUint64:
+		prev = vm.CompileExpression(node[0].(xpr.TypedExpression), prev)
+		prev = vm.CompileExpression(node[1].(xpr.TypedExpression), prev)
+		return append(prev, inst.MultiplyUint64{})
+
+	case xpr.MulUint32:
+		prev = vm.CompileExpression(node[0].(xpr.TypedExpression), prev)
+		prev = vm.CompileExpression(node[1].(xpr.TypedExpression), prev)
+		return append(prev, inst.MultiplyUint32{})
+
+	case xpr.MulUint16:
+		prev = vm.CompileExpression(node[0].(xpr.TypedExpression), prev)
+		prev = vm.CompileExpression(node[1].(xpr.TypedExpression), prev)
+		return append(prev, inst.MultiplyUint16{})
+
+	case xpr.MulUint8:
+		prev = vm.CompileExpression(node[0].(xpr.TypedExpression), prev)
+		prev = vm.CompileExpression(node[1].(xpr.TypedExpression), prev)
+		return append(prev, inst.MultiplyUint8{})
+
+	case xpr.DivFloat:
+		prev = vm.CompileExpression(node[0].(xpr.TypedExpression), prev)
+		prev = vm.CompileExpression(node[1].(xpr.TypedExpression), prev)
+		return append(prev, inst.DivideFloat{})
+
+	case xpr.DivInt64:
+		prev = vm.CompileExpression(node[0].(xpr.TypedExpression), prev)
+		prev = vm.CompileExpression(node[1].(xpr.TypedExpression), prev)
+		return append(prev, inst.DivideInt64{})
+
+	case xpr.DivInt32:
+		prev = vm.CompileExpression(node[0].(xpr.TypedExpression), prev)
+		prev = vm.CompileExpression(node[1].(xpr.TypedExpression), prev)
+		return append(prev, inst.DivideInt32{})
+
+	case xpr.DivInt16:
+		prev = vm.CompileExpression(node[0].(xpr.TypedExpression), prev)
+		prev = vm.CompileExpression(node[1].(xpr.TypedExpression), prev)
+		return append(prev, inst.DivideInt16{})
+
+	case xpr.DivInt8:
+		prev = vm.CompileExpression(node[0].(xpr.TypedExpression), prev)
+		prev = vm.CompileExpression(node[1].(xpr.TypedExpression), prev)
+		return append(prev, inst.DivideInt8{})
+
+	case xpr.DivUint64:
+		prev = vm.CompileExpression(node[0].(xpr.TypedExpression), prev)
+		prev = vm.CompileExpression(node[1].(xpr.TypedExpression), prev)
+		return append(prev, inst.DivideUint64{})
+
+	case xpr.DivUint32:
+		prev = vm.CompileExpression(node[0].(xpr.TypedExpression), prev)
+		prev = vm.CompileExpression(node[1].(xpr.TypedExpression), prev)
+		return append(prev, inst.DivideUint32{})
+
+	case xpr.DivUint16:
+		prev = vm.CompileExpression(node[0].(xpr.TypedExpression), prev)
+		prev = vm.CompileExpression(node[1].(xpr.TypedExpression), prev)
+		return append(prev, inst.DivideUint16{})
+
+	case xpr.DivUint8:
+		prev = vm.CompileExpression(node[0].(xpr.TypedExpression), prev)
+		prev = vm.CompileExpression(node[1].(xpr.TypedExpression), prev)
+		return append(prev, inst.DivideUint8{})
+
 	case xpr.SubFloat:
 		prev = vm.CompileExpression(node[0].(xpr.TypedExpression), prev)
 		prev = vm.CompileExpression(node[1].(xpr.TypedExpression), prev)
@@ -492,7 +582,7 @@ func (vm VirtualMachine) CompileExpression(typed xpr.TypedExpression, prev inst.
 			Values: make(map[string]inst.Sequence, len(node.Values)),
 		}
 		for k, sub := range node.Values {
-			cm.Values[k] = vm.CompileExpression(sub.(xpr.TypedExpression), nil)
+			cm.Values[k] = vm.CompileFunction(sub.(xpr.TypedFunction))
 		}
 		return append(prev, cm)
 

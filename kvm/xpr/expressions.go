@@ -612,11 +612,11 @@ func (x NewUnion) Transform(f func(Expression) Expression) Expression {
 
 type CreateMultiple struct {
 	In     Expression
-	Values map[string]Expression
+	Values map[string]Function
 }
 
 func (x CreateMultiple) Transform(f func(Expression) Expression) Expression {
-	return f(CreateMultiple{x.In.Transform(f), mapExpressionMap(x.Values, f)})
+	return f(CreateMultiple{x.In.Transform(f), x.Values})
 }
 
 type Referred struct {
@@ -711,6 +711,114 @@ type SubUint8 [2]Expression
 
 func (x SubUint8) Transform(f func(Expression) Expression) Expression {
 	return f(SubUint8{x[0].Transform(f), x[1].Transform(f)})
+}
+
+type MulFloat [2]Expression
+
+func (x MulFloat) Transform(f func(Expression) Expression) Expression {
+	return f(MulFloat{x[0].Transform(f), x[1].Transform(f)})
+}
+
+type MulInt64 [2]Expression
+
+func (x MulInt64) Transform(f func(Expression) Expression) Expression {
+	return f(MulInt64{x[0].Transform(f), x[1].Transform(f)})
+}
+
+type MulInt32 [2]Expression
+
+func (x MulInt32) Transform(f func(Expression) Expression) Expression {
+	return f(MulInt32{x[0].Transform(f), x[1].Transform(f)})
+}
+
+type MulInt16 [2]Expression
+
+func (x MulInt16) Transform(f func(Expression) Expression) Expression {
+	return f(MulInt16{x[0].Transform(f), x[1].Transform(f)})
+}
+
+type MulInt8 [2]Expression
+
+func (x MulInt8) Transform(f func(Expression) Expression) Expression {
+	return f(MulInt8{x[0].Transform(f), x[1].Transform(f)})
+}
+
+type MulUint64 [2]Expression
+
+func (x MulUint64) Transform(f func(Expression) Expression) Expression {
+	return f(MulUint64{x[0].Transform(f), x[1].Transform(f)})
+}
+
+type MulUint32 [2]Expression
+
+func (x MulUint32) Transform(f func(Expression) Expression) Expression {
+	return f(MulUint32{x[0].Transform(f), x[1].Transform(f)})
+}
+
+type MulUint16 [2]Expression
+
+func (x MulUint16) Transform(f func(Expression) Expression) Expression {
+	return f(MulUint16{x[0].Transform(f), x[1].Transform(f)})
+}
+
+type MulUint8 [2]Expression
+
+func (x MulUint8) Transform(f func(Expression) Expression) Expression {
+	return f(MulUint8{x[0].Transform(f), x[1].Transform(f)})
+}
+
+type DivFloat [2]Expression
+
+func (x DivFloat) Transform(f func(Expression) Expression) Expression {
+	return f(DivFloat{x[0].Transform(f), x[1].Transform(f)})
+}
+
+type DivInt64 [2]Expression
+
+func (x DivInt64) Transform(f func(Expression) Expression) Expression {
+	return f(DivInt64{x[0].Transform(f), x[1].Transform(f)})
+}
+
+type DivInt32 [2]Expression
+
+func (x DivInt32) Transform(f func(Expression) Expression) Expression {
+	return f(DivInt32{x[0].Transform(f), x[1].Transform(f)})
+}
+
+type DivInt16 [2]Expression
+
+func (x DivInt16) Transform(f func(Expression) Expression) Expression {
+	return f(DivInt16{x[0].Transform(f), x[1].Transform(f)})
+}
+
+type DivInt8 [2]Expression
+
+func (x DivInt8) Transform(f func(Expression) Expression) Expression {
+	return f(DivInt8{x[0].Transform(f), x[1].Transform(f)})
+}
+
+type DivUint64 [2]Expression
+
+func (x DivUint64) Transform(f func(Expression) Expression) Expression {
+	return f(DivUint64{x[0].Transform(f), x[1].Transform(f)})
+}
+
+type DivUint32 [2]Expression
+
+func (x DivUint32) Transform(f func(Expression) Expression) Expression {
+	return f(DivUint32{x[0].Transform(f), x[1].Transform(f)})
+}
+
+type DivUint16 [2]Expression
+
+func (x DivUint16) Transform(f func(Expression) Expression) Expression {
+	return f(DivUint16{x[0].Transform(f), x[1].Transform(f)})
+}
+
+type DivUint8 [2]Expression
+
+func (x DivUint8) Transform(f func(Expression) Expression) Expression {
+	return f(DivUint8{x[0].Transform(f), x[1].Transform(f)})
 }
 
 type AddFloat [2]Expression
