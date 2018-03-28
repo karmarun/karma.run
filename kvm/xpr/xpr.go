@@ -69,6 +69,114 @@ func ExpressionFromValue(v val.Value) Expression {
 	case "scope":
 		return Scope(u.Value.(val.String))
 
+	case "gtFloat":
+		args := u.Value.(val.Tuple)
+		lhs := ExpressionFromValue(args[0])
+		rhs := ExpressionFromValue(args[1])
+		return GtFloat{lhs, rhs}
+
+	case "gtInt64":
+		args := u.Value.(val.Tuple)
+		lhs := ExpressionFromValue(args[0])
+		rhs := ExpressionFromValue(args[1])
+		return GtInt64{lhs, rhs}
+
+	case "gtInt32":
+		args := u.Value.(val.Tuple)
+		lhs := ExpressionFromValue(args[0])
+		rhs := ExpressionFromValue(args[1])
+		return GtInt32{lhs, rhs}
+
+	case "gtInt16":
+		args := u.Value.(val.Tuple)
+		lhs := ExpressionFromValue(args[0])
+		rhs := ExpressionFromValue(args[1])
+		return GtInt16{lhs, rhs}
+
+	case "gtInt8":
+		args := u.Value.(val.Tuple)
+		lhs := ExpressionFromValue(args[0])
+		rhs := ExpressionFromValue(args[1])
+		return GtInt8{lhs, rhs}
+
+	case "gtUint64":
+		args := u.Value.(val.Tuple)
+		lhs := ExpressionFromValue(args[0])
+		rhs := ExpressionFromValue(args[1])
+		return GtUint64{lhs, rhs}
+
+	case "gtUint32":
+		args := u.Value.(val.Tuple)
+		lhs := ExpressionFromValue(args[0])
+		rhs := ExpressionFromValue(args[1])
+		return GtUint32{lhs, rhs}
+
+	case "gtUint16":
+		args := u.Value.(val.Tuple)
+		lhs := ExpressionFromValue(args[0])
+		rhs := ExpressionFromValue(args[1])
+		return GtUint16{lhs, rhs}
+
+	case "gtUint8":
+		args := u.Value.(val.Tuple)
+		lhs := ExpressionFromValue(args[0])
+		rhs := ExpressionFromValue(args[1])
+		return GtUint8{lhs, rhs}
+
+	case "ltFloat":
+		args := u.Value.(val.Tuple)
+		lhs := ExpressionFromValue(args[0])
+		rhs := ExpressionFromValue(args[1])
+		return LtFloat{lhs, rhs}
+
+	case "ltInt64":
+		args := u.Value.(val.Tuple)
+		lhs := ExpressionFromValue(args[0])
+		rhs := ExpressionFromValue(args[1])
+		return LtInt64{lhs, rhs}
+
+	case "ltInt32":
+		args := u.Value.(val.Tuple)
+		lhs := ExpressionFromValue(args[0])
+		rhs := ExpressionFromValue(args[1])
+		return LtInt32{lhs, rhs}
+
+	case "ltInt16":
+		args := u.Value.(val.Tuple)
+		lhs := ExpressionFromValue(args[0])
+		rhs := ExpressionFromValue(args[1])
+		return LtInt16{lhs, rhs}
+
+	case "ltInt8":
+		args := u.Value.(val.Tuple)
+		lhs := ExpressionFromValue(args[0])
+		rhs := ExpressionFromValue(args[1])
+		return LtInt8{lhs, rhs}
+
+	case "ltUint64":
+		args := u.Value.(val.Tuple)
+		lhs := ExpressionFromValue(args[0])
+		rhs := ExpressionFromValue(args[1])
+		return LtUint64{lhs, rhs}
+
+	case "ltUint32":
+		args := u.Value.(val.Tuple)
+		lhs := ExpressionFromValue(args[0])
+		rhs := ExpressionFromValue(args[1])
+		return LtUint32{lhs, rhs}
+
+	case "ltUint16":
+		args := u.Value.(val.Tuple)
+		lhs := ExpressionFromValue(args[0])
+		rhs := ExpressionFromValue(args[1])
+		return LtUint16{lhs, rhs}
+
+	case "ltUint8":
+		args := u.Value.(val.Tuple)
+		lhs := ExpressionFromValue(args[0])
+		rhs := ExpressionFromValue(args[1])
+		return LtUint8{lhs, rhs}
+
 	case "mulFloat":
 		args := u.Value.(val.Tuple)
 		lhs := ExpressionFromValue(args[0])
@@ -726,6 +834,114 @@ func ValueFromExpression(x Expression) val.Value {
 
 	case FunctionSignature:
 		return val.Union{"signature", ValueFromFunction(node.Function)}
+
+	case GtFloat:
+		return val.Union{"gtFloat", val.Tuple{
+			ValueFromExpression(node[0]),
+			ValueFromExpression(node[1]),
+		}}
+
+	case GtInt64:
+		return val.Union{"gtInt64", val.Tuple{
+			ValueFromExpression(node[0]),
+			ValueFromExpression(node[1]),
+		}}
+
+	case GtInt32:
+		return val.Union{"gtInt32", val.Tuple{
+			ValueFromExpression(node[0]),
+			ValueFromExpression(node[1]),
+		}}
+
+	case GtInt16:
+		return val.Union{"gtInt16", val.Tuple{
+			ValueFromExpression(node[0]),
+			ValueFromExpression(node[1]),
+		}}
+
+	case GtInt8:
+		return val.Union{"gtInt8", val.Tuple{
+			ValueFromExpression(node[0]),
+			ValueFromExpression(node[1]),
+		}}
+
+	case GtUint64:
+		return val.Union{"gtUint64", val.Tuple{
+			ValueFromExpression(node[0]),
+			ValueFromExpression(node[1]),
+		}}
+
+	case GtUint32:
+		return val.Union{"gtUint32", val.Tuple{
+			ValueFromExpression(node[0]),
+			ValueFromExpression(node[1]),
+		}}
+
+	case GtUint16:
+		return val.Union{"gtUint16", val.Tuple{
+			ValueFromExpression(node[0]),
+			ValueFromExpression(node[1]),
+		}}
+
+	case GtUint8:
+		return val.Union{"gtUint8", val.Tuple{
+			ValueFromExpression(node[0]),
+			ValueFromExpression(node[1]),
+		}}
+
+	case LtFloat:
+		return val.Union{"ltFloat", val.Tuple{
+			ValueFromExpression(node[0]),
+			ValueFromExpression(node[1]),
+		}}
+
+	case LtInt64:
+		return val.Union{"ltInt64", val.Tuple{
+			ValueFromExpression(node[0]),
+			ValueFromExpression(node[1]),
+		}}
+
+	case LtInt32:
+		return val.Union{"ltInt32", val.Tuple{
+			ValueFromExpression(node[0]),
+			ValueFromExpression(node[1]),
+		}}
+
+	case LtInt16:
+		return val.Union{"ltInt16", val.Tuple{
+			ValueFromExpression(node[0]),
+			ValueFromExpression(node[1]),
+		}}
+
+	case LtInt8:
+		return val.Union{"ltInt8", val.Tuple{
+			ValueFromExpression(node[0]),
+			ValueFromExpression(node[1]),
+		}}
+
+	case LtUint64:
+		return val.Union{"ltUint64", val.Tuple{
+			ValueFromExpression(node[0]),
+			ValueFromExpression(node[1]),
+		}}
+
+	case LtUint32:
+		return val.Union{"ltUint32", val.Tuple{
+			ValueFromExpression(node[0]),
+			ValueFromExpression(node[1]),
+		}}
+
+	case LtUint16:
+		return val.Union{"ltUint16", val.Tuple{
+			ValueFromExpression(node[0]),
+			ValueFromExpression(node[1]),
+		}}
+
+	case LtUint8:
+		return val.Union{"ltUint8", val.Tuple{
+			ValueFromExpression(node[0]),
+			ValueFromExpression(node[1]),
+		}}
 
 	case MulFloat:
 		return val.Union{"mulFloat", val.Tuple{

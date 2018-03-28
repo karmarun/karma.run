@@ -58,6 +58,96 @@ func (vm VirtualMachine) CompileExpression(typed xpr.TypedExpression, prev inst.
 	case xpr.Scope:
 		return append(prev, inst.Scope(node))
 
+	case xpr.GtFloat:
+		prev = vm.CompileExpression(node[0].(xpr.TypedExpression), prev)
+		prev = vm.CompileExpression(node[1].(xpr.TypedExpression), prev)
+		return append(prev, inst.GreaterFloat{})
+
+	case xpr.GtInt64:
+		prev = vm.CompileExpression(node[0].(xpr.TypedExpression), prev)
+		prev = vm.CompileExpression(node[1].(xpr.TypedExpression), prev)
+		return append(prev, inst.GreaterInt64{})
+
+	case xpr.GtInt32:
+		prev = vm.CompileExpression(node[0].(xpr.TypedExpression), prev)
+		prev = vm.CompileExpression(node[1].(xpr.TypedExpression), prev)
+		return append(prev, inst.GreaterInt32{})
+
+	case xpr.GtInt16:
+		prev = vm.CompileExpression(node[0].(xpr.TypedExpression), prev)
+		prev = vm.CompileExpression(node[1].(xpr.TypedExpression), prev)
+		return append(prev, inst.GreaterInt16{})
+
+	case xpr.GtInt8:
+		prev = vm.CompileExpression(node[0].(xpr.TypedExpression), prev)
+		prev = vm.CompileExpression(node[1].(xpr.TypedExpression), prev)
+		return append(prev, inst.GreaterInt8{})
+
+	case xpr.GtUint64:
+		prev = vm.CompileExpression(node[0].(xpr.TypedExpression), prev)
+		prev = vm.CompileExpression(node[1].(xpr.TypedExpression), prev)
+		return append(prev, inst.GreaterUint64{})
+
+	case xpr.GtUint32:
+		prev = vm.CompileExpression(node[0].(xpr.TypedExpression), prev)
+		prev = vm.CompileExpression(node[1].(xpr.TypedExpression), prev)
+		return append(prev, inst.GreaterUint32{})
+
+	case xpr.GtUint16:
+		prev = vm.CompileExpression(node[0].(xpr.TypedExpression), prev)
+		prev = vm.CompileExpression(node[1].(xpr.TypedExpression), prev)
+		return append(prev, inst.GreaterUint16{})
+
+	case xpr.GtUint8:
+		prev = vm.CompileExpression(node[0].(xpr.TypedExpression), prev)
+		prev = vm.CompileExpression(node[1].(xpr.TypedExpression), prev)
+		return append(prev, inst.GreaterUint8{})
+
+	case xpr.LtFloat:
+		prev = vm.CompileExpression(node[0].(xpr.TypedExpression), prev)
+		prev = vm.CompileExpression(node[1].(xpr.TypedExpression), prev)
+		return append(prev, inst.LessFloat{})
+
+	case xpr.LtInt64:
+		prev = vm.CompileExpression(node[0].(xpr.TypedExpression), prev)
+		prev = vm.CompileExpression(node[1].(xpr.TypedExpression), prev)
+		return append(prev, inst.LessInt64{})
+
+	case xpr.LtInt32:
+		prev = vm.CompileExpression(node[0].(xpr.TypedExpression), prev)
+		prev = vm.CompileExpression(node[1].(xpr.TypedExpression), prev)
+		return append(prev, inst.LessInt32{})
+
+	case xpr.LtInt16:
+		prev = vm.CompileExpression(node[0].(xpr.TypedExpression), prev)
+		prev = vm.CompileExpression(node[1].(xpr.TypedExpression), prev)
+		return append(prev, inst.LessInt16{})
+
+	case xpr.LtInt8:
+		prev = vm.CompileExpression(node[0].(xpr.TypedExpression), prev)
+		prev = vm.CompileExpression(node[1].(xpr.TypedExpression), prev)
+		return append(prev, inst.LessInt8{})
+
+	case xpr.LtUint64:
+		prev = vm.CompileExpression(node[0].(xpr.TypedExpression), prev)
+		prev = vm.CompileExpression(node[1].(xpr.TypedExpression), prev)
+		return append(prev, inst.LessUint64{})
+
+	case xpr.LtUint32:
+		prev = vm.CompileExpression(node[0].(xpr.TypedExpression), prev)
+		prev = vm.CompileExpression(node[1].(xpr.TypedExpression), prev)
+		return append(prev, inst.LessUint32{})
+
+	case xpr.LtUint16:
+		prev = vm.CompileExpression(node[0].(xpr.TypedExpression), prev)
+		prev = vm.CompileExpression(node[1].(xpr.TypedExpression), prev)
+		return append(prev, inst.LessUint16{})
+
+	case xpr.LtUint8:
+		prev = vm.CompileExpression(node[0].(xpr.TypedExpression), prev)
+		prev = vm.CompileExpression(node[1].(xpr.TypedExpression), prev)
+		return append(prev, inst.LessUint8{})
+
 	case xpr.MulFloat:
 		prev = vm.CompileExpression(node[0].(xpr.TypedExpression), prev)
 		prev = vm.CompileExpression(node[1].(xpr.TypedExpression), prev)

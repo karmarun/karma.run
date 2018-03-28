@@ -659,6 +659,114 @@ func (x Equal) Transform(f func(Expression) Expression) Expression {
 	return f(Equal{x[0].Transform(f), x[1].Transform(f)})
 }
 
+type GtFloat [2]Expression
+
+func (x GtFloat) Transform(f func(Expression) Expression) Expression {
+	return f(GtFloat{x[0].Transform(f), x[1].Transform(f)})
+}
+
+type GtInt64 [2]Expression
+
+func (x GtInt64) Transform(f func(Expression) Expression) Expression {
+	return f(GtInt64{x[0].Transform(f), x[1].Transform(f)})
+}
+
+type GtInt32 [2]Expression
+
+func (x GtInt32) Transform(f func(Expression) Expression) Expression {
+	return f(GtInt32{x[0].Transform(f), x[1].Transform(f)})
+}
+
+type GtInt16 [2]Expression
+
+func (x GtInt16) Transform(f func(Expression) Expression) Expression {
+	return f(GtInt16{x[0].Transform(f), x[1].Transform(f)})
+}
+
+type GtInt8 [2]Expression
+
+func (x GtInt8) Transform(f func(Expression) Expression) Expression {
+	return f(GtInt8{x[0].Transform(f), x[1].Transform(f)})
+}
+
+type GtUint64 [2]Expression
+
+func (x GtUint64) Transform(f func(Expression) Expression) Expression {
+	return f(GtUint64{x[0].Transform(f), x[1].Transform(f)})
+}
+
+type GtUint32 [2]Expression
+
+func (x GtUint32) Transform(f func(Expression) Expression) Expression {
+	return f(GtUint32{x[0].Transform(f), x[1].Transform(f)})
+}
+
+type GtUint16 [2]Expression
+
+func (x GtUint16) Transform(f func(Expression) Expression) Expression {
+	return f(GtUint16{x[0].Transform(f), x[1].Transform(f)})
+}
+
+type GtUint8 [2]Expression
+
+func (x GtUint8) Transform(f func(Expression) Expression) Expression {
+	return f(GtUint8{x[0].Transform(f), x[1].Transform(f)})
+}
+
+type LtFloat [2]Expression
+
+func (x LtFloat) Transform(f func(Expression) Expression) Expression {
+	return f(LtFloat{x[0].Transform(f), x[1].Transform(f)})
+}
+
+type LtInt64 [2]Expression
+
+func (x LtInt64) Transform(f func(Expression) Expression) Expression {
+	return f(LtInt64{x[0].Transform(f), x[1].Transform(f)})
+}
+
+type LtInt32 [2]Expression
+
+func (x LtInt32) Transform(f func(Expression) Expression) Expression {
+	return f(LtInt32{x[0].Transform(f), x[1].Transform(f)})
+}
+
+type LtInt16 [2]Expression
+
+func (x LtInt16) Transform(f func(Expression) Expression) Expression {
+	return f(LtInt16{x[0].Transform(f), x[1].Transform(f)})
+}
+
+type LtInt8 [2]Expression
+
+func (x LtInt8) Transform(f func(Expression) Expression) Expression {
+	return f(LtInt8{x[0].Transform(f), x[1].Transform(f)})
+}
+
+type LtUint64 [2]Expression
+
+func (x LtUint64) Transform(f func(Expression) Expression) Expression {
+	return f(LtUint64{x[0].Transform(f), x[1].Transform(f)})
+}
+
+type LtUint32 [2]Expression
+
+func (x LtUint32) Transform(f func(Expression) Expression) Expression {
+	return f(LtUint32{x[0].Transform(f), x[1].Transform(f)})
+}
+
+type LtUint16 [2]Expression
+
+func (x LtUint16) Transform(f func(Expression) Expression) Expression {
+	return f(LtUint16{x[0].Transform(f), x[1].Transform(f)})
+}
+
+type LtUint8 [2]Expression
+
+func (x LtUint8) Transform(f func(Expression) Expression) Expression {
+	return f(LtUint8{x[0].Transform(f), x[1].Transform(f)})
+}
+
 type SubFloat [2]Expression
 
 func (x SubFloat) Transform(f func(Expression) Expression) Expression {
