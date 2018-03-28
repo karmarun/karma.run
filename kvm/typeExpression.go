@@ -1141,11 +1141,13 @@ func (vm VirtualMachine) TypeExpression(node xpr.Expression, scope *ModelScope, 
 		retNode = xpr.TypedExpression{xpr.Literal{node.Value}, expected, ConstantModel{actual, node.Value}}
 
 	case xpr.ResolveAllRefs:
+
 		arg, e := vm.TypeExpression(node.Argument, scope, mdl.Any{})
 		if e != nil {
 			return arg, e
 		}
 		node.Argument = arg
+
 		rewritten := arg.Actual.Copy().Transform(func(m mdl.Model) mdl.Model {
 			if e != nil {
 				return m

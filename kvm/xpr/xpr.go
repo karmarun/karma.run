@@ -413,13 +413,13 @@ func ExpressionFromValue(v val.Value) Expression {
 		return nod
 
 	case "resolveRefs":
-		arg := u.Value.(val.Struct)
-		mla := arg.Field("models").(val.List)
-		mns := make([]Expression, len(mla), len(mla))
-		for i, sub := range mla {
-			mns[i] = ExpressionFromValue(sub)
+		args := u.Value.(val.Tuple)
+		mla := args[1].(val.Set)
+		mns := make([]Expression, 0, len(mla))
+		for _, sub := range mla {
+			mns = append(mns, ExpressionFromValue(sub))
 		}
-		return ResolveRefs{ExpressionFromValue(arg.Field("value")), mns}
+		return ResolveRefs{ExpressionFromValue(args[0]), mns}
 
 	case "resolveAllRefs":
 		return ResolveAllRefs{ExpressionFromValue(u.Value)}
@@ -1076,14 +1076,12 @@ func ValueFromExpression(x Expression) val.Value {
 		})}
 
 	case ResolveRefs:
-		mls := make(val.List, len(node.Models), len(node.Models))
-		for i, _ := range mls {
-			mls[i] = ValueFromExpression(node.Models[i])
+		mls := make(val.Set, len(node.Models))
+		for _, v := range node.Models {
+			w := ValueFromExpression(v)
+			mls[val.Hash(w, nil).Sum64()] = w
 		}
-		return val.Union{"resolveRefs", val.StructFromMap(map[string]val.Value{
-			"value":  ValueFromExpression(node.Value),
-			"models": mls,
-		})}
+		return val.Union{"resolveRefs", val.Tuple{ValueFromExpression(node.Value), mls}}
 
 	case Field:
 		return val.Union{"field", val.Tuple{val.String(node.Name), ValueFromExpression(node.Value)}}
