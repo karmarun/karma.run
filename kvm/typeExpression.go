@@ -184,6 +184,136 @@ func (vm VirtualMachine) TypeExpression(node xpr.Expression, scope *ModelScope, 
 		retTuple := val.Tuple{argStruct, mdl.ValueFromModel(vm.MetaModelId(), typed.Actual, nil)}
 		return vm.TypeExpression(xpr.Literal{retTuple}, scope, expected)
 
+	case xpr.SubFloat:
+		lhs, e := vm.TypeExpression(node[0], scope, mdl.Float{})
+		if e != nil {
+			return lhs, e
+		}
+		node[0] = lhs
+		rhs, e := vm.TypeExpression(node[1], scope, mdl.Float{})
+		if e != nil {
+			return rhs, e
+		}
+		node[1] = rhs
+		retNode = xpr.TypedExpression{node, expected, mdl.Float{}}
+
+	case xpr.SubInt64:
+		lhs, e := vm.TypeExpression(node[0], scope, mdl.Int64{})
+		if e != nil {
+			return lhs, e
+		}
+		node[0] = lhs
+		rhs, e := vm.TypeExpression(node[1], scope, mdl.Int64{})
+		if e != nil {
+			return rhs, e
+		}
+		node[1] = rhs
+		retNode = xpr.TypedExpression{node, expected, mdl.Int64{}}
+
+	case xpr.SubInt32:
+		lhs, e := vm.TypeExpression(node[0], scope, mdl.Int32{})
+		if e != nil {
+			return lhs, e
+		}
+		node[0] = lhs
+		rhs, e := vm.TypeExpression(node[1], scope, mdl.Int32{})
+		if e != nil {
+			return rhs, e
+		}
+		node[1] = rhs
+		retNode = xpr.TypedExpression{node, expected, mdl.Int32{}}
+
+	case xpr.SubInt16:
+		lhs, e := vm.TypeExpression(node[0], scope, mdl.Int16{})
+		if e != nil {
+			return lhs, e
+		}
+		node[0] = lhs
+		rhs, e := vm.TypeExpression(node[1], scope, mdl.Int16{})
+		if e != nil {
+			return rhs, e
+		}
+		node[1] = rhs
+		retNode = xpr.TypedExpression{node, expected, mdl.Int16{}}
+
+	case xpr.SubInt8:
+		lhs, e := vm.TypeExpression(node[0], scope, mdl.Int8{})
+		if e != nil {
+			return lhs, e
+		}
+		node[0] = lhs
+		rhs, e := vm.TypeExpression(node[1], scope, mdl.Int8{})
+		if e != nil {
+			return rhs, e
+		}
+		node[1] = rhs
+		retNode = xpr.TypedExpression{node, expected, mdl.Int8{}}
+
+	case xpr.SubUint64:
+		lhs, e := vm.TypeExpression(node[0], scope, mdl.Uint64{})
+		if e != nil {
+			return lhs, e
+		}
+		node[0] = lhs
+		rhs, e := vm.TypeExpression(node[1], scope, mdl.Uint64{})
+		if e != nil {
+			return rhs, e
+		}
+		node[1] = rhs
+		retNode = xpr.TypedExpression{node, expected, mdl.Uint64{}}
+
+	case xpr.SubUint32:
+		lhs, e := vm.TypeExpression(node[0], scope, mdl.Uint32{})
+		if e != nil {
+			return lhs, e
+		}
+		node[0] = lhs
+		rhs, e := vm.TypeExpression(node[1], scope, mdl.Uint32{})
+		if e != nil {
+			return rhs, e
+		}
+		node[1] = rhs
+		retNode = xpr.TypedExpression{node, expected, mdl.Uint32{}}
+
+	case xpr.SubUint16:
+		lhs, e := vm.TypeExpression(node[0], scope, mdl.Uint16{})
+		if e != nil {
+			return lhs, e
+		}
+		node[0] = lhs
+		rhs, e := vm.TypeExpression(node[1], scope, mdl.Uint16{})
+		if e != nil {
+			return rhs, e
+		}
+		node[1] = rhs
+		retNode = xpr.TypedExpression{node, expected, mdl.Uint16{}}
+
+	case xpr.SubUint8:
+		lhs, e := vm.TypeExpression(node[0], scope, mdl.Uint8{})
+		if e != nil {
+			return lhs, e
+		}
+		node[0] = lhs
+		rhs, e := vm.TypeExpression(node[1], scope, mdl.Uint8{})
+		if e != nil {
+			return rhs, e
+		}
+		node[1] = rhs
+		retNode = xpr.TypedExpression{node, expected, mdl.Uint8{}}
+
+	case xpr.AddFloat:
+		lhs, e := vm.TypeExpression(node[0], scope, mdl.Float{})
+		if e != nil {
+			return lhs, e
+		}
+		node[0] = lhs
+		rhs, e := vm.TypeExpression(node[1], scope, mdl.Float{})
+		if e != nil {
+			return rhs, e
+		}
+		node[1] = rhs
+		retNode = xpr.TypedExpression{node, expected, mdl.Float{}}
+
 	case xpr.AddInt64:
 		lhs, e := vm.TypeExpression(node[0], scope, mdl.Int64{})
 		if e != nil {

@@ -638,25 +638,85 @@ func (x Referrers) Transform(f func(Expression) Expression) Expression {
 type ConcatLists [2]Expression
 
 func (x ConcatLists) Transform(f func(Expression) Expression) Expression {
-	return f(ConcatLists{f(x[0]), f(x[1])})
+	return f(ConcatLists{x[0].Transform(f), x[1].Transform(f)})
 }
 
 type After [2]Expression
 
 func (x After) Transform(f func(Expression) Expression) Expression {
-	return f(After{f(x[0]), f(x[1])})
+	return f(After{x[0].Transform(f), x[1].Transform(f)})
 }
 
 type Before [2]Expression
 
 func (x Before) Transform(f func(Expression) Expression) Expression {
-	return f(Before{f(x[0]), f(x[1])})
+	return f(Before{x[0].Transform(f), x[1].Transform(f)})
 }
 
 type Equal [2]Expression
 
 func (x Equal) Transform(f func(Expression) Expression) Expression {
-	return f(Equal{f(x[0]), f(x[1])})
+	return f(Equal{x[0].Transform(f), x[1].Transform(f)})
+}
+
+type SubFloat [2]Expression
+
+func (x SubFloat) Transform(f func(Expression) Expression) Expression {
+	return f(SubFloat{x[0].Transform(f), x[1].Transform(f)})
+}
+
+type SubInt64 [2]Expression
+
+func (x SubInt64) Transform(f func(Expression) Expression) Expression {
+	return f(SubInt64{x[0].Transform(f), x[1].Transform(f)})
+}
+
+type SubInt32 [2]Expression
+
+func (x SubInt32) Transform(f func(Expression) Expression) Expression {
+	return f(SubInt32{x[0].Transform(f), x[1].Transform(f)})
+}
+
+type SubInt16 [2]Expression
+
+func (x SubInt16) Transform(f func(Expression) Expression) Expression {
+	return f(SubInt16{x[0].Transform(f), x[1].Transform(f)})
+}
+
+type SubInt8 [2]Expression
+
+func (x SubInt8) Transform(f func(Expression) Expression) Expression {
+	return f(SubInt8{x[0].Transform(f), x[1].Transform(f)})
+}
+
+type SubUint64 [2]Expression
+
+func (x SubUint64) Transform(f func(Expression) Expression) Expression {
+	return f(SubUint64{x[0].Transform(f), x[1].Transform(f)})
+}
+
+type SubUint32 [2]Expression
+
+func (x SubUint32) Transform(f func(Expression) Expression) Expression {
+	return f(SubUint32{x[0].Transform(f), x[1].Transform(f)})
+}
+
+type SubUint16 [2]Expression
+
+func (x SubUint16) Transform(f func(Expression) Expression) Expression {
+	return f(SubUint16{x[0].Transform(f), x[1].Transform(f)})
+}
+
+type SubUint8 [2]Expression
+
+func (x SubUint8) Transform(f func(Expression) Expression) Expression {
+	return f(SubUint8{x[0].Transform(f), x[1].Transform(f)})
+}
+
+type AddFloat [2]Expression
+
+func (x AddFloat) Transform(f func(Expression) Expression) Expression {
+	return f(AddFloat{x[0].Transform(f), x[1].Transform(f)})
 }
 
 type AddInt64 [2]Expression

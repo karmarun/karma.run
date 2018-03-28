@@ -58,6 +58,56 @@ func (vm VirtualMachine) CompileExpression(typed xpr.TypedExpression, prev inst.
 	case xpr.Scope:
 		return append(prev, inst.Scope(node))
 
+	case xpr.SubFloat:
+		prev = vm.CompileExpression(node[0].(xpr.TypedExpression), prev)
+		prev = vm.CompileExpression(node[1].(xpr.TypedExpression), prev)
+		return append(prev, inst.SubtractFloat{})
+
+	case xpr.SubInt64:
+		prev = vm.CompileExpression(node[0].(xpr.TypedExpression), prev)
+		prev = vm.CompileExpression(node[1].(xpr.TypedExpression), prev)
+		return append(prev, inst.SubtractInt64{})
+
+	case xpr.SubInt32:
+		prev = vm.CompileExpression(node[0].(xpr.TypedExpression), prev)
+		prev = vm.CompileExpression(node[1].(xpr.TypedExpression), prev)
+		return append(prev, inst.SubtractInt32{})
+
+	case xpr.SubInt16:
+		prev = vm.CompileExpression(node[0].(xpr.TypedExpression), prev)
+		prev = vm.CompileExpression(node[1].(xpr.TypedExpression), prev)
+		return append(prev, inst.SubtractInt16{})
+
+	case xpr.SubInt8:
+		prev = vm.CompileExpression(node[0].(xpr.TypedExpression), prev)
+		prev = vm.CompileExpression(node[1].(xpr.TypedExpression), prev)
+		return append(prev, inst.SubtractInt8{})
+
+	case xpr.SubUint64:
+		prev = vm.CompileExpression(node[0].(xpr.TypedExpression), prev)
+		prev = vm.CompileExpression(node[1].(xpr.TypedExpression), prev)
+		return append(prev, inst.SubtractUint64{})
+
+	case xpr.SubUint32:
+		prev = vm.CompileExpression(node[0].(xpr.TypedExpression), prev)
+		prev = vm.CompileExpression(node[1].(xpr.TypedExpression), prev)
+		return append(prev, inst.SubtractUint32{})
+
+	case xpr.SubUint16:
+		prev = vm.CompileExpression(node[0].(xpr.TypedExpression), prev)
+		prev = vm.CompileExpression(node[1].(xpr.TypedExpression), prev)
+		return append(prev, inst.SubtractUint16{})
+
+	case xpr.SubUint8:
+		prev = vm.CompileExpression(node[0].(xpr.TypedExpression), prev)
+		prev = vm.CompileExpression(node[1].(xpr.TypedExpression), prev)
+		return append(prev, inst.SubtractUint8{})
+
+	case xpr.AddFloat:
+		prev = vm.CompileExpression(node[0].(xpr.TypedExpression), prev)
+		prev = vm.CompileExpression(node[1].(xpr.TypedExpression), prev)
+		return append(prev, inst.AddFloat{})
+
 	case xpr.AddInt64:
 		prev = vm.CompileExpression(node[0].(xpr.TypedExpression), prev)
 		prev = vm.CompileExpression(node[1].(xpr.TypedExpression), prev)

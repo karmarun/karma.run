@@ -69,6 +69,66 @@ func ExpressionFromValue(v val.Value) Expression {
 	case "scope":
 		return Scope(u.Value.(val.String))
 
+	case "subInt64":
+		args := u.Value.(val.Tuple)
+		lhs := ExpressionFromValue(args[0])
+		rhs := ExpressionFromValue(args[1])
+		return SubInt64{lhs, rhs}
+
+	case "subInt32":
+		args := u.Value.(val.Tuple)
+		lhs := ExpressionFromValue(args[0])
+		rhs := ExpressionFromValue(args[1])
+		return SubInt32{lhs, rhs}
+
+	case "subInt16":
+		args := u.Value.(val.Tuple)
+		lhs := ExpressionFromValue(args[0])
+		rhs := ExpressionFromValue(args[1])
+		return SubInt16{lhs, rhs}
+
+	case "subInt8":
+		args := u.Value.(val.Tuple)
+		lhs := ExpressionFromValue(args[0])
+		rhs := ExpressionFromValue(args[1])
+		return SubInt8{lhs, rhs}
+
+	case "subUint64":
+		args := u.Value.(val.Tuple)
+		lhs := ExpressionFromValue(args[0])
+		rhs := ExpressionFromValue(args[1])
+		return SubUint64{lhs, rhs}
+
+	case "subUint32":
+		args := u.Value.(val.Tuple)
+		lhs := ExpressionFromValue(args[0])
+		rhs := ExpressionFromValue(args[1])
+		return SubUint32{lhs, rhs}
+
+	case "subUint16":
+		args := u.Value.(val.Tuple)
+		lhs := ExpressionFromValue(args[0])
+		rhs := ExpressionFromValue(args[1])
+		return SubUint16{lhs, rhs}
+
+	case "subUint8":
+		args := u.Value.(val.Tuple)
+		lhs := ExpressionFromValue(args[0])
+		rhs := ExpressionFromValue(args[1])
+		return SubUint8{lhs, rhs}
+
+	case "subFloat":
+		args := u.Value.(val.Tuple)
+		lhs := ExpressionFromValue(args[0])
+		rhs := ExpressionFromValue(args[1])
+		return SubFloat{lhs, rhs}
+
+	case "addFloat":
+		args := u.Value.(val.Tuple)
+		lhs := ExpressionFromValue(args[0])
+		rhs := ExpressionFromValue(args[1])
+		return AddFloat{lhs, rhs}
+
 	case "addInt64":
 		args := u.Value.(val.Tuple)
 		lhs := ExpressionFromValue(args[0])
@@ -559,6 +619,57 @@ func ValueFromExpression(x Expression) val.Value {
 	case FunctionSignature:
 		return val.Union{"signature", ValueFromFunction(node.Function)}
 
+	case SubFloat:
+		return val.Union{"subFloat", val.Tuple{
+			ValueFromExpression(node[0]),
+			ValueFromExpression(node[1]),
+		}}
+
+	case SubInt64:
+		return val.Union{"subInt64", val.Tuple{
+			ValueFromExpression(node[0]),
+			ValueFromExpression(node[1]),
+		}}
+	case SubInt32:
+		return val.Union{"subInt32", val.Tuple{
+			ValueFromExpression(node[0]),
+			ValueFromExpression(node[1]),
+		}}
+	case SubInt16:
+		return val.Union{"subInt16", val.Tuple{
+			ValueFromExpression(node[0]),
+			ValueFromExpression(node[1]),
+		}}
+	case SubInt8:
+		return val.Union{"subInt8", val.Tuple{
+			ValueFromExpression(node[0]),
+			ValueFromExpression(node[1]),
+		}}
+	case SubUint64:
+		return val.Union{"subUint64", val.Tuple{
+			ValueFromExpression(node[0]),
+			ValueFromExpression(node[1]),
+		}}
+	case SubUint32:
+		return val.Union{"subUint32", val.Tuple{
+			ValueFromExpression(node[0]),
+			ValueFromExpression(node[1]),
+		}}
+	case SubUint16:
+		return val.Union{"subUint16", val.Tuple{
+			ValueFromExpression(node[0]),
+			ValueFromExpression(node[1]),
+		}}
+	case SubUint8:
+		return val.Union{"subUint8", val.Tuple{
+			ValueFromExpression(node[0]),
+			ValueFromExpression(node[1]),
+		}}
+	case AddFloat:
+		return val.Union{"addFloat", val.Tuple{
+			ValueFromExpression(node[0]),
+			ValueFromExpression(node[1]),
+		}}
 	case AddInt64:
 		return val.Union{"addInt64", val.Tuple{
 			ValueFromExpression(node[0]),

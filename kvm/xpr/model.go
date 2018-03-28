@@ -71,6 +71,7 @@ var LanguageModel = mdl.DefineRecursion("function", func(function *mdl.Recursion
 			"zero":           expression,
 			"allReferrers":   expression,
 
+			"addFloat":  mdl.Tuple{expression, expression},
 			"addInt64":  mdl.Tuple{expression, expression},
 			"addInt32":  mdl.Tuple{expression, expression},
 			"addInt16":  mdl.Tuple{expression, expression},
@@ -79,6 +80,16 @@ var LanguageModel = mdl.DefineRecursion("function", func(function *mdl.Recursion
 			"addUint32": mdl.Tuple{expression, expression},
 			"addUint16": mdl.Tuple{expression, expression},
 			"addUint8":  mdl.Tuple{expression, expression},
+
+			"subFloat":  mdl.Tuple{expression, expression},
+			"subInt64":  mdl.Tuple{expression, expression},
+			"subInt32":  mdl.Tuple{expression, expression},
+			"subInt16":  mdl.Tuple{expression, expression},
+			"subInt8":   mdl.Tuple{expression, expression},
+			"subUint64": mdl.Tuple{expression, expression},
+			"subUint32": mdl.Tuple{expression, expression},
+			"subUint16": mdl.Tuple{expression, expression},
+			"subUint8":  mdl.Tuple{expression, expression},
 
 			"after":       mdl.Tuple{expression, expression},
 			"before":      mdl.Tuple{expression, expression},
