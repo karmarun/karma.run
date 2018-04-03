@@ -55,6 +55,22 @@ func ExpressionFromValue(v val.Value) Expression {
 
 	switch u := v.(val.Union); u.Case {
 
+	case "null", // convenience primitive constructors
+		"bool",
+		"dateTime",
+		"string",
+		"float",
+		"int8",
+		"int16",
+		"int32",
+		"int64",
+		"uint8",
+		"uint16",
+		"uint32",
+		"uint64",
+		"symbol":
+		return DataExpressionFromValue(u)
+
 	case "signature":
 		return FunctionSignature{FunctionFromValue(u.Value)}
 

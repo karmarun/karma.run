@@ -12,6 +12,7 @@ var LanguageModel = mdl.DefineRecursion("function", func(function *mdl.Recursion
 
 		data := mdl.DefineRecursion("data", func(data *mdl.Recursion) mdl.Model {
 			return mdl.UnionFromMap(map[string]mdl.Model{
+				// primitive
 				"null":     mdl.Null{},
 				"bool":     mdl.Bool{},
 				"dateTime": mdl.DateTime{},
@@ -26,18 +27,36 @@ var LanguageModel = mdl.DefineRecursion("function", func(function *mdl.Recursion
 				"uint32":   mdl.Uint32{},
 				"uint64":   mdl.Uint64{},
 				"symbol":   mdl.String{},
-				"map":      mdl.Map{data},
-				"list":     mdl.List{data},
-				"set":      mdl.Set{data},
-				"struct":   mdl.Map{data},
-				"tuple":    mdl.List{data},
-				"union":    mdl.Tuple{mdl.String{}, data},
-				"ref":      mdl.Tuple{mdl.String{}, mdl.String{}},
-				"expr":     expression,
+
+				// composite
+				"map":    mdl.Map{data},
+				"list":   mdl.List{data},
+				"set":    mdl.Set{data},
+				"struct": mdl.Map{data},
+				"tuple":  mdl.List{data},
+				"union":  mdl.Tuple{mdl.String{}, data},
+				"ref":    mdl.Tuple{mdl.String{}, mdl.String{}},
+				"expr":   expression,
 			})
 		})
 
 		return mdl.UnionFromMap(map[string]mdl.Model{
+
+			// convenience primitive constructors
+			"null":     mdl.Null{},
+			"bool":     mdl.Bool{},
+			"dateTime": mdl.DateTime{},
+			"string":   mdl.String{},
+			"float":    mdl.Float{},
+			"int8":     mdl.Int8{},
+			"int16":    mdl.Int16{},
+			"int32":    mdl.Int32{},
+			"int64":    mdl.Int64{},
+			"uint8":    mdl.Uint8{},
+			"uint16":   mdl.Uint16{},
+			"uint32":   mdl.Uint32{},
+			"uint64":   mdl.Uint64{},
+			"symbol":   mdl.String{},
 
 			"data":      data,
 			"signature": function,
