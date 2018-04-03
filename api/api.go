@@ -45,6 +45,7 @@ const (
 	DocsPrefix = `docs`
 	AuthPrefix = `auth`
 
+	RestApiPrefix              = `rest`
 	ExportPrefix               = `admin/export`
 	ImportPrefix               = `admin/import`
 	ResetPrefix                = `admin/reset`
@@ -104,6 +105,9 @@ func HttpHandler(rw http.ResponseWriter, rq *http.Request) {
 		return
 	}
 	codecName := rq.Header.Get(CodecHeader)
+	if codecName == "" {
+		codecName = "json"
+	}
 	if codecName == "json" {
 		rw.Header().Set("Content-Type", "application/json; charset=utf-8")
 	}
@@ -140,19 +144,23 @@ func HttpHandler(rw http.ResponseWriter, rq *http.Request) {
 	sig, e := signatureFromRequest(rq)
 	if e != nil {
 		rw.WriteHeader(http.StatusForbidden)
-		rw.Write(cdc.Encode(err.RequestError{`failed to decode user signature`, nil}.Value()))
+		rw.Write(cdc.Encode(err.HumanReadableError{err.RequestError{`failed to decode user signature`, nil}}.Value()))
 		return
 	}
 
 	userId, ke := tenref(sig, secretFromEnvironment())
 	if ke != nil {
 		rw.WriteHeader(http.StatusForbidden)
-		rw.Write(cdc.Encode(err.PermissionDeniedError{ke}.Value()))
+		rw.Write(cdc.Encode(err.HumanReadableError{err.PermissionDeniedError{ke}}.Value()))
 		return
 	}
 
 	rq = rq.WithContext(context.WithValue(rq.Context(), ContextKeyUserId, string(userId)))
 
+	if len(path) >= len(RestApiPrefix) && path[:len(RestApiPrefix)] == RestApiPrefix {
+		RestApiHttpHandler(rw, rq)
+		return
+	}
 	if len(path) >= len(ResetPrefix) && path[:len(ResetPrefix)] == ResetPrefix {
 		ResetHttpHandler(rw, rq)
 		return
