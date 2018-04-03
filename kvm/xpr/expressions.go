@@ -227,6 +227,14 @@ func (x Tag) Transform(f func(Expression) Expression) Expression {
 	return f(Tag{x.Argument.Transform(f)})
 }
 
+type TagExists struct {
+	Argument Expression
+}
+
+func (x TagExists) Transform(f func(Expression) Expression) Expression {
+	return f(TagExists{x.Argument.Transform(f)})
+}
+
 type All struct {
 	Argument Expression
 }

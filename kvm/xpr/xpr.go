@@ -436,6 +436,9 @@ func ExpressionFromValue(v val.Value) Expression {
 	case "reverseList":
 		return ReverseList{ExpressionFromValue(u.Value)}
 
+	case "tagExists":
+		return TagExists{ExpressionFromValue(u.Value)}
+
 	case "tag":
 		return Tag{ExpressionFromValue(u.Value)}
 
@@ -1202,6 +1205,9 @@ func ValueFromExpression(x Expression) val.Value {
 
 	case Tag:
 		return val.Union{"tag", ValueFromExpression(node.Argument)}
+
+	case TagExists:
+		return val.Union{"tagExists", ValueFromExpression(node.Argument)}
 
 	case All:
 		return val.Union{"all", ValueFromExpression(node.Argument)}

@@ -358,6 +358,10 @@ func (vm VirtualMachine) CompileExpression(typed xpr.TypedExpression, prev inst.
 		prev = vm.CompileExpression(node.Argument.(xpr.TypedExpression), prev)
 		return append(prev, inst.StringToRef{typed.Actual.(mdl.Ref).Model})
 
+	case xpr.TagExists:
+		prev = vm.CompileExpression(node.Argument.(xpr.TypedExpression), prev)
+		return append(prev, inst.TagExists{})
+
 	case xpr.Tag:
 		prev = vm.CompileExpression(node.Argument.(xpr.TypedExpression), prev)
 		return append(prev, inst.Tag{})

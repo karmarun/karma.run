@@ -206,6 +206,11 @@ func (vm VirtualMachine) Execute(program inst.Sequence, scope *ValueScope, args 
 			}
 			stack.Push(rf)
 
+		case inst.TagExists:
+			tag := unMeta(stack.Pop()).(val.String)
+			mid := vm.RootBucket.Bucket(definitions.TagBucketBytes).Get([]byte(tag))
+			stack.Push(val.Bool(mid != nil))
+
 		case inst.Tag:
 			tag := unMeta(stack.Pop()).(val.String)
 			mid := vm.RootBucket.Bucket(definitions.TagBucketBytes).Get([]byte(tag))

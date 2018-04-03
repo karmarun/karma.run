@@ -37,6 +37,8 @@ type Not struct{}
 
 type Tag struct{}
 
+type TagExists struct{}
+
 type ReverseList struct{}
 
 type Equal struct{}
@@ -495,3 +497,4 @@ func (AllReferrers) _inst()      {}
 func (BuildSet) _inst()          {}
 func (Scope) _inst()             {}
 func (Define) _inst()            {}
+func (TagExists) _inst()         {}

@@ -87,6 +87,7 @@ var LanguageModel = mdl.DefineRecursion("function", func(function *mdl.Recursion
 			"reverseList":    expression,
 			"stringToLower":  expression,
 			"tag":            expression,
+			"tagExists":      expression,
 			"zero":           expression,
 			"allReferrers":   expression,
 

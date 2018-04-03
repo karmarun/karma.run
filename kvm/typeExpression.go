@@ -1259,6 +1259,20 @@ func (vm VirtualMachine) TypeExpression(node xpr.Expression, scope *ModelScope, 
 		}
 		retNode = xpr.TypedExpression{node, expected, model}
 
+	case xpr.TagExists:
+		arg, e := vm.TypeExpression(node.Argument, scope, StringModel)
+		if e != nil {
+			return arg, e
+		}
+		node.Argument = arg
+		model := mdl.Model(mdl.Bool{})
+		if ca, ok := arg.Actual.(ConstantModel); ok {
+			tag := string(ca.Value.(val.String))
+			mid := vm.RootBucket.Bucket(definitions.TagBucketBytes).Get([]byte(tag))
+			model = ConstantModel{model, val.Bool(mid != nil)}
+		}
+		retNode = xpr.TypedExpression{node, expected, model}
+
 	case xpr.Tag:
 		arg, e := vm.TypeExpression(node.Argument, scope, StringModel)
 		if e != nil {
