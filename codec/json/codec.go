@@ -102,14 +102,12 @@ func encode(value val.Value, cache JSON) JSON {
 		return bs
 
 	case val.Union:
-		bs := cache
-		bs = append(bs, '[')
+		cache = append(cache, '{')
 		cs, _ := ej.Marshal(v.Case)
-		bs = append(bs, cs...)
-		bs = append(bs, ',')
-		bs = encode(v.Value, bs)
-		bs = append(bs, ']')
-		return bs
+		cache = append(cache, cs...)
+		cache = append(cache, ':')
+		cache = encode(v.Value, cache)
+		return append(cache, '}')
 
 	case val.Struct:
 		bs := cache
@@ -279,7 +277,7 @@ func decode(json JSON, model mdl.Model) (val.Value, JSON, err.Error) {
 		return vs, json, nil
 
 	case mdl.Union:
-		json, e := readLiteral(`[`, json)
+		json, e := readLiteral(`{`, json)
 		if e != nil {
 			return nil, json, e
 		}
@@ -294,7 +292,7 @@ func decode(json JSON, model mdl.Model) (val.Value, JSON, err.Error) {
 				Input:   json,
 			}
 		}
-		json, e = readLiteral(`,`, skipWhiteSpace(json))
+		json, e = readLiteral(`:`, skipWhiteSpace(json))
 		if e != nil {
 			return nil, json, e
 		}
@@ -302,8 +300,7 @@ func decode(json JSON, model mdl.Model) (val.Value, JSON, err.Error) {
 		if e != nil {
 			return nil, json, e
 		}
-		json, _ = readLiteral(`,`, skipWhiteSpace(json)) // optional trailing comma
-		json, e = readLiteral(`]`, skipWhiteSpace(json))
+		json, e = readLiteral(`}`, skipWhiteSpace(json))
 		if e != nil {
 			return nil, json, e
 		}

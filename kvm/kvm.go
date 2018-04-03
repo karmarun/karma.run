@@ -1268,13 +1268,13 @@ func (vm VirtualMachine) Write(mid string, values map[string]val.Meta) err.Error
 
 		if mid == vm.MigrationModelId() {
 
-			migration := v.Value.(val.List)
+			migrations := v.Value.(val.List)
 
 			// set of source model IDs
-			sources := make(map[string]struct{}, len(migration))
+			sources := make(map[string]struct{}, len(migrations))
 
 			// dependentMID -> dependencyMID (single dependency is enough)
-			dependencies := make(map[string]string, len(migration))
+			dependencies := make(map[string]string, len(migrations))
 
 			pharg := db.Bucket(definitions.PhargBucketBytes)
 			if pharg == nil {
@@ -1286,7 +1286,7 @@ func (vm VirtualMachine) Write(mid string, values map[string]val.Meta) err.Error
 
 			// TODO: deny creating migrations from/to _model, _migration, _expression ?
 
-			for _, mig := range migration {
+			for _, mig := range migrations {
 
 				object := mig.(val.Struct)
 
@@ -1342,14 +1342,14 @@ func (vm VirtualMachine) Write(mid string, values map[string]val.Meta) err.Error
 				}
 			}
 
-			for _, mig := range migration {
+			for _, m := range migrations {
 
-				object := mig.(val.Struct)
+				migration := m.(val.Struct)
 
-				source := object.Field("source").(val.Ref)
+				source := migration.Field("source").(val.Ref)
 				sourceMID := source[1]
 
-				target := object.Field("target").(val.Ref)
+				target := migration.Field("target").(val.Ref)
 				targetMID := target[1]
 
 				sourceModel, e := vm.Model(sourceMID)
@@ -1365,7 +1365,7 @@ func (vm VirtualMachine) Write(mid string, values map[string]val.Meta) err.Error
 				exprRef := val.Ref{}
 				expr := (val.Value)(nil)
 
-				if expression := object.Field("expression").(val.Union); expression.Case == "auto" {
+				if expression := migration.Field("expression").(val.Union); expression.Case == "auto" {
 				}
 
 				panic("todo")

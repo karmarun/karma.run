@@ -334,52 +334,6 @@ func (vm VirtualMachine) CompileExpression(typed xpr.TypedExpression, prev inst.
 	case xpr.Literal:
 		return append(prev, inst.Constant{node.Value})
 
-	// case xpr.NewBool:
-	// 	return vm.CompileExpression(node.Argument.(xpr.TypedExpression), prev)
-
-	// case xpr.NewInt8:
-	// 	prev = vm.CompileExpression(node.Argument.(xpr.TypedExpression), prev)
-	// 	return append(prev, inst.ToInt8{})
-
-	// case xpr.NewInt16:
-	// 	prev = vm.CompileExpression(node.Argument.(xpr.TypedExpression), prev)
-	// 	return append(prev, inst.ToInt16{})
-
-	// case xpr.NewInt32:
-	// 	prev = vm.CompileExpression(node.Argument.(xpr.TypedExpression), prev)
-	// 	return append(prev, inst.ToInt32{})
-
-	// case xpr.NewInt64:
-	// 	prev = vm.CompileExpression(node.Argument.(xpr.TypedExpression), prev)
-	// 	return append(prev, inst.ToInt64{})
-
-	// case xpr.NewUint8:
-	// 	prev = vm.CompileExpression(node.Argument.(xpr.TypedExpression), prev)
-	// 	return append(prev, inst.ToUint8{})
-
-	// case xpr.NewUint16:
-	// 	prev = vm.CompileExpression(node.Argument.(xpr.TypedExpression), prev)
-	// 	return append(prev, inst.ToUint16{})
-
-	// case xpr.NewUint32:
-	// 	prev = vm.CompileExpression(node.Argument.(xpr.TypedExpression), prev)
-	// 	return append(prev, inst.ToUint32{})
-
-	// case xpr.NewUint64:
-	// 	prev = vm.CompileExpression(node.Argument.(xpr.TypedExpression), prev)
-	// 	return append(prev, inst.ToUint64{})
-
-	// case xpr.NewFloat:
-	// 	prev = vm.CompileExpression(node.Argument.(xpr.TypedExpression), prev)
-	// 	return append(prev, inst.ToFloat{})
-
-	// case xpr.NewString:
-	// 	prev = vm.CompileExpression(node.Argument.(xpr.TypedExpression), prev)
-	// 	return append(prev, inst.ToString{})
-
-	// case xpr.NewDateTime:
-	// 	return vm.CompileExpression(node.Argument.(xpr.TypedExpression), prev)
-
 	case xpr.NewRef:
 		prev = vm.CompileExpression(node.Id.(xpr.TypedExpression), prev)
 		return append(prev, inst.StringToRef{typed.Actual.(mdl.Ref).Model})
