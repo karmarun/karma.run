@@ -78,7 +78,7 @@ func RestApiGetResourceHttpHandler(resource string, rw http.ResponseWriter, rq *
 	rb := tx.Bucket([]byte(`root`))
 	if rb == nil {
 		rw.WriteHeader(http.StatusInternalServerError)
-		rw.Write(cdc.Encode(err.InternalError{`database uninitialized`, nil}.Value()))
+		rw.Write(cdc.Encode(err.InternalError{Problem: `database uninitialized`}.Value()))
 		return
 	}
 
@@ -211,6 +211,53 @@ func maxInt64(a, b val.Int64) val.Int64 {
 // GET /{resource}/{id}
 func RestApiGetResourceIdHttpHandler(resource, id string, rw http.ResponseWriter, rq *http.Request) {
 
+	cdc := rq.Context().Value(ContextKeyCodec).(codec.Interface)
+	dtbs := rq.Context().Value(ContextKeyDatabase).(*bolt.DB)
+	uid := rq.Context().Value(ContextKeyUserId).(string)
+
+	tx, e := dtbs.Begin(false)
+	if e != nil {
+		log.Panicln(e)
+	}
+	defer tx.Rollback()
+
+	rb := tx.Bucket([]byte(`root`))
+	if rb == nil {
+		rw.WriteHeader(http.StatusInternalServerError)
+		rw.Write(cdc.Encode(err.InternalError{Problem: `database uninitialized`}.Value()))
+		return
+	}
+
+	vm := &kvm.VirtualMachine{RootBucket: rb, UserID: uid}
+
+	resRef, _, ke := vm.CompileAndExecuteExpression(xpr.Tag{xpr.Literal{val.String(resource)}})
+	if ke != nil {
+		resRef = val.Ref{vm.MetaModelId(), resource}
+	}
+
+	idRef, _, ke := vm.CompileAndExecuteExpression(xpr.Tag{xpr.Literal{val.String(id)}})
+	if ke != nil {
+		idRef = val.Ref{vm.MetaModelId(), id}
+	}
+
+	valExpr := xpr.Expression(xpr.Get{
+		xpr.NewRef{
+			Model: xpr.Literal{val.String(resRef.(val.Ref)[1])},
+			Id:    xpr.Literal{val.String(idRef.(val.Ref)[1])},
+		},
+	})
+
+	if _, ok := rq.URL.Query()["metadata"]; ok {
+		valExpr = xpr.Metarialize{valExpr}
+	}
+
+	value, _, ke := vm.CompileAndExecuteExpression(valExpr)
+	if ke != nil {
+		writeError(rw, cdc, err.HumanReadableError{ke})
+		return
+	}
+
+	rw.Write(cdc.Encode(value))
 }
 
 // "/rest//foo//bar///" -> ["rest", "foo", "bar"]

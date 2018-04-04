@@ -41,6 +41,8 @@ const (
 	TxTypeWrite
 )
 
+const defaultCodec = `json`
+
 const (
 	DocsPrefix = `docs`
 	AuthPrefix = `auth`
@@ -92,7 +94,7 @@ func HttpHandler(rw http.ResponseWriter, rq *http.Request) {
 
 	path := strings.Trim(path.Clean(rq.URL.Path), "/")
 
-	if rq.Method == http.MethodGet && path == "" { // k8s health checks
+	if rq.Method == http.MethodGet && path == "" { // health checks, etc...
 		rw.WriteHeader(http.StatusOK)
 		rw.Write([]byte(`karma.run ` + version))
 		return
@@ -104,19 +106,25 @@ func HttpHandler(rw http.ResponseWriter, rq *http.Request) {
 		http.ServeFile(rw, rq, path)
 		return
 	}
+
 	codecName := rq.Header.Get(CodecHeader)
-	if codecName == "" {
-		codecName = "json"
+	if len(codecName) == 0 {
+		codecName = defaultCodec
 	}
-	if codecName == "json" {
-		rw.Header().Set("Content-Type", "application/json; charset=utf-8")
-	}
+
 	cdc := codec.Get(codecName)
 	if cdc == nil {
 		msg := fmt.Sprintf(`invalid codec requested (%s header). available codecs: %s`, CodecHeader, strings.Join(codec.Available(), ", "))
 		rw.WriteHeader(http.StatusBadRequest)
 		rw.Write([]byte(msg))
 		return
+	}
+
+	switch codecName {
+	case `json`:
+		rw.Header().Set("Content-Type", "application/json; charset=utf-8")
+	default:
+		rw.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	}
 
 	rq = rq.WithContext(context.WithValue(rq.Context(), ContextKeyCodec, cdc))
