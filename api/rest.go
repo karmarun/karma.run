@@ -12,6 +12,7 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+	"strings"
 )
 
 func RestApiHttpHandler(rw http.ResponseWriter, rq *http.Request) {
@@ -58,6 +59,10 @@ func RestApiGetHttpHandler(rw http.ResponseWriter, rq *http.Request) {
 }
 
 // GET /{resource}
+// query arguments:
+// - length   int  amount of results
+// - offset   int  amount to skip
+// - metadata bool whether to materialize
 func RestApiGetResourceHttpHandler(resource string, rw http.ResponseWriter, rq *http.Request) {
 
 	cdc := rq.Context().Value(ContextKeyCodec).(codec.Interface)
@@ -95,13 +100,9 @@ func RestApiGetResourceHttpHandler(resource string, rw http.ResponseWriter, rq *
 	}
 
 	listExpr := xpr.Expression(xpr.All{modelExpr})
+	totalExpr := xpr.Length{listExpr}
 
-	// query arguments:
-	// - length   int  amount of results
-	// - offset   int  amount to skip
-	// - metadata bool whether to materialize
-
-	offset, length := val.Int64(0), val.Int64(100)
+	offset, length := val.Int64(0), val.Int64(100) // defaults
 
 	if p, ok := rq.URL.Query()["offset"]; ok && len(p) > 0 {
 		o, e := strconv.ParseInt(p[0], 10, 64)
@@ -138,15 +139,73 @@ func RestApiGetResourceHttpHandler(resource string, rw http.ResponseWriter, rq *
 		}
 	}
 
-	value, _, ke := vm.CompileAndExecuteExpression(listExpr)
-
+	value, _, ke := vm.CompileAndExecuteExpression(xpr.NewTuple{listExpr, totalExpr})
 	if ke != nil {
 		writeError(rw, cdc, err.HumanReadableError{ke})
 		return
 	}
 
-	rw.Write(cdc.Encode(value))
+	list, total := value.(val.Tuple)[0].(val.List), value.(val.Tuple)[1].(val.Int64)
 
+	linkHeader := make([]string, 0, 4)
+	if (offset + length) < total {
+
+		// set last link header
+		lastOffset := val.Int64(0)
+		for lastOffset < total-length {
+			lastOffset += length
+		}
+
+		// set next link header
+		nextOffset := offset + length
+
+		query := rq.URL.Query()
+
+		query.Set("offset", strconv.FormatInt(int64(lastOffset), 10))
+		rq.URL.RawQuery = query.Encode()
+		linkHeader = append(linkHeader, fmt.Sprintf(`<%s>; rel="last"`, rq.URL.String()))
+
+		query.Set("offset", strconv.FormatInt(int64(nextOffset), 10))
+		rq.URL.RawQuery = query.Encode()
+		linkHeader = append(linkHeader, fmt.Sprintf(`<%s>; rel="next"`, rq.URL.String()))
+	}
+	if offset > 0 {
+
+		// set prev link header
+		prevOffset := maxInt64(0, offset-length)
+
+		// set first link header
+		firstOffset := 0
+
+		query := rq.URL.Query()
+
+		query.Set("offset", strconv.FormatInt(int64(prevOffset), 10))
+		rq.URL.RawQuery = query.Encode()
+		linkHeader = append(linkHeader, fmt.Sprintf(`<%s>; rel="prev"`, rq.URL.String()))
+
+		query.Set("offset", strconv.FormatInt(int64(firstOffset), 10))
+		rq.URL.RawQuery = query.Encode()
+		linkHeader = append(linkHeader, fmt.Sprintf(`<%s>; rel="first"`, rq.URL.String()))
+	}
+
+	if len(linkHeader) > 0 {
+		rw.Header().Set(`Link`, strings.Join(linkHeader, `, `))
+	}
+
+	// Link: <https://api.github.com/search/code?q=addClass+user%3Amozilla&page=15>; rel="next",
+	//   <https://api.github.com/search/code?q=addClass+user%3Amozilla&page=34>; rel="last",
+	//   <https://api.github.com/search/code?q=addClass+user%3Amozilla&page=1>; rel="first",
+	//   <https://api.github.com/search/code?q=addClass+user%3Amozilla&page=13>; rel="prev"
+
+	rw.Write(cdc.Encode(list))
+
+}
+
+func maxInt64(a, b val.Int64) val.Int64 {
+	if a > b {
+		return a
+	}
+	return b
 }
 
 // GET /{resource}/{id}
