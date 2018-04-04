@@ -485,7 +485,7 @@ func (vm VirtualMachine) Execute(program inst.Sequence, scope *ValueScope, args 
 				reverse(out)
 
 			default:
-				log.Panicf("Execute: MapList: unexpected type on stack: %T.", ls)
+				log.Panicf("Execute: reverseList: unexpected type on stack: %T.", ls)
 			}
 
 			stack.Push(out)

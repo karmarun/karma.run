@@ -124,6 +124,24 @@ func (vm VirtualMachine) ParseCompileAndExecute(v val.Value, scope *ModelScope, 
 	return v, model, e
 }
 
+func (vm VirtualMachine) CompileAndExecuteExpression(expression xpr.Expression) (val.Value, mdl.Model, err.Error) {
+
+	fun := xpr.NewFunction(nil, expression)
+
+	typed, e := vm.TypeFunction(fun, nil, AnyModel)
+	if e != nil {
+		return nil, nil, e
+	}
+
+	value, e := vm.Execute(vm.CompileFunction(typed), nil)
+	if e != nil {
+		return nil, nil, e
+	}
+
+	value, e = slurpIterators(value)
+	return value, typed.Actual, e
+}
+
 func (vm VirtualMachine) ParseAndCompile(v val.Value, scope *ModelScope, parameters []mdl.Model, expect mdl.Model) (inst.Sequence, mdl.Model, err.Error) {
 
 	cacheKey := vm.MetaModelId() + string(val.Hash(v, nil).Sum(nil))

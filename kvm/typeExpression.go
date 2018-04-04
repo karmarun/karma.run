@@ -84,8 +84,16 @@ func (s *ModelScope) Flat() map[string]mdl.Model {
 var ZeroTypedExpression = xpr.TypedExpression{}
 var ZeroTypedFunction = xpr.TypedFunction{}
 
-// scope may be nil, that's fine, scope.Child() will allocate when needed.
+// scope may be nil, that's fine, scope.Child() will allocate.
 func (vm VirtualMachine) TypeFunction(f xpr.Function, scope *ModelScope, expected mdl.Model) (xpr.TypedFunction, err.Error) {
+	arity := len(f.Parameters())
+	args := make([]mdl.Model, arity, arity)
+	return vm.TypeFunctionWithArguments(f, scope, expected, args...)
+}
+
+// scope may be nil, that's fine, scope.Child() will allocate.
+// nil args will be inferred (as far as possible).
+func (vm VirtualMachine) TypeFunctionWithArguments(f xpr.Function, scope *ModelScope, expected mdl.Model, args ...mdl.Model) (xpr.TypedFunction, err.Error) {
 
 	if expected == nil {
 		expected = AnyModel
@@ -101,8 +109,15 @@ func (vm VirtualMachine) TypeFunction(f xpr.Function, scope *ModelScope, expecte
 
 	params, functionScope := f.Parameters(), scope.Child()
 
+	if len(params) != len(args) {
+		return ZeroTypedFunction, err.CompilationError{
+			Problem: fmt.Sprintf(`expected function of %d parameters, have %d`, len(args), len(params)),
+			Program: xpr.ValueFromFunction(f),
+		}
+	}
+
 	for i, l := 0, len(params); i < l; i++ {
-		functionScope.Set(params[i], nil)
+		functionScope.Set(params[i], args[i])
 	}
 
 	exprs := f.Expressions()
@@ -133,7 +148,7 @@ func (vm VirtualMachine) TypeFunction(f xpr.Function, scope *ModelScope, expecte
 	arguments := make([]mdl.Model, len(params), len(params))
 	for i, l := 0, len(params); i < l; i++ {
 		m, _ := functionScope.Get(params[i])
-		arguments[i] = m
+		arguments[i] = m // may be nil, that's okay
 	}
 
 	typedFunction := xpr.TypedFunction{
@@ -1478,11 +1493,13 @@ func (vm VirtualMachine) TypeExpression(node xpr.Expression, scope *ModelScope, 
 		retNode = xpr.TypedExpression{node, expected, ConstantModel{vm.MetaModel(), modelValue}}
 
 	case xpr.Metarialize:
+
 		arg, e := vm.TypeExpression(node.Argument, scope, AnyModel)
 		if e != nil {
 			return arg, e
 		}
 		node.Argument = arg
+
 		ba, ok := arg.Actual.(BucketModel)
 		if !ok {
 			return ZeroTypedExpression, err.CompilationError{
@@ -1490,15 +1507,18 @@ func (vm VirtualMachine) TypeExpression(node xpr.Expression, scope *ModelScope, 
 				Program: xpr.ValueFromExpression(arg),
 			}
 		}
+
 		model := vm.WrapModelInMeta(ba.Bucket, ba.Model)
 		retNode = xpr.TypedExpression{node, expected, model}
 
 	case xpr.RefTo:
+
 		arg, e := vm.TypeExpression(node.Argument, scope, AnyModel)
 		if e != nil {
 			return arg, e
 		}
 		node.Argument = arg
+
 		ba, ok := arg.Actual.(BucketModel)
 		if !ok {
 			return ZeroTypedExpression, err.CompilationError{
@@ -1506,6 +1526,7 @@ func (vm VirtualMachine) TypeExpression(node xpr.Expression, scope *ModelScope, 
 				Program: xpr.ValueFromExpression(arg),
 			}
 		}
+
 		model := mdl.Ref{ba.Bucket}
 		retNode = xpr.TypedExpression{node, expected, model}
 
@@ -1536,15 +1557,11 @@ func (vm VirtualMachine) TypeExpression(node xpr.Expression, scope *ModelScope, 
 		}
 		node.Value = value
 
-		retrn, e := vm.TypeFunction(node.Return, scope, expected)
+		retrn, e := vm.TypeFunctionWithArguments(node.Return, scope, expected, value.Actual)
 		if e != nil {
 			return ZeroTypedExpression, e
 		}
 		node.Return = retrn
-
-		if e := checkArgumentTypes(retrn, value.Actual); e != nil {
-			return ZeroTypedExpression, e
-		}
 
 		retNode = xpr.TypedExpression{node, expected, retrn.Actual}
 
@@ -1594,18 +1611,14 @@ func (vm VirtualMachine) TypeExpression(node xpr.Expression, scope *ModelScope, 
 			return ZeroTypedExpression, e
 		}
 
-		value, e := vm.TypeFunction(node.Value, scope, subExpect.Model)
+		subArg := mdl.NewStruct(1)
+		subArg.Set("self", mdl.Ref{mid})
+
+		value, e := vm.TypeFunctionWithArguments(node.Value, scope, subExpect.Model, subArg)
 		if e != nil {
 			return ZeroTypedExpression, e
 		}
 		node.Value = value
-
-		subArg := mdl.NewStruct(1)
-		subArg.Set("self", mdl.Ref{mid})
-
-		if e := checkArgumentTypes(value, subArg); e != nil {
-			return ZeroTypedExpression, e
-		}
 
 		retNode = xpr.TypedExpression{node, expected, mdl.Ref{mid}}
 
@@ -1647,16 +1660,12 @@ func (vm VirtualMachine) TypeExpression(node xpr.Expression, scope *ModelScope, 
 		}
 		node.Value = value
 
-		filter, e := vm.TypeFunction(node.Filter, scope, BoolModel)
+		subArg := value.Actual.Concrete().(mdl.List).Elements
+		filter, e := vm.TypeFunctionWithArguments(node.Filter, scope, BoolModel, mdl.Int64{}, subArg)
 		if e != nil {
 			return ZeroTypedExpression, e
 		}
 		node.Filter = filter
-
-		subArg := value.Actual.Concrete().(mdl.List).Elements
-		if e := checkArgumentTypes(filter, mdl.Int64{}, subArg); e != nil {
-			return ZeroTypedExpression, e
-		}
 
 		retNode = xpr.TypedExpression{node, expected, value.Actual.Unwrap()}
 
@@ -1725,7 +1734,6 @@ func (vm VirtualMachine) TypeExpression(node xpr.Expression, scope *ModelScope, 
 			return ZeroTypedExpression, err.CompilationError{
 				Problem: `isCase: value argument is not a union`,
 				Program: xpr.ValueFromExpression(value),
-				// C: val.Map{"model": mdl.ValueFromModel(vm.MetaModelId(), value.Actual.Concrete(), nil)},
 			}
 		}
 		node.Value = value
@@ -1739,16 +1747,12 @@ func (vm VirtualMachine) TypeExpression(node xpr.Expression, scope *ModelScope, 
 		}
 		node.Value = value
 
-		mapping, e := vm.TypeFunction(node.Mapping, scope, AnyModel)
+		subArg := value.Actual.Concrete().(mdl.Map).Elements
+		mapping, e := vm.TypeFunctionWithArguments(node.Mapping, scope, AnyModel, mdl.String{}, subArg)
 		if e != nil {
 			return ZeroTypedExpression, e
 		}
 		node.Mapping = mapping
-
-		subArg := value.Actual.Concrete().(mdl.Map).Elements
-		if e := checkArgumentTypes(mapping, mdl.String{}, subArg); e != nil {
-			return ZeroTypedExpression, e
-		}
 
 		retNode = xpr.TypedExpression{node, expected, mdl.Map{mapping.Actual}}
 
@@ -1760,16 +1764,12 @@ func (vm VirtualMachine) TypeExpression(node xpr.Expression, scope *ModelScope, 
 		}
 		node.Value = value
 
-		mapping, e := vm.TypeFunction(node.Mapping, scope, AnyModel)
+		subArg := value.Actual.Concrete().(mdl.List).Elements
+		mapping, e := vm.TypeFunctionWithArguments(node.Mapping, scope, AnyModel, mdl.Int64{}, subArg)
 		if e != nil {
 			return ZeroTypedExpression, e
 		}
 		node.Mapping = mapping
-
-		subArg := value.Actual.Concrete().(mdl.List).Elements
-		if e := checkArgumentTypes(mapping, mdl.Int64{}, subArg); e != nil {
-			return ZeroTypedExpression, e
-		}
 
 		retNode = xpr.TypedExpression{node, expected, mdl.List{mapping.Actual}}
 
@@ -1787,20 +1787,17 @@ func (vm VirtualMachine) TypeExpression(node xpr.Expression, scope *ModelScope, 
 		}
 		node.Initial = initial
 
-		reducer, e := vm.TypeFunction(node.Reducer, scope, AnyModel)
+		subArg := mdl.Either(
+			value.Actual.Concrete().(mdl.List).Elements,
+			initial.Actual.Unwrap(),
+			nil, // recursion param
+		)
+
+		reducer, e := vm.TypeFunctionWithArguments(node.Reducer, scope, AnyModel, subArg, subArg)
 		if e != nil {
 			return ZeroTypedExpression, e
 		}
 		node.Reducer = reducer
-
-		subArg := mdl.Either(
-			value.Actual.Concrete().(mdl.List).Elements,
-			initial.Actual.Unwrap(),
-			nil,
-		)
-		if e := checkArgumentTypes(reducer, subArg, subArg); e != nil {
-			return ZeroTypedExpression, e
-		}
 
 		retNode = xpr.TypedExpression{node, expected, reducer.Actual}
 
@@ -2186,12 +2183,8 @@ func (vm VirtualMachine) TypeExpression(node xpr.Expression, scope *ModelScope, 
 
 		for k, sub := range node.Values {
 
-			arg, e := vm.TypeFunction(sub, scope, subExpect)
+			arg, e := vm.TypeFunctionWithArguments(sub, scope, subExpect, subArg)
 			if e != nil {
-				return ZeroTypedExpression, e
-			}
-
-			if e := checkArgumentTypes(arg, subArg); e != nil {
 				return ZeroTypedExpression, e
 			}
 
@@ -2506,14 +2499,11 @@ func (vm VirtualMachine) TypeExpression(node xpr.Expression, scope *ModelScope, 
 		model := dflt.Actual.Unwrap()
 
 		for k, sub := range node.Cases {
-			fun, e := vm.TypeFunction(sub, scope, AnyModel)
+			fun, e := vm.TypeFunctionWithArguments(sub, scope, AnyModel, union.Case(k))
 			if e != nil {
 				return ZeroTypedExpression, e
 			}
 			model = mdl.Either(model, fun.Actual.Unwrap(), nil)
-			if e := checkArgumentTypes(fun, union.Case(k)); e != nil {
-				return ZeroTypedExpression, e
-			}
 			node.Cases[k] = fun
 		}
 
@@ -2527,7 +2517,9 @@ func (vm VirtualMachine) TypeExpression(node xpr.Expression, scope *ModelScope, 
 		}
 		node.Value = value
 
-		order, e := vm.TypeFunction(node.Order, scope, AnyModel)
+		subArg := value.Actual.Concrete().(mdl.List).Elements
+
+		order, e := vm.TypeFunctionWithArguments(node.Order, scope, AnyModel, subArg)
 		if e != nil {
 			return ZeroTypedExpression, e
 		}
@@ -2539,12 +2531,6 @@ func (vm VirtualMachine) TypeExpression(node xpr.Expression, scope *ModelScope, 
 				Program: xpr.ValueFromFunction(order),
 			}
 		}
-
-		subArg := value.Actual.Concrete().(mdl.List).Elements
-		if e := checkArgumentTypes(order, subArg); e != nil {
-			return ZeroTypedExpression, e
-		}
-
 		retNode = xpr.TypedExpression{node, expected, UnwrapConstant(value.Actual)}
 
 	case xpr.MapSet:
@@ -2555,16 +2541,12 @@ func (vm VirtualMachine) TypeExpression(node xpr.Expression, scope *ModelScope, 
 		}
 		node.Value = value
 
-		mapping, e := vm.TypeFunction(node.Mapping, scope, AnyModel)
+		subArg := value.Actual.Concrete().(mdl.Set).Elements
+		mapping, e := vm.TypeFunctionWithArguments(node.Mapping, scope, AnyModel, subArg)
 		if e != nil {
 			return ZeroTypedExpression, e
 		}
 		node.Mapping = mapping
-
-		subArg := value.Actual.Concrete().(mdl.Set).Elements
-		if e := checkArgumentTypes(mapping, subArg); e != nil {
-			return ZeroTypedExpression, e
-		}
 
 		retNode = xpr.TypedExpression{node, expected, mdl.Set{mapping.Actual}}
 

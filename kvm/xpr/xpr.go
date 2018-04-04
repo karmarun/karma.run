@@ -631,7 +631,11 @@ func ExpressionFromValue(v val.Value) Expression {
 
 	case "slice":
 		arg := u.Value.(val.Struct)
-		return Slice{ExpressionFromValue(arg.Field("value")), ExpressionFromValue(arg.Field("offset")), ExpressionFromValue(arg.Field("length"))}
+		return Slice{
+			ExpressionFromValue(arg.Field("value")),
+			ExpressionFromValue(arg.Field("offset")),
+			ExpressionFromValue(arg.Field("length")),
+		}
 
 	case "searchAllRegex":
 		arg := u.Value.(val.Struct)
