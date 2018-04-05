@@ -90,8 +90,13 @@ type PermissionDeniedError struct {
 }
 
 func (e PermissionDeniedError) Value() val.Union {
-	return val.Union{"permissionDeniedError", val.Struct{}}
+	arg := val.Value(val.Struct{})
+	if e.Child_ != nil {
+		arg = e.Child_.Value()
+	}
+	return val.Union{"permissionDeniedError", arg}
 }
+
 func (e PermissionDeniedError) Error() string {
 	return e.String()
 }

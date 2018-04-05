@@ -95,6 +95,7 @@ func HttpHandler(rw http.ResponseWriter, rq *http.Request) {
 	path := strings.Trim(path.Clean(rq.URL.Path), "/")
 
 	if rq.Method == http.MethodGet && path == "" { // health checks, etc...
+		rw.Header().Set("Content-Type", "text/plain; charset=utf-8")
 		rw.WriteHeader(http.StatusOK)
 		rw.Write([]byte(`karma.run ` + version))
 		return
