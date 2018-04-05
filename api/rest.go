@@ -197,6 +197,7 @@ func RestApiGetResourceHttpHandler(resource string, rw http.ResponseWriter, rq *
 	//   <https://api.github.com/search/code?q=addClass+user%3Amozilla&page=1>; rel="first",
 	//   <https://api.github.com/search/code?q=addClass+user%3Amozilla&page=13>; rel="prev"
 
+	rw.WriteHeader(http.StatusOK)
 	rw.Write(cdc.Encode(list))
 
 }

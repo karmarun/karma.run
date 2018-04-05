@@ -71,6 +71,20 @@ func (w gzipResponseWriter) Write(bs []byte) (int, error) {
 
 func HttpHandler(rw http.ResponseWriter, rq *http.Request) {
 
+	if rq.URL.Host == "" {
+		rq.URL.Host = rq.Host
+	}
+
+	if rq.URL.Scheme == "" {
+		if rq.TLS == nil {
+			rq.URL.Scheme = "http"
+		} else {
+			rq.URL.Scheme = "https"
+		}
+	}
+
+	rw.Header().Set("Content-Type", "text/plain; charset=utf-8") // default, gets overwritten
+
 	if strings.Contains(rq.Header.Get("Accept-Encoding"), "gzip") {
 		gz, _ := gzip.NewWriterLevel(rw, gzip.BestSpeed)
 		rw = gzipResponseWriter{rw, gz}
@@ -95,7 +109,6 @@ func HttpHandler(rw http.ResponseWriter, rq *http.Request) {
 	path := strings.Trim(path.Clean(rq.URL.Path), "/")
 
 	if rq.Method == http.MethodGet && path == "" { // health checks, etc...
-		rw.Header().Set("Content-Type", "text/plain; charset=utf-8")
 		rw.WriteHeader(http.StatusOK)
 		rw.Write([]byte(`karma.run ` + version))
 		return
@@ -124,8 +137,6 @@ func HttpHandler(rw http.ResponseWriter, rq *http.Request) {
 	switch codecName {
 	case `json`:
 		rw.Header().Set("Content-Type", "application/json; charset=utf-8")
-	default:
-		rw.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	}
 
 	rq = rq.WithContext(context.WithValue(rq.Context(), ContextKeyCodec, cdc))
