@@ -131,7 +131,7 @@ func HttpHandler(rw http.ResponseWriter, rq *http.Request) {
 
 	cdc := codec.Get(codecName)
 	if cdc == nil {
-		msg := fmt.Sprintf(`invalid codec requested (%s header). available codecs: %s`, CodecHeader, strings.Join(codec.Available(), ", "))
+		msg := fmt.Sprintf(`invalid codec requested, available codecs: %s`, strings.Join(codec.Available(), ", "))
 		rw.WriteHeader(http.StatusBadRequest)
 		rw.Write([]byte(msg))
 		return

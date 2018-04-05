@@ -33,9 +33,8 @@ var AuthRequestModel = mdl.StructFromMap(map[string]mdl.Model{
 })
 
 const (
-	ivLength       = 32
-	tokenExpiry    = time.Minute * 15
-	InstanceRootId = `instance_root_id` // 16 bytes long, like a real id
+	ivLength    = 32
+	tokenExpiry = time.Minute * 15
 )
 
 var loginLock = &sync.Mutex{}
@@ -165,7 +164,7 @@ func tenref(sig, hmacKey []byte) ([]byte, err.Error) {
 	}
 
 	{ // decrypt id
-		block, _ := aes.NewCipher(iv) // ignore error about IV length
+		block, _ := aes.NewCipher(iv) // error never happens as long as ivLength is valid
 		for i := 0; i < len(id); i += aes.BlockSize {
 			block.Decrypt(id[i:], id[i:])
 		}

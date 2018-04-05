@@ -3,6 +3,7 @@
 package main
 
 import (
+	"crypto/rand"
 	"crypto/tls"
 	"encoding/base64"
 	"flag"
@@ -87,14 +88,20 @@ func main() {
 
 	{
 		if len(instanceSecret) == 0 {
-			log.Fatalln("please specify a base64-encoded instance secret (see --help)")
-		}
-		secret, e := base64.StdEncoding.DecodeString(instanceSecret)
-		if e != nil {
-			log.Fatalln("instance secret must be base64-encoded (see --help)")
-		}
-		if len(secret) < 512 {
-			log.Fatalf("decoded instance secret must be longer than %d bytes\n", 512)
+			bs := make([]byte, 512, 512)
+			if n, _ := rand.Read(bs); n < len(bs) {
+				log.Fatalln("error generating instance secret: system entropy too low. see --help to pass one by hand.")
+			}
+			instanceSecret = base64.StdEncoding.EncodeToString(bs)
+			log.Println("no instance secret specified, using generated:", instanceSecret)
+		} else {
+			secret, e := base64.StdEncoding.DecodeString(instanceSecret)
+			if e != nil {
+				log.Fatalln("instance secret must be base64-encoded (see --help)")
+			}
+			if len(secret) < 512 {
+				log.Fatalf("decoded instance secret must be longer than %d bytes\n", 512)
+			}
 		}
 	}
 
