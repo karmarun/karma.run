@@ -122,6 +122,9 @@ func HttpHandler(rw http.ResponseWriter, rq *http.Request) {
 	}
 
 	codecName := rq.Header.Get(CodecHeader)
+	if c := rq.URL.Query().Get("codec"); c != "" {
+		codecName = c
+	}
 	if len(codecName) == 0 {
 		codecName = defaultCodec
 	}
@@ -313,7 +316,11 @@ func payloadFromReader(r io.Reader) Payload {
 }
 
 func signatureFromRequest(rq *http.Request) ([]byte, error) {
-	return base64.StdEncoding.DecodeString(rq.Header.Get(SignatureHeader))
+	sig := rq.Header.Get(SignatureHeader)
+	if s := rq.URL.Query().Get("auth"); s != "" {
+		sig = s
+	}
+	return base64.RawURLEncoding.DecodeString(sig)
 }
 
 func secretFromEnvironment() []byte {

@@ -57,7 +57,7 @@ func AuthHttpHandler(rw http.ResponseWriter, rq *http.Request) {
 			rw.Write(cdc.Encode(err.RequestError{`failed to decode user signature`, nil}.Value()))
 			return
 		}
-		rw.Write(cdc.Encode(val.String(base64.StdEncoding.EncodeToString(fernet(userId, hmacKey)))))
+		rw.Write(cdc.Encode(val.String(base64.RawURLEncoding.EncodeToString(fernet(userId, hmacKey)))))
 		return
 	}
 
@@ -87,7 +87,7 @@ func AuthHttpHandler(rw http.ResponseWriter, rq *http.Request) {
 
 	if username == "admin" && password == os.Getenv("INSTANCE_SECRET") {
 		buf := fernet(rb.Get(definitions.RootUserBytes), hmacKey)
-		rw.Write(cdc.Encode(val.String(base64.StdEncoding.EncodeToString(buf))))
+		rw.Write(cdc.Encode(val.String(base64.RawURLEncoding.EncodeToString(buf))))
 		return
 	}
 
@@ -132,7 +132,7 @@ func AuthHttpHandler(rw http.ResponseWriter, rq *http.Request) {
 	}
 
 	buf := fernet([]byte(mv.(val.Struct).Field("id").(val.Ref)[1]), hmacKey)
-	rw.Write(cdc.Encode(val.String(base64.StdEncoding.EncodeToString(buf))))
+	rw.Write(cdc.Encode(val.String(base64.RawURLEncoding.EncodeToString(buf))))
 }
 
 // fernet^-1
