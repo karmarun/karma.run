@@ -855,8 +855,9 @@ func decodeStruct(json JSON, strct mdl.Struct) (val.Value, JSON, err.Error) {
 		}
 		element, ok := strct.Get(str)
 		if !ok {
+			keys := strct.Keys()
 			return nil, json, err.InputParsingError{
-				Problem: fmt.Sprintf(`undefined struct field "%s"`, str),
+				Problem: fmt.Sprintf(`undefined struct field "%s". defined in this context are: %s.`, str, strings.Join(keys, ", ")),
 				Input:   json,
 			}
 		}
