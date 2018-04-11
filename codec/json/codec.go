@@ -16,6 +16,7 @@ import (
 	"log"
 	"sort"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -281,18 +282,19 @@ func decode(json JSON, model mdl.Model) (val.Value, JSON, err.Error) {
 		if e != nil {
 			return nil, json, e
 		}
-		caze, json, e := readString(skipWhiteSpace(json))
+		caze, jj, e := readString(skipWhiteSpace(json))
 		if e != nil {
 			return nil, json, e
 		}
 		element, ok := m.Get(caze)
 		if !ok {
+			cases := m.Cases()
 			return nil, json, err.InputParsingError{
-				Problem: fmt.Sprintf(`undefined union case "%s"`, caze),
+				Problem: fmt.Sprintf(`undefined union case: "%s". defined in this context are: %s.`, caze, strings.Join(cases, ", ")),
 				Input:   json,
 			}
 		}
-		json, e = readLiteral(`:`, skipWhiteSpace(json))
+		json, e = readLiteral(`:`, skipWhiteSpace(jj))
 		if e != nil {
 			return nil, json, e
 		}
