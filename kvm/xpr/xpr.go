@@ -822,7 +822,7 @@ func DataExpressionFromValue(v val.Value) Expression {
 
 	case "ref":
 		arg := u.Value.(val.Tuple)
-		return NewRef{DataExpressionFromValue(arg[0]), DataExpressionFromValue(arg[1])}
+		return NewRef{Literal{arg[0]}, Literal{arg[1]}}
 
 	default:
 		panic(fmt.Sprintf("unhandled constructor: %s", u.Case))
