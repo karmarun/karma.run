@@ -354,7 +354,7 @@ func payloadFromReader(r io.Reader) Payload {
 	for readLength < MaxPayloadBytes {
 		n, e := r.Read(payload[readLength:])
 		readLength += n
-		if e == io.EOF {
+		if n == 0 || e == io.EOF {
 			break // we're done
 		}
 	}
