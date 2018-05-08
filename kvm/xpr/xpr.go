@@ -592,7 +592,9 @@ func ExpressionFromValue(v val.Value) Expression {
 	case "or":
 		arg := u.Value.(val.Set)
 		if len(arg) == 1 {
-			return ExpressionFromValue(arg[0])
+			for _, sub := range arg {
+				return ExpressionFromValue(sub)
+			}
 		}
 		nod := make(Or, 0, len(arg))
 		for _, sub := range arg {

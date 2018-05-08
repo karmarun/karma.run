@@ -46,7 +46,7 @@ func (e TypeInferenceError) String() string {
 	out += "--------\n"
 	out += mdl.ModelToHuman(e.Want) + "\n\n"
 	out += "Actual\n"
-	out += "--------\n"
+	out += "------\n"
 	out += err.ValueToHuman(e.Have) + "\n\n"
 	return out
 }
