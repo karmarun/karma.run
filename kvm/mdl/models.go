@@ -287,11 +287,9 @@ func (s Struct) TraverseValue(j val.Value, f func(val.Value, Model)) {
 	f(j, s)
 	if u, ok := j.(val.Struct); ok {
 		s.ForEach(func(k string, m Model) bool {
-			w, ok := u.Get(k)
-			if !ok {
-				return true
+			if w, ok := u.Get(k); ok {
+				m.TraverseValue(w, f)
 			}
-			m.TraverseValue(w, f)
 			return true
 		})
 	}
@@ -390,7 +388,9 @@ func (m Union) Keys() []string {
 func (s Union) TraverseValue(j val.Value, f func(val.Value, Model)) {
 	f(j, s)
 	if u, ok := j.(val.Union); ok {
-		s.Case(u.Case).TraverseValue(u.Value, f)
+		if m, ok := s.Get(u.Case); ok {
+			m.TraverseValue(u.Value, f)
+		}
 	}
 }
 
