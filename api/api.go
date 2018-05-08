@@ -311,6 +311,12 @@ func payloadFromReader(r io.Reader) Payload {
 		if e == io.EOF {
 			break // we're done
 		}
+		if e != nil {
+			return payload[:0:0]
+		}
+		if n == 0 {
+			break // we're done
+		}
 	}
 	return payload[:readLength]
 }
