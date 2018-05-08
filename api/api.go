@@ -349,12 +349,18 @@ func payloadFromRequest(rq *http.Request) Payload {
 }
 
 func payloadFromReader(r io.Reader) Payload {
-	payload := PayloadPool.Get().(Payload)
+	payload := make(Payload, MaxPayloadBytes, MaxPayloadBytes)
 	readLength := 0
 	for readLength < MaxPayloadBytes {
 		n, e := r.Read(payload[readLength:])
 		readLength += n
-		if n == 0 || e == io.EOF {
+		if e == io.EOF {
+			break // we're done
+		}
+		if e != nil {
+			return payload[:0:0]
+		}
+		if n == 0 {
 			break // we're done
 		}
 	}
