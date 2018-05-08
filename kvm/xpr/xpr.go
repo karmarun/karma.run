@@ -1559,6 +1559,9 @@ func DataValueFromExpression(x Expression) val.Value {
 		return val.Union{"tuple", arg}
 
 	case Literal:
+		if node.Value == val.Null {
+			return val.Union{"null", node.Value}
+		}
 		switch v := node.Value.(type) {
 
 		case val.Meta:
