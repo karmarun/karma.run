@@ -714,10 +714,10 @@ func ExpressionFromValue(v val.Value) Expression {
 		}
 
 	case "memSort":
-		arg := u.Value.(val.Struct)
+		arg := u.Value.(val.Tuple)
 		return MemSort{
-			Value: ExpressionFromValue(arg.Field("value")),
-			Order: FunctionFromValue(arg.Field("expression")),
+			Value: ExpressionFromValue(arg[0]),
+			Order: FunctionFromValue(arg[1]),
 		}
 
 	default:
