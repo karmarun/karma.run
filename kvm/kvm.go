@@ -1450,8 +1450,11 @@ func uniqueHashes(m mdl.Model, v val.Value) []uniquePath {
 	}
 
 	hashes := make([]hash.Hash64, len(uniquePaths), len(uniquePaths))
+	for i, _ := range hashes {
+		hashes[i] = fnv.New64()
+	}
 
-	UnwrapBucket(m).TraverseValue(unMeta(v), func(v val.Value, m mdl.Model) {
+	m.Unwrap().TraverseValue(unMeta(v), func(v val.Value, m mdl.Model) {
 
 		if u, ok := m.(mdl.Unique); ok {
 
@@ -1465,10 +1468,6 @@ func uniqueHashes(m mdl.Model, v val.Value) []uniquePath {
 			}
 
 			// panic if i == -1 -> programming error
-
-			if hashes[i] == nil {
-				hashes[i] = fnv.New64()
-			}
 
 			hashes[i].Write([]byte{SeparatorByte})     // separator
 			hashes[i].Write(val.Hash(v, nil).Sum(nil)) // sorts keys in structs and maps
