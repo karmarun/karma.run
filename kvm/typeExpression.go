@@ -1174,7 +1174,7 @@ func (vm VirtualMachine) TypeExpression(node xpr.Expression, scope *ModelScope, 
 			}
 		}
 
-		mid := cm.Value.(val.String)
+		mid := string(cm.Value.(val.String))
 
 		iarg, e := vm.TypeExpression(node.Id, scope, StringModel)
 		if e != nil {
@@ -1182,9 +1182,16 @@ func (vm VirtualMachine) TypeExpression(node xpr.Expression, scope *ModelScope, 
 		}
 		node.Id = iarg
 
+		model := mdl.Model(mdl.Ref{mid})
+
+		if ci, ok := iarg.Actual.(ConstantModel); ok {
+			id := string(ci.Value.(val.String))
+			model = ConstantModel{model, val.Ref{mid, id}}
+		}
+
 		// TODO: check that ID exists (during execution)
 
-		retNode = xpr.TypedExpression{node, expected, mdl.Ref{string(mid)}}
+		retNode = xpr.TypedExpression{node, expected, model}
 
 	case xpr.PresentOrZero:
 

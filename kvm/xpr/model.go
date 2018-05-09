@@ -64,8 +64,6 @@ var LanguageModel = mdl.DefineRecursion("function", func(function *mdl.Recursion
 			"define": mdl.Tuple{mdl.String{}, expression},
 			"scope":  mdl.String{},
 
-			"id":             mdl.EmptyStruct,
-			"arg":            mdl.EmptyStruct,
 			"currentUser":    mdl.EmptyStruct,
 			"all":            expression,
 			"assertPresent":  expression,
@@ -259,10 +257,7 @@ var LanguageModel = mdl.DefineRecursion("function", func(function *mdl.Recursion
 				"then":      expression,
 				"else":      expression,
 			}),
-			"with": mdl.StructFromMap(map[string]mdl.Model{
-				"value":  expression,
-				"return": expression,
-			}),
+
 			"assertCase": mdl.StructFromMap(map[string]mdl.Model{
 				"value": expression,
 				"case":  mdl.String{},
