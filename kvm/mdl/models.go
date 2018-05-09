@@ -16,6 +16,8 @@ type Recursion struct {
 	Model        Model
 	traverseFlag bool // not thread safe
 	transFlag    bool // not thread safe
+	nullableFlag bool // not thread safe
+	zeroableFlag bool // not thread safe
 	copyLock     *sync.Mutex
 	copyPtr      *Recursion
 }
@@ -884,7 +886,13 @@ func (m Null) Equals(n Model) bool {
 }
 
 func (r *Recursion) Nullable() bool {
-	return r.Model.Nullable() // TODO use recursion lock
+	if r.nullableFlag {
+		return false
+	}
+	r.nullableFlag = true
+	nullable := r.Model.Nullable()
+	r.nullableFlag = false
+	return nullable
 }
 
 func (Optional) Nullable() bool {
@@ -956,7 +964,13 @@ func (Ref) Nullable() bool {
 }
 
 func (r *Recursion) Zeroable() bool {
-	return r.Model.Zeroable() // TODO use recursion lock
+	if r.zeroableFlag {
+		return false // base case true correct?
+	}
+	r.zeroableFlag = true
+	zeroable := r.Model.Zeroable()
+	r.zeroableFlag = false
+	return zeroable
 }
 
 func (Optional) Zeroable() bool {
