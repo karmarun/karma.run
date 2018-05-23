@@ -21,6 +21,7 @@ func RestApiHttpHandler(rw http.ResponseWriter, rq *http.Request) {
 		RestApiGetHttpHandler(rw, rq)
 
 	case http.MethodPost:
+		RestApiPostHttpHandler(rw, rq)
 
 	case http.MethodPut:
 
@@ -36,10 +37,24 @@ func RestApiHttpHandler(rw http.ResponseWriter, rq *http.Request) {
 	}
 }
 
-func RestApiGetHttpHandler(rw http.ResponseWriter, rq *http.Request) {
-
+func RestApiPostHttpHandler(rw http.ResponseWriter, rq *http.Request) {
 	segments := pathSegments(rq.URL.Path)[1:] // drop "rest" prefix
+	switch len(segments) {
+	case 0: // POST /
 
+	case 1: // POST /{resource}
+		RestApiPostResourceHttpHandler(segments[0], rw, rq)
+		return
+
+	case 2: // POST /{resource}/{id}
+
+	default:
+		// error?
+	}
+}
+
+func RestApiGetHttpHandler(rw http.ResponseWriter, rq *http.Request) {
+	segments := pathSegments(rq.URL.Path)[1:] // drop "rest" prefix
 	switch len(segments) {
 	case 0: // GET /
 		// swagger spec?
@@ -55,7 +70,6 @@ func RestApiGetHttpHandler(rw http.ResponseWriter, rq *http.Request) {
 	default:
 		// error?
 	}
-
 }
 
 // GET /{resource}
@@ -199,6 +213,80 @@ func RestApiGetResourceHttpHandler(resource string, rw http.ResponseWriter, rq *
 
 	rw.WriteHeader(http.StatusOK)
 	rw.Write(cdc.Encode(list))
+
+}
+
+// POST /{resource}
+func RestApiPostResourceHttpHandler(resource string, rw http.ResponseWriter, rq *http.Request) {
+
+	cdc := rq.Context().Value(ContextKeyCodec).(codec.Interface)
+	dtbs := rq.Context().Value(ContextKeyDatabase).(*bolt.DB)
+	uid := rq.Context().Value(ContextKeyUserId).(string)
+
+	tx, e := dtbs.Begin(true)
+	if e != nil {
+		log.Panicln(e)
+	}
+	defer tx.Rollback()
+
+	rb := tx.Bucket([]byte(`root`))
+	if rb == nil {
+		rw.WriteHeader(http.StatusInternalServerError)
+		rw.Write(cdc.Encode(err.InternalError{Problem: `database uninitialized`}.Value()))
+		return
+	}
+
+	vm := &kvm.VirtualMachine{RootBucket: rb, UserID: uid}
+
+	resourceLit := xpr.Literal{val.String(resource)}
+
+	isTag, _, ke := vm.CompileAndExecuteExpression(xpr.TagExists{resourceLit})
+	if ke != nil {
+		log.Panicln(ke)
+	}
+
+	modelExpr := xpr.Expression(nil)
+
+	if isTag.(val.Bool) {
+		modelExpr = xpr.Tag{resourceLit}
+	} else {
+		modelExpr = xpr.Model{resourceLit}
+	}
+
+	modelRef, _, ke := vm.CompileAndExecuteExpression(modelExpr)
+	if ke != nil {
+		writeError(rw, cdc, err.HumanReadableError{ke})
+		return
+	}
+
+	model, ke := vm.Model(modelRef.(val.Ref)[1])
+	if ke != nil {
+		writeError(rw, cdc, err.HumanReadableError{ke})
+		return
+	}
+
+	payload := payloadFromRequest(rq)
+
+	value, ke := cdc.Decode(payload, model.Unwrap())
+	if ke != nil {
+		writeError(rw, cdc, err.HumanReadableError{ke})
+		return
+	}
+
+	createExpr := xpr.Create{
+		In:    modelExpr,
+		Value: xpr.NewFunction([]string{"_"}, xpr.Literal{value}),
+	}
+
+	createdRef, _, ke := vm.CompileAndExecuteExpression(createExpr)
+	if ke != nil {
+		writeError(rw, cdc, err.HumanReadableError{ke})
+		return
+	}
+
+	_ = tx.Commit()
+
+	rw.Write(cdc.Encode(createdRef))
 
 }
 
