@@ -668,7 +668,7 @@ func (vm VirtualMachine) InitDB() error {
 			return e
 		}
 
-		if ids.(val.Map).ForEach(createBuckets); e != nil {
+		if ids.(val.Struct).ForEach(createBuckets); e != nil {
 			return e
 		}
 
@@ -676,12 +676,12 @@ func (vm VirtualMachine) InitDB() error {
 			inst.CreateMultiple{meta, map[string]inst.Sequence{
 				definitions.MigrationModel: {
 					inst.Constant{
-						definitions.NewMigrationModelValue(meta, ids.(val.Map).Key(definitions.ExpressionModel).(val.Ref)[1]),
+						definitions.NewMigrationModelValue(meta, ids.(val.Struct).Field(definitions.ExpressionModel).(val.Ref)[1]),
 					},
 				},
 				definitions.RoleModel: {
 					inst.Constant{
-						definitions.NewRoleModelValue(meta, ids.(val.Map).Key(definitions.ExpressionModel).(val.Ref)[1]),
+						definitions.NewRoleModelValue(meta, ids.(val.Struct).Field(definitions.ExpressionModel).(val.Ref)[1]),
 					},
 				},
 			}},
@@ -691,7 +691,7 @@ func (vm VirtualMachine) InitDB() error {
 			return e
 		}
 
-		if ids.(val.Map).ForEach(createBuckets); e != nil {
+		if ids.(val.Struct).ForEach(createBuckets); e != nil {
 			return e
 		}
 
@@ -699,7 +699,7 @@ func (vm VirtualMachine) InitDB() error {
 			inst.CreateMultiple{meta, map[string]inst.Sequence{
 				definitions.UserModel: {
 					inst.Constant{
-						definitions.NewUserModelValue(meta, ids.(val.Map).Key(definitions.RoleModel).(val.Ref)[1]),
+						definitions.NewUserModelValue(meta, ids.(val.Struct).Field(definitions.RoleModel).(val.Ref)[1]),
 					},
 				},
 			}},
@@ -709,7 +709,7 @@ func (vm VirtualMachine) InitDB() error {
 			return e
 		}
 
-		if ids.(val.Map).ForEach(createBuckets); e != nil {
+		if ids.(val.Struct).ForEach(createBuckets); e != nil {
 			return e
 		}
 
@@ -772,8 +772,7 @@ func (vm VirtualMachine) InitDB() error {
 					},
 				},
 			}},
-			inst.Constant{val.String("self")},
-			inst.Key{},
+			inst.Field{Key: "self"},
 		}, nil)
 		if e != nil {
 			return e
@@ -793,8 +792,7 @@ func (vm VirtualMachine) InitDB() error {
 					})},
 				},
 			}},
-			inst.Constant{val.String("self")},
-			inst.Key{},
+			inst.Field{Key: "self"},
 		}, nil)
 		if e != nil {
 			return e
@@ -810,8 +808,7 @@ func (vm VirtualMachine) InitDB() error {
 					})},
 				},
 			}},
-			inst.Constant{val.String("self")},
-			inst.Key{},
+			inst.Field{Key: "self"},
 		}, nil)
 		if e != nil {
 			return e
