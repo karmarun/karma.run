@@ -7,6 +7,7 @@ import (
 	"karma.run/codec"
 	"karma.run/kvm"
 	"karma.run/kvm/err"
+	"karma.run/kvm/mdl"
 	"karma.run/kvm/val"
 	"karma.run/kvm/xpr"
 	"log"
@@ -267,18 +268,26 @@ func RestApiPostResourceHttpHandler(resource string, rw http.ResponseWriter, rq 
 
 	payload := payloadFromRequest(rq)
 
-	value, ke := cdc.Decode(payload, model.Unwrap())
+	values, ke := cdc.Decode(payload, mdl.List{model.Unwrap()})
 	if ke != nil {
 		writeError(rw, cdc, err.HumanReadableError{ke})
 		return
 	}
 
-	createExpr := xpr.Create{
-		In:    modelExpr,
-		Value: xpr.NewFunction([]string{"_"}, xpr.Literal{value}),
+	valueList := values.(val.List)
+
+	funcMap := make(map[string]xpr.Function, len(valueList))
+	for i, value := range valueList {
+		k := strconv.Itoa(i)
+		funcMap[k] = xpr.NewFunction([]string{"_"}, xpr.Literal{value})
 	}
 
-	createdRef, _, ke := vm.CompileAndExecuteExpression(createExpr)
+	createExpr := xpr.CreateMultiple{
+		In:     modelExpr,
+		Values: funcMap,
+	}
+
+	createdMap, _, ke := vm.CompileAndExecuteExpression(createExpr)
 	if ke != nil {
 		writeError(rw, cdc, err.HumanReadableError{ke})
 		return
@@ -286,7 +295,13 @@ func RestApiPostResourceHttpHandler(resource string, rw http.ResponseWriter, rq 
 
 	_ = tx.Commit()
 
-	rw.Write(cdc.Encode(createdRef))
+	createdMap.(val.Struct).ForEach(func(k string, v val.Value) bool {
+		i, _ := strconv.Atoi(k)
+		valueList[i] = v
+		return true
+	})
+
+	rw.Write(cdc.Encode(valueList))
 
 }
 

@@ -411,7 +411,7 @@ func (vm VirtualMachine) Execute(program inst.Sequence, scope *ValueScope, args 
 				return nil, e
 			}
 
-			stack.Push(val.MapFromStruct(subArg))
+			stack.Push(subArg)
 
 			// TODO: should primary mid go first for more sensible model IDs in errors?
 			for mid, values := range rm {
