@@ -885,8 +885,7 @@ func decodeStruct(json JSON, strct mdl.Struct) (val.Value, JSON, err.Error) {
 		if _, ok := vs.Get(k); ok {
 			continue
 		}
-		m, _ := strct.Get(k)
-		if m.Nullable() {
+		if m, _ := strct.Get(k); m.Nullable() {
 			vs.Set(k, val.Null)
 			continue
 		}

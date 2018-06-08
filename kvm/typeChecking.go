@@ -151,6 +151,9 @@ func _checkType(actual, expected mdl.Model, recs map[[2]*mdl.Recursion]struct{})
 		if _, ok := actual.(mdl.Null); ok {
 			return nil
 		}
+		if a, ok := actual.(mdl.Optional); ok {
+			return _checkType(a.Model, expected.Model, recs)
+		}
 		return _checkType(actual, expected.Model, recs)
 
 	case mdl.Set:

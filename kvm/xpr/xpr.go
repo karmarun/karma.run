@@ -1568,13 +1568,13 @@ func DataValueFromExpression(x Expression) val.Value {
 			return DataValueFromExpression(Literal{v.Value})
 
 		case val.Tuple:
-			return val.Union{"tuple", make(val.List, len(v), len(v)).OverMap(func(i int, v val.Value) val.Value {
-				return DataValueFromExpression(Literal{v})
+			return val.Union{"tuple", make(val.List, len(v), len(v)).OverMap(func(i int, _ val.Value) val.Value {
+				return DataValueFromExpression(Literal{v[i]})
 			})}
 
 		case val.List:
-			return val.Union{"list", make(val.List, len(v), len(v)).OverMap(func(i int, v val.Value) val.Value {
-				return DataValueFromExpression(Literal{v})
+			return val.Union{"list", make(val.List, len(v), len(v)).OverMap(func(i int, _ val.Value) val.Value {
+				return DataValueFromExpression(Literal{v[i]})
 			})}
 
 		case val.Union:

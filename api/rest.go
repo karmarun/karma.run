@@ -77,7 +77,8 @@ func RestApiGetHttpHandler(rw http.ResponseWriter, rq *http.Request) {
 // query arguments:
 // - length   int  amount of results
 // - offset   int  amount to skip
-// - metadata bool whether to materialize
+// - metadata bool whether to metarialize
+// TODO: sort
 func RestApiGetResourceHttpHandler(resource string, rw http.ResponseWriter, rq *http.Request) {
 
 	cdc := rq.Context().Value(ContextKeyCodec).(codec.Interface)
