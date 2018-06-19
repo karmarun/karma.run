@@ -115,6 +115,9 @@ func encode(value val.Value, cache JSON) JSON {
 		bs = append(bs, '{')
 		first := true
 		v.ForEach(func(k string, v val.Value) bool {
+			if v == val.Null {
+				return true
+			}
 			if !first {
 				bs = append(bs, ',')
 			}
