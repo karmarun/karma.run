@@ -14,6 +14,7 @@ import (
 	"github.com/boltdb/bolt"
 	"golang.org/x/crypto/bcrypt"
 	"karma.run/codec"
+	"karma.run/config"
 	"karma.run/definitions"
 	"karma.run/kvm"
 	"karma.run/kvm/err"
@@ -22,7 +23,6 @@ import (
 	"karma.run/kvm/xpr"
 	"log"
 	"net/http"
-	"os"
 	"sync"
 	"time"
 )
@@ -47,7 +47,7 @@ func AuthHttpHandler(rw http.ResponseWriter, rq *http.Request) {
 	cdc := rq.Context().Value(ContextKeyCodec).(codec.Interface)
 	dtbs := rq.Context().Value(ContextKeyDatabase).(*bolt.DB)
 
-	hmacKey := secretFromEnvironment()
+	hmacKey := []byte(config.InstanceSecret)
 
 	if sig, e := signatureFromRequest(rq); len(sig) > 0 && e == nil { // user provided signature, try to renew it
 		userId, e := tenref(sig, hmacKey)
@@ -84,7 +84,7 @@ func AuthHttpHandler(rw http.ResponseWriter, rq *http.Request) {
 		return
 	}
 
-	if username == "admin" && password == os.Getenv("INSTANCE_SECRET") {
+	if username == "admin" && password == config.InstanceSecret {
 		buf := fernet(rb.Get(definitions.RootUserBytes), hmacKey)
 		rw.Write(cdc.Encode(val.String(base64.RawURLEncoding.EncodeToString(buf))))
 		return

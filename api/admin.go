@@ -8,6 +8,7 @@ import (
 	"github.com/boltdb/bolt"
 	"io"
 	"karma.run/codec"
+	"karma.run/config"
 	"karma.run/db"
 	"karma.run/kvm"
 	"karma.run/kvm/err"
@@ -49,7 +50,7 @@ func ExportHttpHandler(rw http.ResponseWriter, rq *http.Request) {
 		}
 		defer tx.Rollback()
 		rw.Header().Set(`Content-Type`, `application/octet-stream`)
-		rw.Header().Set(`Content-Disposition`, `attachment; filename="`+os.Getenv("DATA_FILE")+`"`)
+		rw.Header().Set(`Content-Disposition`, `attachment; filename="`+config.DataFile+`"`)
 		rw.Header().Set(`Content-Encoding`, `gzip`)
 		_, e = tx.WriteTo(ow)
 		if e != nil {
@@ -88,7 +89,7 @@ func ImportHttpHandler(rw http.ResponseWriter, rq *http.Request) {
 
 	e := db.WhileClosed(func() error {
 
-		f, e := os.OpenFile(os.Getenv("DATA_FILE"), os.O_RDWR|os.O_TRUNC|os.O_CREATE, db.Perm)
+		f, e := os.OpenFile(config.DataFile, os.O_RDWR|os.O_TRUNC|os.O_CREATE, db.Perm)
 		if e != nil {
 			return e
 		}
@@ -120,7 +121,7 @@ func RotateInstanceSecretHttpHandler(rw http.ResponseWriter, rq *http.Request) {
 	cdc := rq.Context().Value(ContextKeyCodec).(codec.Interface)
 	secret := rq.Header.Get(SecretHeader)
 
-	if string(secret) != os.Getenv("INSTANCE_SECRET") {
+	if string(secret) != config.InstanceSecret {
 		log.Printf(`unauthorized attempt to rotate instance secret: %#v`, *rq)
 		rw.WriteHeader(http.StatusForbidden)
 		rw.Write(cdc.Encode(err.PermissionDeniedError{}.Value()))
@@ -128,9 +129,8 @@ func RotateInstanceSecretHttpHandler(rw http.ResponseWriter, rq *http.Request) {
 	}
 
 	newSecret := base64.StdEncoding.EncodeToString(RandIv(512))
-	if e := os.Setenv("INSTANCE_SECRET", newSecret); e != nil {
-		log.Panicln(e)
-	}
+
+	config.InstanceSecret = newSecret
 
 	log.Println("instance secret rotated:", newSecret)
 

@@ -12,129 +12,34 @@ import (
 	"karma.run/api"
 	_ "karma.run/codec/binary"
 	_ "karma.run/codec/json"
+	"karma.run/config"
 	"karma.run/db"
 	"karma.run/kvm"
 	"log"
 	"net/http"
-	"os"
 	"strings"
 )
-
-var (
-	httpPort            string
-	httpsPort           string
-	letsencryptDomains  string
-	letsencryptEmail    string
-	letsencryptCacheDir string
-	httpsCertFile       string
-	httpsKeyFile        string
-	dataPath            string
-	instanceSecret      string
-)
-
-func init() {
-
-	flag.StringVar(&httpPort, "http-port", "80", "Required. Port to serve (insecure) HTTP clients on. Overriden by environment variable: PORT or HTTP_PORT.")
-	flag.StringVar(&httpsPort, "https-port", "443", "Required. Port to serve HTTPS and HTTP/2 clients on. Overriden by environment variable: HTTPS_PORT.")
-
-	flag.StringVar(&letsencryptDomains, "letsencrypt-domains", "", "Comma-separated list of HTTPS domains to automatically secure via LetsEncrypt. Overriden by environment variable: LETSENCRYPT_DOMAINS.")
-	flag.StringVar(&letsencryptEmail, "letsencrypt-email", "", "Sets the contact email for LetsEncrypt. Required if --letsencrypt-domains is set. Overriden by environment variable: LETSENCRYPT_EMAIL.")
-	flag.StringVar(&letsencryptCacheDir, "letsencrypt-cache-dir", "", "Sets the LetsEncrypt file cache location. Required if --letsencrypt-domains is set. Overriden by environment variable: LETSENCRYPT_CACHE_DIR.")
-
-	flag.StringVar(&httpsCertFile, "https-cert-file", "", "Path to TLS certificate. Has no effect if LetsEncrypt config if set. Overriden by environment variable: HTTPS_CERT_FILE.")
-	flag.StringVar(&httpsKeyFile, "https-key-file", "", "Path to TLS private key file. Has no effect if LetsEncrypt config if set. Overriden by environment variable: HTTPS_KEY_FILE.")
-
-	flag.StringVar(&instanceSecret, "instance-secret", "", "Instance secret as base64-encoded string, used to initialize database. Overriden by INSTANCE_SECRET.")
-	flag.StringVar(&dataPath, "data-file", "karma.data", "Path to data file. Overriden by DATA_FILE.")
-
-}
 
 func main() {
 
 	flag.Parse()
 
-	{ // environment overrides
-		if s := os.Getenv(`PORT`); len(s) > 0 {
-			httpPort = s
-		}
-		if s := os.Getenv(`HTTP_PORT`); len(s) > 0 {
-			httpPort = s
-		}
-		if s := os.Getenv(`HTTPS_PORT`); len(s) > 0 {
-			httpsPort = s
-		}
-		if s := os.Getenv(`LETSENCRYPT_DOMAINS`); len(s) > 0 {
-			letsencryptDomains = s
-		}
-		if s := os.Getenv(`LETSENCRYPT_EMAIL`); len(s) > 0 {
-			letsencryptEmail = s
-		}
-		if s := os.Getenv(`LETSENCRYPT_CACHE_DIR`); len(s) > 0 {
-			letsencryptCacheDir = s
-		}
-		if s := os.Getenv(`HTTPS_CERT_FILE`); len(s) > 0 {
-			httpsCertFile = s
-		}
-		if s := os.Getenv(`HTTPS_KEY_FILE`); len(s) > 0 {
-			httpsKeyFile = s
-		}
-		if s := os.Getenv(`INSTANCE_SECRET`); len(s) > 0 {
-			instanceSecret = s
-		}
-		if s := os.Getenv(`DATA_FILE`); len(s) > 0 {
-			dataPath = s
-		}
-	}
-
 	{
-		if len(instanceSecret) == 0 {
+		if len(config.InstanceSecret) == 0 {
 			bs := make([]byte, 512, 512)
 			if n, _ := rand.Read(bs); n < len(bs) {
 				log.Fatalln("error generating instance secret: system entropy too low. see --help to pass one by hand.")
 			}
-			instanceSecret = base64.StdEncoding.EncodeToString(bs)
-			log.Println("no instance secret specified, using generated:", instanceSecret)
+			config.InstanceSecret = base64.StdEncoding.EncodeToString(bs)
+			log.Println("no instance secret specified, using generated:", config.InstanceSecret)
 		} else {
-			secret, e := base64.StdEncoding.DecodeString(instanceSecret)
+			secret, e := base64.StdEncoding.DecodeString(config.InstanceSecret)
 			if e != nil {
 				log.Fatalln("instance secret must be base64-encoded (see --help)")
 			}
 			if len(secret) < 512 {
 				log.Fatalf("decoded instance secret must be longer than %d bytes\n", 512)
 			}
-		}
-	}
-
-	{ // publish environment
-		if e := os.Setenv(`PORT`, httpPort); e != nil {
-			log.Fatalln(e)
-		}
-		if e := os.Setenv(`HTTP_PORT`, httpPort); e != nil {
-			log.Fatalln(e)
-		}
-		if e := os.Setenv(`HTTPS_PORT`, httpsPort); e != nil {
-			log.Fatalln(e)
-		}
-		if e := os.Setenv(`LETSENCRYPT_DOMAINS`, letsencryptDomains); e != nil {
-			log.Fatalln(e)
-		}
-		if e := os.Setenv(`LETSENCRYPT_EMAIL`, letsencryptEmail); e != nil {
-			log.Fatalln(e)
-		}
-		if e := os.Setenv(`LETSENCRYPT_CACHE_DIR`, letsencryptCacheDir); e != nil {
-			log.Fatalln(e)
-		}
-		if e := os.Setenv(`HTTPS_CERT_FILE`, httpsCertFile); e != nil {
-			log.Fatalln(e)
-		}
-		if e := os.Setenv(`HTTPS_KEY_FILE`, httpsKeyFile); e != nil {
-			log.Fatalln(e)
-		}
-		if e := os.Setenv(`INSTANCE_SECRET`, instanceSecret); e != nil {
-			log.Fatalln(e)
-		}
-		if e := os.Setenv(`DATA_FILE`, dataPath); e != nil {
-			log.Fatalln(e)
 		}
 	}
 
@@ -164,12 +69,12 @@ func main() {
 	}
 
 	log.Println("starting karma.run...")
-	log.Println("HTTP port:", httpPort)
+	log.Println("HTTP port:", config.HttpPort)
 
 	httpServer, httpsServer := (*http.Server)(nil), (*http.Server)(nil)
 
 	httpServer = &http.Server{
-		Addr:    ":" + httpPort,
+		Addr:    ":" + config.HttpPort,
 		Handler: http.HandlerFunc(api.HttpHandler),
 	}
 
@@ -181,42 +86,42 @@ func main() {
 	})
 
 	{ // LetsEncrypt support
-		if (len(letsencryptDomains) > 0 && len(letsencryptEmail) == 0) || (len(letsencryptDomains) == 0 && len(letsencryptEmail) > 0) {
+		if (len(config.LetsencryptDomains) > 0 && len(config.LetsencryptEmail) == 0) || (len(config.LetsencryptDomains) == 0 && len(config.LetsencryptEmail) > 0) {
 			log.Fatalln("--letsencrypt-email and --letsencrypt-domains must be set together.")
 		}
-		if (len(letsencryptDomains) > 0 && len(letsencryptCacheDir) == 0) || (len(letsencryptDomains) == 0 && len(letsencryptCacheDir) > 0) {
+		if (len(config.LetsencryptDomains) > 0 && len(config.LetsencryptCacheDir) == 0) || (len(config.LetsencryptDomains) == 0 && len(config.LetsencryptCacheDir) > 0) {
 			log.Fatalln("--letsencrypt-cache-dir and --letsencrypt-domains must be set together.")
 		}
 
-		if len(letsencryptDomains) > 0 {
-			domains := strings.Split(letsencryptDomains, ",")
-			log.Println("HTTPS port:", httpsPort)
+		if len(config.LetsencryptDomains) > 0 {
+			domains := strings.Split(config.LetsencryptDomains, ",")
+			log.Println("HTTPS port:", config.HttpsPort)
 			log.Println("LetsEncrypt domains:", domains)
-			log.Println("LetsEncrypt email:", letsencryptEmail)
+			log.Println("LetsEncrypt email:", config.LetsencryptEmail)
 			m := autocert.Manager{
 				Prompt:     autocert.AcceptTOS,
-				Cache:      (autocert.DirCache)(letsencryptCacheDir),
+				Cache:      (autocert.DirCache)(config.LetsencryptCacheDir),
 				HostPolicy: autocert.HostWhitelist(domains...),
-				Email:      letsencryptEmail,
+				Email:      config.LetsencryptEmail,
 			}
 			httpsServer = &http.Server{
-				Addr:      ":" + httpsPort,
+				Addr:      ":" + config.HttpsPort,
 				Handler:   http.HandlerFunc(api.HttpHandler),
 				TLSConfig: &tls.Config{GetCertificate: m.GetCertificate},
 			}
 			httpServer.Handler = m.HTTPHandler(httpsRedirectionHandler)
-			httpsCertFile, httpsKeyFile = ``, ``
+			config.HttpsCertFile, config.HttpsKeyFile = ``, ``
 		}
 	}
 
 	{ // Own TLS config support
-		if (len(httpsCertFile) > 0 && len(httpsKeyFile) == 0) || (len(httpsCertFile) == 0 && len(httpsKeyFile) > 0) {
+		if (len(config.HttpsCertFile) > 0 && len(config.HttpsKeyFile) == 0) || (len(config.HttpsCertFile) == 0 && len(config.HttpsKeyFile) > 0) {
 			log.Fatalln("--https-cert-file and --https-key-file must be set together.")
 		}
 
-		if len(httpsCertFile) > 0 {
+		if len(config.HttpsCertFile) > 0 {
 			httpsServer = &http.Server{
-				Addr:    ":" + httpsPort,
+				Addr:    ":" + config.HttpsPort,
 				Handler: http.HandlerFunc(api.HttpHandler),
 			}
 			httpServer.Handler = httpsRedirectionHandler
@@ -232,7 +137,7 @@ func main() {
 
 	if httpsServer != nil {
 		go func() {
-			if e := httpsServer.ListenAndServeTLS(httpsCertFile, httpsKeyFile); e != http.ErrServerClosed {
+			if e := httpsServer.ListenAndServeTLS(config.HttpsCertFile, config.HttpsKeyFile); e != http.ErrServerClosed {
 				log.Fatalln("HTTPS", e.Error())
 			}
 		}()

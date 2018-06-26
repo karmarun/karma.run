@@ -4,6 +4,7 @@ package db
 
 import (
 	"github.com/boltdb/bolt"
+	"karma.run/config"
 	"log"
 	"os"
 	"os/signal"
@@ -31,7 +32,7 @@ func Open() (*bolt.DB, error) {
 	defer mutex.Unlock()
 
 	if database == nil {
-		db, e := openDatabase(os.Getenv("DATA_FILE"))
+		db, e := openDatabase(config.DataFile)
 		if e != nil {
 			return nil, e
 		}
@@ -67,7 +68,7 @@ func Reload() (*bolt.DB, error) {
 	mutex.Lock()
 	defer mutex.Unlock()
 
-	db, e := openDatabase(os.Getenv("DATA_FILE"))
+	db, e := openDatabase(config.DataFile)
 	if e != nil {
 		return nil, e
 	}

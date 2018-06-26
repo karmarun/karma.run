@@ -10,6 +10,7 @@ import (
 	"github.com/boltdb/bolt"
 	"io"
 	"karma.run/codec"
+	"karma.run/config"
 	"karma.run/db"
 	"karma.run/definitions"
 	"karma.run/kvm"
@@ -92,7 +93,7 @@ func HttpHandler(rw http.ResponseWriter, rq *http.Request) {
 		defer gz.Close()
 	}
 
-	if len(os.Getenv("PPROF")) > 0 && strings.HasPrefix(rq.URL.Path, "/debug/pprof") {
+	if len(os.Getenv("KARMA_PPROF")) > 0 && strings.HasPrefix(rq.URL.Path, "/debug/pprof") {
 		http.DefaultServeMux.ServeHTTP(rw, rq)
 		return
 	}
@@ -111,13 +112,6 @@ func HttpHandler(rw http.ResponseWriter, rq *http.Request) {
 	if rq.Method == http.MethodGet && path == "" { // health checks, etc...
 		rw.WriteHeader(http.StatusOK)
 		rw.Write([]byte(`karma.run ` + version))
-		return
-	}
-
-	if len(os.Getenv("DOCS_PATH")) > 0 && len(path) >= len(DocsPrefix) && path[:len(DocsPrefix)] == DocsPrefix {
-		path = path[len(DocsPrefix):]
-		path = os.Getenv("DOCS_PATH") + path
-		http.ServeFile(rw, rq, path)
 		return
 	}
 
@@ -171,7 +165,7 @@ func HttpHandler(rw http.ResponseWriter, rq *http.Request) {
 		return
 	}
 
-	userId, ke := tenref(sig, secretFromEnvironment())
+	userId, ke := tenref(sig, []byte(config.InstanceSecret))
 	if ke != nil {
 		rw.WriteHeader(http.StatusForbidden)
 		rw.Write(cdc.Encode(err.HumanReadableError{err.PermissionDeniedError{ke}}.Value()))
@@ -327,11 +321,6 @@ func signatureFromRequest(rq *http.Request) ([]byte, error) {
 		sig = s
 	}
 	return base64.RawURLEncoding.DecodeString(sig)
-}
-
-func secretFromEnvironment() []byte {
-	bs, _ := base64.StdEncoding.DecodeString(os.Getenv("INSTANCE_SECRET"))
-	return bs
 }
 
 func adminUserIdFromDatabase(db *bolt.DB) ([]byte, err.Error) {
