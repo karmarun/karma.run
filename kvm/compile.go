@@ -443,7 +443,7 @@ func (vm VirtualMachine) CompileExpression(typed xpr.TypedExpression, prev inst.
 			Values: map[string]inst.Sequence{
 				"self": vm.CompileFunction(node.Value.(xpr.TypedFunction)),
 			},
-		}, inst.Constant{val.String("self")}, inst.Key{})
+		}, inst.Field{"self"})
 
 	case xpr.InList:
 		prev = vm.CompileExpression(node.In.(xpr.TypedExpression), prev)
