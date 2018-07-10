@@ -415,9 +415,6 @@ func ModelFromValue(metaId string, u val.Union, recursions map[string]*Recursion
 	case "float":
 		return Float{}, nil
 
-	case "uint":
-		return Uint64{}, nil
-
 	case "int8":
 		return Int8{}, nil
 
@@ -441,9 +438,6 @@ func ModelFromValue(metaId string, u val.Union, recursions map[string]*Recursion
 
 	case "uint64":
 		return Uint64{}, nil
-
-	case "int":
-		return Int64{}, nil
 
 	case "string":
 		return String{}, nil

@@ -69,8 +69,6 @@ func NewMetaModelValue(metaId string) val.Value {
 			"dateTime": val.Union{"struct", val.Map{}},
 			"float":    val.Union{"struct", val.Map{}},
 			"string":   val.Union{"struct", val.Map{}},
-			"int":      val.Union{"struct", val.Map{}},
-			"uint":     val.Union{"struct", val.Map{}},
 			"int8":     val.Union{"struct", val.Map{}},
 			"int16":    val.Union{"struct", val.Map{}},
 			"int32":    val.Union{"struct", val.Map{}},
