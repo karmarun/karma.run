@@ -485,8 +485,8 @@ func ExpressionFromValue(v val.Value) Expression {
 		return If{ExpressionFromValue(arg.Field("condition")), ExpressionFromValue(arg.Field("then")), ExpressionFromValue(arg.Field("else"))}
 
 	case "with":
-		arg := u.Value.(val.Struct)
-		return With{ExpressionFromValue(arg.Field("value")), FunctionFromValue(arg.Field("return"))}
+		arg := u.Value.(val.Tuple)
+		return With{ExpressionFromValue(arg[0]), FunctionFromValue(arg[1])}
 
 	case "update":
 		arg := u.Value.(val.Struct)
@@ -590,23 +590,23 @@ func ExpressionFromValue(v val.Value) Expression {
 		return Equal{ExpressionFromValue(arg[0]), ExpressionFromValue(arg[1])}
 
 	case "or":
-		arg := u.Value.(val.Set)
+		arg := u.Value.(val.List)
 		if len(arg) == 1 {
 			for _, sub := range arg {
 				return ExpressionFromValue(sub)
 			}
 		}
-		nod := make(Or, 0, len(arg))
-		for _, sub := range arg {
-			nod = append(nod, ExpressionFromValue(sub))
+		nod := make(Or, len(arg), len(arg))
+		for i, sub := range arg {
+			nod[i] = append(nod, ExpressionFromValue(sub))
 		}
 		return nod
 
 	case "and":
-		arg := u.Value.(val.Set)
-		nod := make(And, 0, len(arg))
-		for _, sub := range arg {
-			nod = append(nod, ExpressionFromValue(sub))
+		arg := u.Value.(val.List)
+		nod := make(And, len(arg), len(arg))
+		for i, sub := range arg {
+			nod[i] = append(nod, ExpressionFromValue(sub))
 		}
 		return nod
 
@@ -685,8 +685,11 @@ func ExpressionFromValue(v val.Value) Expression {
 		return Field{string(arg[0].(val.String)), ExpressionFromValue(arg[1])}
 
 	case "indexTuple":
-		arg := u.Value.(val.Struct)
-		return IndexTuple{ExpressionFromValue(arg.Field("value")), ExpressionFromValue(arg.Field("number"))}
+		arg := u.Value.(val.Tuple)
+		return IndexTuple{
+			ExpressionFromValue(arg[0]),
+			arg[1].(val.Int64),
+		}
 
 	case "not":
 		return Not{ExpressionFromValue(u.Value)}
@@ -701,16 +704,15 @@ func ExpressionFromValue(v val.Value) Expression {
 		return RefTo{ExpressionFromValue(u.Value)}
 
 	case "switchCase":
-		arg := u.Value.(val.Struct)
+		arg := u.Value.(val.Tuple)
 		cases := make(map[string]Function)
-		arg.Field("cases").(val.Map).ForEach(func(k string, v val.Value) bool {
+		arg[1].(val.Map).ForEach(func(k string, v val.Value) bool {
 			cases[k] = FunctionFromValue(v)
 			return true
 		})
 		return SwitchCase{
-			Value:   ExpressionFromValue(arg.Field("value")),
-			Default: ExpressionFromValue(arg.Field("default")),
-			Cases:   cases,
+			Value: ExpressionFromValue(arg[0]),
+			Cases: cases,
 		}
 
 	case "memSort":
@@ -1268,10 +1270,10 @@ func ValueFromExpression(x Expression) val.Value {
 		})}
 
 	case With:
-		return val.Union{"with", val.StructFromMap(map[string]val.Value{
-			"value":  ValueFromExpression(node.Value),
-			"return": ValueFromFunction(node.Return),
-		})}
+		return val.Union{"with", val.Tuple{
+			ValueFromExpression(node.Value),
+			ValueFromFunction(node.Return),
+		}}
 
 	case Update:
 		return val.Union{"update", val.StructFromMap(map[string]val.Value{
@@ -1334,10 +1336,10 @@ func ValueFromExpression(x Expression) val.Value {
 		return val.Union{"key", val.Tuple{ValueFromExpression(node.Name), ValueFromExpression(node.Value)}}
 
 	case IndexTuple:
-		return val.Union{"indexTuple", val.StructFromMap(map[string]val.Value{
-			"number": ValueFromExpression(node.Number),
-			"value":  ValueFromExpression(node.Value),
-		})}
+		return val.Union{"indexTuple", val.Tuple{
+			ValueFromExpression(node.Value),
+			node.Number,
+		}}
 
 	case Referred:
 		return val.Union{"referred", val.StructFromMap(map[string]val.Value{
@@ -1376,18 +1378,16 @@ func ValueFromExpression(x Expression) val.Value {
 		}}
 
 	case And:
-		arg := make(val.Set, len(node))
-		for _, v := range node {
-			w := ValueFromExpression(v)
-			arg[val.Hash(w, nil).Sum64()] = w
+		arg := make(val.List, len(node), len(node))
+		for i, v := range node {
+			arg[i] = ValueFromExpression(v)
 		}
 		return val.Union{"and", arg}
 
 	case Or:
-		arg := make(val.Set, len(node))
-		for _, v := range node {
-			w := ValueFromExpression(v)
-			arg[val.Hash(w, nil).Sum64()] = w
+		arg := make(val.List, len(node), len(node))
+		for i, v := range node {
+			arg[i] = ValueFromExpression(v)
 		}
 		return val.Union{"or", arg}
 
@@ -1483,11 +1483,7 @@ func ValueFromExpression(x Expression) val.Value {
 		for k, v := range node.Cases {
 			cases.Set(k, ValueFromFunction(v))
 		}
-		return val.Union{"switchCase", val.StructFromMap(map[string]val.Value{
-			"value":   ValueFromExpression(node.Value),
-			"default": ValueFromExpression(node.Default),
-			"cases":   cases,
-		})}
+		return val.Union{"switchCase", val.Tuple{ValueFromExpression(node.Value), cases}}
 
 	case MemSort:
 		return val.Union{"memSort", val.StructFromMap(map[string]val.Value{

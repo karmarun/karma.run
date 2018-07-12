@@ -1314,12 +1314,7 @@ func (vm VirtualMachine) Write(mid string, values map[string]val.Meta) err.Error
 				if sb := migs.Bucket([]byte(sourceMID)); sb != nil {
 					if bs := sb.Get([]byte(targetMID)); bs != nil {
 						return err.ExecutionError{
-							fmt.Sprintf(`there is already a migration from source model "%s" to target model "%s"`, sourceMID, targetMID),
-							nil,
-							// C: val.Map{
-							// 	"source": source,
-							// 	"target": target,
-							// },
+							Problem: fmt.Sprintf(`there is already a migration from source model %s to target model %s`, sourceMID, targetMID),
 						}
 					}
 				}
@@ -1347,12 +1342,7 @@ func (vm VirtualMachine) Write(mid string, values map[string]val.Meta) err.Error
 			for dependant, dependency := range dependencies {
 				if _, ok := sources[dependant]; !ok {
 					return err.ExecutionError{
-						fmt.Sprintf(`model "%s" has graph relations to model "%s" but is not included as source in migration`, dependant, dependency),
-						nil,
-						// C: val.Map{
-						// 	"dependant":  val.Ref{vm.MetaModelId(), dependant},
-						// 	"dependency": val.Ref{vm.MetaModelId(), dependency},
-						// },
+						Problem: fmt.Sprintf(`model %s has graph relations to model %s but is not included as source in migration`, dependant, dependency),
 					}
 				}
 			}
@@ -1377,19 +1367,65 @@ func (vm VirtualMachine) Write(mid string, values map[string]val.Meta) err.Error
 					return e
 				}
 
-				exprRef := val.Ref{}
-				expr := (val.Value)(nil)
+				fun := (xpr.Function)(nil)
 
 				if expression := migration.Field("expression").(val.Union); expression.Case == "auto" {
+					x, e := findAutoTransformation(sourceModel.Unwrap(), targetModel.Unwrap())
+					if e != nil {
+						return e
+					}
+					fun = x
+				} else { // expression.Case == "manual"
+					exprRef := expression.Value.(val.Ref)
+					x, e := vm.Get(exprRef[0], exprRef[1])
+					if e != nil {
+						return e
+					}
+					fun = xpr.FunctionFromValue(x.Value)
 				}
 
-				panic("todo")
+				typedFun, e := vm.TypeFunctionWithArguments(fun, nil, targetModel.Unwrap(), sourceModel.Unwrap())
+				if e != nil {
+					return e
+				}
 
-				_ = sgim
-				_ = sourceModel
-				_ = targetModel
-				_ = exprRef
-				_ = expr
+				instructions := vm.CompileFunction(typedFun)
+
+				{ // migration path index
+					migBucket, e := migs.CreateBucketIfNotExists([]byte(sourceMID))
+					if e != nil {
+						panic(e)
+					}
+					if e := migBucket.Put([]byte(targetMID), []byte{}); e != nil {
+						panic(e)
+					}
+					gimBucket, e := sgim.CreateBucketIfNotExists([]byte(targetMID))
+					if e != nil {
+						panic(e)
+					}
+					if e := gimBucket.Put([]byte(sourceMID), []byte{}); e != nil {
+						panic(e)
+					}
+				}
+
+				sourceBucket := db.Bucket([]byte(sourceModel.Bucket))
+				targetBucket := db.Bucket([]byte(targetModel.Bucket))
+
+				iter := newBucketDecodingIterator(sourceBucket, sourceModel)
+				e = iter.forEach(func(v val.Value) err.Error {
+					mv := v.(val.Meta)
+					migrated, e := vm.Execute(instructions, nil, mv.Value)
+					if e != nil {
+						return e
+					}
+					if e := targetBucket.Put([]byte(mv.Id[1]), karma.Encode(migrated, targetModel.Unwrap())); e != nil {
+						panic(e)
+					}
+					return nil
+				})
+				if e != nil {
+					return e
+				}
 
 			}
 
@@ -1757,7 +1793,7 @@ func (vm *VirtualMachine) permissionsForUserId(uid string) (*permissions, err.Er
 		u = append(u, unMeta(s.Field("update")))
 		d = append(d, unMeta(s.Field("delete")))
 	}
-	ci, cm, ce := vm.ParseAndCompile(orExpressions(c), nil, []mdl.Model{AnyModel}, mdl.Bool{})
+	ci, cm, ce := vm.ParseAndCompile(orFunctions(c), nil, []mdl.Model{AnyModel}, mdl.Bool{})
 	if ce != nil {
 		return nil, err.ExecutionError{
 			Problem: `failed compiling create permissions`,
@@ -1770,7 +1806,7 @@ func (vm *VirtualMachine) permissionsForUserId(uid string) (*permissions, err.Er
 			nil,
 		}
 	}
-	ri, rm, re := vm.ParseAndCompile(orExpressions(r), nil, []mdl.Model{AnyModel}, mdl.Bool{})
+	ri, rm, re := vm.ParseAndCompile(orFunctions(r), nil, []mdl.Model{AnyModel}, mdl.Bool{})
 	if re != nil {
 		return nil, err.ExecutionError{
 			Problem: `failed compiling read permissions`,
@@ -1783,7 +1819,7 @@ func (vm *VirtualMachine) permissionsForUserId(uid string) (*permissions, err.Er
 			nil,
 		}
 	}
-	ui, um, ue := vm.ParseAndCompile(orExpressions(u), nil, []mdl.Model{AnyModel}, mdl.Bool{})
+	ui, um, ue := vm.ParseAndCompile(orFunctions(u), nil, []mdl.Model{AnyModel}, mdl.Bool{})
 	if re != nil {
 		return nil, err.ExecutionError{
 			Problem: `failed compiling update permissions`,
@@ -1796,7 +1832,7 @@ func (vm *VirtualMachine) permissionsForUserId(uid string) (*permissions, err.Er
 			nil,
 		}
 	}
-	di, dm, de := vm.ParseAndCompile(orExpressions(d), nil, []mdl.Model{AnyModel}, mdl.Bool{})
+	di, dm, de := vm.ParseAndCompile(orFunctions(d), nil, []mdl.Model{AnyModel}, mdl.Bool{})
 	if de != nil {
 		return nil, err.ExecutionError{
 			Problem: `failed compiling delete permissions`,
@@ -1812,14 +1848,22 @@ func (vm *VirtualMachine) permissionsForUserId(uid string) (*permissions, err.Er
 	return &permissions{create: ci, read: ri, update: ui, delete: di}, nil
 }
 
-func orExpressions(xs val.List /* of val.Unions */) val.Value {
-	if len(xs) == 0 {
-		return val.Union{"bool", val.Bool(false)}
+func orFunctions(fs val.List) val.Value {
+	if len(fs) == 0 {
+		return xpr.ValueFromFunction(xpr.NewFunction([]string{"_"}, xpr.Literal{val.Bool(false)}))
 	}
-	if len(xs) == 1 {
-		return xs[0]
+	if len(fs) == 1 {
+		return fs[0]
 	}
-	return val.Union{"or", xs}
+	return val.Union{"function", val.Tuple{
+		val.List{val.String("input")},
+		fs.Map(func(_ int, function val.Value) val.Value {
+			return val.Union{"with", val.Tuple{
+				val.Union{"scope", val.String("input")},
+				function,
+			}}
+		}),
+	}}
 }
 
 func findCycle(reachable map[string]map[string]struct{}, vertex string, path []string) []string {

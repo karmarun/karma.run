@@ -2244,19 +2244,7 @@ func (vm VirtualMachine) TypeExpression(node xpr.Expression, scope *ModelScope, 
 		retNode = xpr.TypedExpression{node, expected, model}
 
 	case xpr.IndexTuple:
-		number, e := vm.TypeExpression(node.Number, scope, Int64Model)
-		if e != nil {
-			return number, e
-		}
-		node.Number = number
-		cn, ok := number.Actual.(ConstantModel)
-		if !ok {
-			return ZeroTypedExpression, err.CompilationError{
-				Problem: `index: number argument must be constant expression`,
-				Program: xpr.ValueFromExpression(number),
-			}
-		}
-		index := int(cn.Value.(val.Int64))
+		index := int(node.Number)
 		arity := index + 1
 		subExpect := make(mdl.Tuple, arity, arity)
 		for i, _ := range subExpect {
@@ -2488,29 +2476,25 @@ func (vm VirtualMachine) TypeExpression(node xpr.Expression, scope *ModelScope, 
 			subExpect.Set(k, AnyModel)
 		}
 
-		// TODO: ^ will not work for anything but a switchCase with all cases defined
-
 		value, e := vm.TypeExpression(node.Value, scope, subExpect)
 		if e != nil {
 			return value, e
 		}
 		node.Value = value
 
-		dflt, e := vm.TypeExpression(node.Default, scope, AnyModel)
-		if e != nil {
-			return dflt, e
-		}
-		node.Default = dflt
-
 		union := value.Actual.Concrete().(mdl.Union)
-		model := dflt.Actual.Unwrap()
+		model := (mdl.Model)(nil)
 
 		for k, sub := range node.Cases {
 			fun, e := vm.TypeFunctionWithArguments(sub, scope, AnyModel, union.Case(k))
 			if e != nil {
 				return ZeroTypedExpression, e
 			}
-			model = mdl.Either(model, fun.Actual.Unwrap(), nil)
+			if model == nil {
+				model = fun.Actual.Unwrap()
+			} else {
+				model = mdl.Either(model, fun.Actual.Unwrap(), nil)
+			}
 			node.Cases[k] = fun
 		}
 

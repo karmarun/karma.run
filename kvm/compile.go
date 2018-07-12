@@ -526,9 +526,7 @@ func (vm VirtualMachine) CompileExpression(typed xpr.TypedExpression, prev inst.
 
 	case xpr.IndexTuple:
 		prev = vm.CompileExpression(node.Value.(xpr.TypedExpression), prev)
-		return append(prev, inst.IndexTuple{
-			int(node.Number.(xpr.TypedExpression).Actual.(ConstantModel).Value.(val.Int64)),
-		})
+		return append(prev, inst.IndexTuple{int(node.Number)})
 
 	case xpr.NewList:
 		for _, sub := range node {
@@ -731,7 +729,6 @@ func (vm VirtualMachine) CompileExpression(typed xpr.TypedExpression, prev inst.
 			switchCase[k] = vm.CompileFunction(v.(xpr.TypedFunction))
 		}
 		prev = vm.CompileExpression(node.Value.(xpr.TypedExpression), prev)
-		prev = vm.CompileExpression(node.Default.(xpr.TypedExpression), prev)
 		return append(prev, switchCase)
 
 	case xpr.MemSort:

@@ -573,11 +573,12 @@ func (x Key) Transform(f func(Expression) Expression) Expression {
 }
 
 type IndexTuple struct {
-	Value, Number Expression
+	Value  Expression
+	Number val.Int64
 }
 
 func (x IndexTuple) Transform(f func(Expression) Expression) Expression {
-	return f(IndexTuple{x.Value.Transform(f), x.Number.Transform(f)})
+	return f(IndexTuple{x.Value.Transform(f), x.Number})
 }
 
 type NewSet []Expression
@@ -1013,13 +1014,12 @@ func (x RelocateRef) Transform(f func(Expression) Expression) Expression {
 }
 
 type SwitchCase struct {
-	Value   Expression
-	Default Expression
-	Cases   map[string]Function
+	Value Expression
+	Cases map[string]Function
 }
 
 func (x SwitchCase) Transform(f func(Expression) Expression) Expression {
-	return f(SwitchCase{x.Value.Transform(f), x.Default.Transform(f), x.Cases})
+	return f(SwitchCase{x.Value.Transform(f), x.Cases})
 }
 
 type MapSet struct {
