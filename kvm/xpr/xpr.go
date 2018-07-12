@@ -85,6 +85,18 @@ func ExpressionFromValue(v val.Value) Expression {
 	case "scope":
 		return Scope(u.Value.(val.String))
 
+	case "stringContains":
+		args := u.Value.(val.Tuple)
+		return StringContains{ExpressionFromValue(args[0]), ExpressionFromValue(args[1])}
+
+	case "substringIndex":
+		args := u.Value.(val.Tuple)
+		return SubstringIndex{ExpressionFromValue(args[0]), ExpressionFromValue(args[1])}
+
+	case "memSortFunction":
+		args := u.Value.(val.Tuple)
+		return MemSortFunction{ExpressionFromValue(args[0]), FunctionFromValue(args[1])}
+
 	case "gtFloat":
 		args := u.Value.(val.Tuple)
 		lhs := ExpressionFromValue(args[0])
@@ -1490,6 +1502,24 @@ func ValueFromExpression(x Expression) val.Value {
 			"value":      ValueFromExpression(node.Value),
 			"expression": ValueFromFunction(node.Order),
 		})}
+
+	case StringContains:
+		return val.Union{"stringContains", val.Tuple{
+			ValueFromExpression(node.String),
+			ValueFromExpression(node.Search),
+		}}
+
+	case SubstringIndex:
+		return val.Union{"substringIndex", val.Tuple{
+			ValueFromExpression(node.String),
+			ValueFromExpression(node.Search),
+		}}
+
+	case MemSortFunction:
+		return val.Union{"memSortFunction", val.Tuple{
+			ValueFromExpression(node.List),
+			ValueFromFunction(node.Less),
+		}}
 
 	case Scope:
 		return val.Union{"scope", val.String(node)}

@@ -58,6 +58,20 @@ func (vm VirtualMachine) CompileExpression(typed xpr.TypedExpression, prev inst.
 	case xpr.Scope:
 		return append(prev, inst.Scope(node))
 
+	case xpr.StringContains:
+		prev = vm.CompileExpression(node.String.(xpr.TypedExpression), prev)
+		prev = vm.CompileExpression(node.Search.(xpr.TypedExpression), prev)
+		return append(prev, inst.SubstringIndex{}, inst.Constant{val.Int64(-1)}, inst.GreaterInt64{})
+
+	case xpr.SubstringIndex:
+		prev = vm.CompileExpression(node.String.(xpr.TypedExpression), prev)
+		prev = vm.CompileExpression(node.Search.(xpr.TypedExpression), prev)
+		return append(prev, inst.SubstringIndex{})
+
+	case xpr.MemSortFunction:
+		prev = vm.CompileExpression(node.List.(xpr.TypedExpression), prev)
+		return append(prev, inst.MemSortFunction{vm.CompileFunction(node.Less.(xpr.TypedFunction))})
+
 	case xpr.GtFloat:
 		prev = vm.CompileExpression(node[0].(xpr.TypedExpression), prev)
 		prev = vm.CompileExpression(node[1].(xpr.TypedExpression), prev)

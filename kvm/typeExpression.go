@@ -185,6 +185,56 @@ func (vm VirtualMachine) TypeExpression(node xpr.Expression, scope *ModelScope, 
 
 	switch node := node.(type) {
 
+	case xpr.StringContains:
+
+		stryng, e := vm.TypeExpression(node.String, scope, StringModel)
+		if e != nil {
+			return ZeroTypedExpression, e
+		}
+		node.String = stryng
+
+		search, e := vm.TypeExpression(node.Search, scope, StringModel)
+		if e != nil {
+			return ZeroTypedExpression, e
+		}
+		node.Search = search
+
+		retNode = xpr.TypedExpression{node, expected, mdl.Bool{}}
+
+	case xpr.SubstringIndex:
+
+		stryng, e := vm.TypeExpression(node.String, scope, StringModel)
+		if e != nil {
+			return ZeroTypedExpression, e
+		}
+		node.String = stryng
+
+		search, e := vm.TypeExpression(node.Search, scope, StringModel)
+		if e != nil {
+			return ZeroTypedExpression, e
+		}
+		node.Search = search
+
+		retNode = xpr.TypedExpression{node, expected, mdl.Int64{}}
+
+	case xpr.MemSortFunction:
+
+		list, e := vm.TypeExpression(node.List, scope, mdl.List{AnyModel})
+		if e != nil {
+			return ZeroTypedExpression, e
+		}
+		node.List = list
+
+		listModel := list.Actual.Unwrap().(mdl.List)
+
+		less, e := vm.TypeFunctionWithArguments(node.Less, scope, BoolModel, listModel.Elements, listModel.Elements)
+		if e != nil {
+			return ZeroTypedExpression, e
+		}
+		node.Less = less
+
+		retNode = xpr.TypedExpression{node, expected, listModel}
+
 	case xpr.FunctionSignature:
 		typed, e := vm.TypeFunction(node.Function, scope, expected)
 		if e != nil {

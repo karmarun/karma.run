@@ -1054,3 +1054,30 @@ type Scope string
 func (x Scope) Transform(f func(Expression) Expression) Expression {
 	return f(x)
 }
+
+type StringContains struct {
+	String Expression
+	Search Expression
+}
+
+func (x StringContains) Transform(f func(Expression) Expression) Expression {
+	return f(StringContains{x.String.Transform(f), x.Search.Transform(f)})
+}
+
+type SubstringIndex struct {
+	String Expression
+	Search Expression
+}
+
+func (x SubstringIndex) Transform(f func(Expression) Expression) Expression {
+	return f(SubstringIndex{x.String.Transform(f), x.Search.Transform(f)})
+}
+
+type MemSortFunction struct {
+	List Expression
+	Less Function
+}
+
+func (x MemSortFunction) Transform(f func(Expression) Expression) Expression {
+	return f(MemSortFunction{x.List.Transform(f), x.Less})
+}

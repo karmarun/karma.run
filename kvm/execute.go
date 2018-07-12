@@ -155,6 +155,13 @@ func (vm VirtualMachine) Execute(program inst.Sequence, scope *ValueScope, args 
 			}
 			stack.Push(v)
 
+		case inst.SubstringIndex:
+			search := unMeta(stack.Pop()).(val.String)
+			stryng := unMeta(stack.Pop()).(val.String)
+			stack.Push(val.Int64(
+				strings.Index(string(stryng), string(search)),
+			))
+
 		case inst.BuildList:
 			ls := make(val.List, it.Length, it.Length)
 			for i := it.Length - 1; i > -1; i-- {
@@ -1201,6 +1208,37 @@ func (vm VirtualMachine) Execute(program inst.Sequence, scope *ValueScope, args 
 			case "model":
 				stack.Push(mv.Model)
 			}
+
+		case inst.MemSortFunction:
+
+			list := (val.List)(nil)
+
+			switch ls := unMeta(stack.Pop()).(type) {
+			case val.List:
+				list = ls.Copy().(val.List)
+			case iteratorValue:
+				l, e := iteratorToList(ls.iterator)
+				if e != nil {
+					return nil, e
+				}
+				list = l
+			default:
+				log.Panicf("Execute: MemSortFunction: unexpected type on stack: %T.", ls)
+			}
+
+			errout := (err.Error)(nil)
+			sort.Slice(list, func(i, j int) bool {
+				v, e := vm.Execute(it.Less, scope, list[i], list[j])
+				if e != nil {
+					if errout == nil {
+						errout = e
+					}
+					return false
+				}
+				return bool(v.(val.Bool))
+			})
+
+			stack.Push(list)
 
 		case inst.MemSort:
 

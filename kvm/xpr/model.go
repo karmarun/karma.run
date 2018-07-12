@@ -87,7 +87,11 @@ var LanguageModel = mdl.DefineRecursion("function", func(function *mdl.Recursion
 			"tag":            expression,
 			"allReferrers":   expression,
 			"tagExists":      expression,
-			"zero":           mdl.NewStruct(0),
+			"zero":           mdl.EmptyStruct,
+
+			"stringContains":  mdl.Tuple{expression, expression},
+			"substringIndex":  mdl.Tuple{expression, expression},
+			"memSortFunction": mdl.Tuple{expression, function},
 
 			"addFloat":  mdl.Tuple{expression, expression},
 			"addInt64":  mdl.Tuple{expression, expression},

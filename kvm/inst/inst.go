@@ -339,6 +339,12 @@ type With struct {
 	Expression Sequence
 }
 
+type SubstringIndex struct{}
+
+type MemSortFunction struct {
+	Less Sequence
+}
+
 func (AddFloats) _inst()         {}
 func (AddInts) _inst()           {}
 func (All) _inst()               {}
@@ -498,3 +504,5 @@ func (BuildSet) _inst()          {}
 func (Scope) _inst()             {}
 func (Define) _inst()            {}
 func (TagExists) _inst()         {}
+func (SubstringIndex) _inst()    {}
+func (MemSortFunction) _inst()   {}
