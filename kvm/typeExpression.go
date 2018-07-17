@@ -1509,11 +1509,15 @@ func (vm VirtualMachine) TypeExpression(node xpr.Expression, scope *ModelScope, 
 		}
 		node.Argument = arg
 		mid := arg.Actual.Concrete().(mdl.Ref).Model
-		model, e := vm.Model(mid)
-		if e != nil {
-			return ZeroTypedExpression, e
+		if mid == "" {
+			retNode = xpr.TypedExpression{node, expected, AnyModel}
+		} else {
+			model, e := vm.Model(mid)
+			if e != nil {
+				return ZeroTypedExpression, e
+			}
+			retNode = xpr.TypedExpression{node, expected, model}
 		}
-		retNode = xpr.TypedExpression{node, expected, model}
 
 	case xpr.Length:
 		arg, e := vm.TypeExpression(node.Argument, scope, mdl.List{AnyModel})
