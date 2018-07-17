@@ -1510,7 +1510,7 @@ func (vm VirtualMachine) TypeExpression(node xpr.Expression, scope *ModelScope, 
 		node.Argument = arg
 		mid := arg.Actual.Concrete().(mdl.Ref).Model
 		if mid == "" {
-			retNode = xpr.TypedExpression{node, expected, AnyModel}
+			retNode = xpr.TypedExpression{node, expected, BucketModel{Model: AnyModel}}
 		} else {
 			model, e := vm.Model(mid)
 			if e != nil {
