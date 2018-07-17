@@ -983,12 +983,19 @@ func (vm VirtualMachine) Execute(program inst.Sequence, scope *ValueScope, args 
 
 		case inst.AllReferrers:
 			v := unMeta(stack.Pop()).(val.Ref)
-			ls := make(val.List, 0, 64)
-			vm.RootBucket.Bucket(definitions.PhargBucketBytes).Bucket(encodeVertex(v[0], v[1])).ForEach(func(k, _ []byte) error {
-				m, i := decodeVertex(k)
-				ls = append(ls, val.Ref{m, i})
-				return nil
-			})
+			bucket := vm.RootBucket.Bucket(definitions.PhargBucketBytes).Bucket(encodeVertex(v[0], v[1]))
+			ls := (val.List)(nil)
+			if bucket != nil {
+				ls = make(val.List, 0, bucket.Stats().KeyN)
+				e := bucket.ForEach(func(k, _ []byte) error {
+					m, i := decodeVertex(k)
+					ls = append(ls, val.Ref{m, i})
+					return nil
+				})
+				if e != nil {
+					log.Panicf("Execute: AllReferrers: %s.", e.Error())
+				}
+			}
 			stack.Push(ls)
 
 		case inst.IsPresent:
