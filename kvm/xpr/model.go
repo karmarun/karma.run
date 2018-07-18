@@ -1064,6 +1064,9 @@ const model = `
                     "newString": {
                         "or": [{"string":{}}, {"recurse": "top"}]
                     },
+
+                    "newSymbol": {"string":{}},
+
                     "newFloat": {
                         "or": [{"float":{}}, {"recurse": "top"}]
                     },

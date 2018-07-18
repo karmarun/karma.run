@@ -77,6 +77,9 @@ func ExpressionFromValue(v val.Value) Expression {
 	case "newFloat", "intToFloat":
 		return NewFloat{ExpressionFromValue(u.Value)}
 
+	case "newSymbol":
+		return Literal{val.Symbol(u.Value.(val.String))}
+
 	case "newString":
 		return NewString{ExpressionFromValue(u.Value)}
 
@@ -562,6 +565,9 @@ func ValueFromExpression(x Expression) val.Value {
 		return val.Union{"zero", val.Struct{}}
 
 	case Literal:
+		if sym, ok := node.Value.(val.Symbol); ok {
+			return val.Union{"newSymbol", val.String(sym)}
+		}
 		if node.Value.Primitive() {
 			return node.Value
 		}
