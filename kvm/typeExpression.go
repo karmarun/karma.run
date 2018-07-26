@@ -1037,14 +1037,22 @@ func (vm VirtualMachine) TypeExpression(node xpr.Expression, scope *ModelScope, 
 		}
 		node.Value = value
 
-		model := mdl.NewUnion(1)
-		model.Set(scase, value.Actual)
+		model := mdl.Model(nil)
+		umodel := mdl.NewUnion(1)
+		if ca, ok := value.Actual.(ConstantModel); ok {
+			umodel.Set(scase, ca.Model)
+			model = ConstantModel{umodel, val.Union{scase, ca.Value}}
+		} else {
+			umodel.Set(scase, value.Actual)
+			model = umodel
+		}
 
 		retNode = xpr.TypedExpression{node, expected, model}
 
 	case xpr.NewList:
 
 		subModel := mdl.Model(nil)
+		constant := make(val.List, 0, len(node))
 
 		for i, arg := range node {
 			arg, e := vm.TypeExpression(arg, scope, AnyModel)
@@ -1056,6 +1064,9 @@ func (vm VirtualMachine) TypeExpression(node xpr.Expression, scope *ModelScope, 
 				subModel = arg.Actual
 			} else {
 				subModel = mdl.Either(subModel.Unwrap(), arg.Actual.Unwrap(), nil)
+			}
+			if ca, ok := arg.Actual.(ConstantModel); ok {
+				constant = append(constant, ca.Value)
 			}
 		}
 
@@ -1067,12 +1078,17 @@ func (vm VirtualMachine) TypeExpression(node xpr.Expression, scope *ModelScope, 
 			}
 			retNode = xpr.TypedExpression{node, expected, ConstantModel{mdl.List{subModel}, make(val.List, 0, 0)}}
 		} else {
-			retNode = xpr.TypedExpression{node, expected, mdl.List{subModel}}
+			if len(constant) == len(node) {
+				retNode = xpr.TypedExpression{node, expected, ConstantModel{mdl.List{subModel}, constant}}
+			} else {
+				retNode = xpr.TypedExpression{node, expected, mdl.List{subModel}}
+			}
 		}
 
 	case xpr.NewMap:
 
 		subModel := mdl.Model(nil)
+		constant := val.NewMap(len(node))
 
 		for k, arg := range node {
 			arg, e := vm.TypeExpression(arg, scope, AnyModel)
@@ -1084,6 +1100,9 @@ func (vm VirtualMachine) TypeExpression(node xpr.Expression, scope *ModelScope, 
 				subModel = arg.Actual
 			} else {
 				subModel = mdl.Either(subModel.Unwrap(), arg.Actual.Unwrap(), nil)
+			}
+			if ca, ok := arg.Actual.(ConstantModel); ok {
+				constant.Set(k, ca.Value)
 			}
 		}
 
@@ -1095,7 +1114,11 @@ func (vm VirtualMachine) TypeExpression(node xpr.Expression, scope *ModelScope, 
 			}
 			retNode = xpr.TypedExpression{node, expected, ConstantModel{mdl.Map{subModel}, val.NewMap(0)}}
 		} else {
-			retNode = xpr.TypedExpression{node, expected, mdl.List{subModel}}
+			if constant.Len() == len(node) {
+				retNode = xpr.TypedExpression{node, expected, ConstantModel{mdl.List{subModel}, constant}}
+			} else {
+				retNode = xpr.TypedExpression{node, expected, mdl.List{subModel}}
+			}
 		}
 
 		retNode = xpr.TypedExpression{node, expected, mdl.Map{subModel}}
@@ -1103,6 +1126,7 @@ func (vm VirtualMachine) TypeExpression(node xpr.Expression, scope *ModelScope, 
 	case xpr.NewSet:
 
 		subModel := mdl.Model(nil)
+		constant := make(val.Set, len(node))
 
 		for i, arg := range node {
 			arg, e := vm.TypeExpression(arg, scope, AnyModel)
@@ -1115,6 +1139,9 @@ func (vm VirtualMachine) TypeExpression(node xpr.Expression, scope *ModelScope, 
 			} else {
 				subModel = mdl.Either(subModel.Unwrap(), arg.Actual.Unwrap(), nil)
 			}
+			if ca, ok := arg.Actual.(ConstantModel); ok {
+				constant[val.Hash(ca.Value, nil).Sum64()] = ca.Value
+			}
 		}
 
 		if len(node) == 0 {
@@ -1125,12 +1152,17 @@ func (vm VirtualMachine) TypeExpression(node xpr.Expression, scope *ModelScope, 
 			}
 			retNode = xpr.TypedExpression{node, expected, ConstantModel{mdl.Set{subModel}, make(val.Set, 0)}}
 		} else {
-			retNode = xpr.TypedExpression{node, expected, mdl.Set{subModel}}
+			if len(constant) == len(node) {
+				retNode = xpr.TypedExpression{node, expected, ConstantModel{mdl.Set{subModel}, constant}}
+			} else {
+				retNode = xpr.TypedExpression{node, expected, mdl.Set{subModel}}
+			}
 		}
 
 	case xpr.NewStruct:
 
 		model := mdl.NewStruct(len(node))
+		constant := val.NewStruct(len(node))
 
 		for k, arg := range node {
 			arg, e := vm.TypeExpression(arg, scope, AnyModel)
@@ -1139,13 +1171,21 @@ func (vm VirtualMachine) TypeExpression(node xpr.Expression, scope *ModelScope, 
 			}
 			node[k] = arg
 			model.Set(k, arg.Actual) // do not Unwrap arg.Actual (ConstantModel is relevant for typechecking)
+			if ca, ok := arg.Actual.(ConstantModel); ok {
+				constant.Set(k, ca.Value)
+			}
 		}
 
-		retNode = xpr.TypedExpression{node, expected, model}
+		if constant.Len() == len(node) {
+			retNode = xpr.TypedExpression{node, expected, ConstantModel{model, constant}}
+		} else {
+			retNode = xpr.TypedExpression{node, expected, model}
+		}
 
 	case xpr.NewTuple:
 
 		model := make(mdl.Tuple, len(node))
+		constant := make(val.Tuple, 0, len(node))
 
 		for i, arg := range node {
 			arg, e := vm.TypeExpression(arg, scope, AnyModel)
@@ -1154,9 +1194,16 @@ func (vm VirtualMachine) TypeExpression(node xpr.Expression, scope *ModelScope, 
 			}
 			node[i] = arg
 			model[i] = arg.Actual // do not Unwrap arg.Actual (ConstantModel is relevant for typechecking)
+			if ca, ok := arg.Actual.(ConstantModel); ok {
+				constant = append(constant, ca.Value)
+			}
 		}
 
-		retNode = xpr.TypedExpression{node, expected, model}
+		if len(constant) == len(node) {
+			retNode = xpr.TypedExpression{node, expected, ConstantModel{model, constant}}
+		} else {
+			retNode = xpr.TypedExpression{node, expected, model}
+		}
 
 	case xpr.SetField:
 
