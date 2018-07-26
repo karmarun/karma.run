@@ -1053,9 +1053,9 @@ func (vm VirtualMachine) TypeExpression(node xpr.Expression, scope *ModelScope, 
 			}
 			node[i] = arg
 			if subModel == nil {
-				subModel = arg.Actual.Unwrap()
+				subModel = arg.Actual
 			} else {
-				subModel = mdl.Either(subModel, arg.Actual.Unwrap(), nil)
+				subModel = mdl.Either(subModel.Unwrap(), arg.Actual.Unwrap(), nil)
 			}
 		}
 
@@ -1065,9 +1065,10 @@ func (vm VirtualMachine) TypeExpression(node xpr.Expression, scope *ModelScope, 
 			} else {
 				subModel = AnyModel
 			}
+			retNode = xpr.TypedExpression{node, expected, ConstantModel{mdl.List{subModel}, make(val.List, 0, 0)}}
+		} else {
+			retNode = xpr.TypedExpression{node, expected, mdl.List{subModel}}
 		}
-
-		retNode = xpr.TypedExpression{node, expected, mdl.List{subModel}}
 
 	case xpr.NewMap:
 
@@ -1080,9 +1081,9 @@ func (vm VirtualMachine) TypeExpression(node xpr.Expression, scope *ModelScope, 
 			}
 			node[k] = arg
 			if subModel == nil {
-				subModel = arg.Actual.Unwrap()
+				subModel = arg.Actual
 			} else {
-				subModel = mdl.Either(subModel, arg.Actual.Unwrap(), nil)
+				subModel = mdl.Either(subModel.Unwrap(), arg.Actual.Unwrap(), nil)
 			}
 		}
 
@@ -1092,6 +1093,9 @@ func (vm VirtualMachine) TypeExpression(node xpr.Expression, scope *ModelScope, 
 			} else {
 				subModel = AnyModel
 			}
+			retNode = xpr.TypedExpression{node, expected, ConstantModel{mdl.Map{subModel}, val.NewMap(0)}}
+		} else {
+			retNode = xpr.TypedExpression{node, expected, mdl.List{subModel}}
 		}
 
 		retNode = xpr.TypedExpression{node, expected, mdl.Map{subModel}}
@@ -1107,9 +1111,9 @@ func (vm VirtualMachine) TypeExpression(node xpr.Expression, scope *ModelScope, 
 			}
 			node[i] = arg
 			if subModel == nil {
-				subModel = arg.Actual.Unwrap()
+				subModel = arg.Actual
 			} else {
-				subModel = mdl.Either(subModel, arg.Actual.Unwrap(), nil)
+				subModel = mdl.Either(subModel.Unwrap(), arg.Actual.Unwrap(), nil)
 			}
 		}
 
@@ -1119,9 +1123,10 @@ func (vm VirtualMachine) TypeExpression(node xpr.Expression, scope *ModelScope, 
 			} else {
 				subModel = AnyModel
 			}
+			retNode = xpr.TypedExpression{node, expected, ConstantModel{mdl.Set{subModel}, make(val.Set, 0)}}
+		} else {
+			retNode = xpr.TypedExpression{node, expected, mdl.Set{subModel}}
 		}
-
-		retNode = xpr.TypedExpression{node, expected, mdl.Set{subModel}}
 
 	case xpr.NewStruct:
 
@@ -1133,7 +1138,7 @@ func (vm VirtualMachine) TypeExpression(node xpr.Expression, scope *ModelScope, 
 				return arg, e
 			}
 			node[k] = arg
-			model.Set(k, arg.Actual.Unwrap())
+			model.Set(k, arg.Actual) // do not Unwrap arg.Actual (ConstantModel is relevant for typechecking)
 		}
 
 		retNode = xpr.TypedExpression{node, expected, model}
@@ -1148,7 +1153,7 @@ func (vm VirtualMachine) TypeExpression(node xpr.Expression, scope *ModelScope, 
 				return arg, e
 			}
 			node[i] = arg
-			model[i] = arg.Actual.Unwrap()
+			model[i] = arg.Actual // do not Unwrap arg.Actual (ConstantModel is relevant for typechecking)
 		}
 
 		retNode = xpr.TypedExpression{node, expected, model}
@@ -1184,7 +1189,7 @@ func (vm VirtualMachine) TypeExpression(node xpr.Expression, scope *ModelScope, 
 		node.In = in
 
 		m := in.Actual.Concrete().Copy().(mdl.Struct)
-		m.Set(field, value.Actual.Unwrap())
+		m.Set(field, value.Actual) // do not Unwrap value.Actual (ConstantModel is relevant for typechecking)
 
 		retNode = xpr.TypedExpression{node, expected, m}
 
@@ -1207,7 +1212,7 @@ func (vm VirtualMachine) TypeExpression(node xpr.Expression, scope *ModelScope, 
 		}
 		node.In = in
 
-		retNode = xpr.TypedExpression{node, expected, mdl.Map{value.Actual.Unwrap()}}
+		retNode = xpr.TypedExpression{node, expected, mdl.Map{value.Actual}}
 
 	case xpr.NewRef:
 		marg, e := vm.TypeExpression(node.Model, scope, StringModel)
@@ -1728,7 +1733,7 @@ func (vm VirtualMachine) TypeExpression(node xpr.Expression, scope *ModelScope, 
 		}
 		node.Filter = filter
 
-		retNode = xpr.TypedExpression{node, expected, value.Actual.Unwrap()}
+		retNode = xpr.TypedExpression{node, expected, value.Actual}
 
 	case xpr.AssertCase:
 		caze, e := vm.TypeExpression(node.Case, scope, StringModel)
@@ -2545,9 +2550,9 @@ func (vm VirtualMachine) TypeExpression(node xpr.Expression, scope *ModelScope, 
 				return ZeroTypedExpression, e
 			}
 			if model == nil {
-				model = fun.Actual.Unwrap()
+				model = fun.Actual
 			} else {
-				model = mdl.Either(model, fun.Actual.Unwrap(), nil)
+				model = mdl.Either(model.Unwrap(), fun.Actual.Unwrap(), nil)
 			}
 			node.Cases[k] = fun
 		}

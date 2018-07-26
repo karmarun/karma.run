@@ -68,11 +68,21 @@ func checkType(actual, expected mdl.Model) err.Error {
 
 func _checkType(actual, expected mdl.Model, recs map[[2]*mdl.Recursion]struct{}) err.PathedError {
 
-	actual, expected = actual.Unwrap(), expected.Unwrap()
+	expected = expected.Unwrap()
 
 	if expected == (mdl.Any{}) {
 		return nil
 	}
+
+	if ca, ok := actual.(ConstantModel); ok {
+		e := expected.Validate(ca.Value, nil)
+		if e == nil {
+			return nil
+		}
+		return TypeCheckingError{expected, actual.Unwrap(), nil}
+	}
+
+	actual = actual.Unwrap()
 
 	{ // handle recursions until convergence
 

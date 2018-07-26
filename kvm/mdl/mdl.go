@@ -456,7 +456,6 @@ func ModelFromValue(metaId string, u val.Union, recursions map[string]*Recursion
 
 var any = Any{}
 
-// Either returns a (hopefully) minimal Or-combination for two given Model arguments.
 func Either(l, r Model, m map[*Recursion]*Recursion) Model {
 
 	if l == nil || r == nil {
