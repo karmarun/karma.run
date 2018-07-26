@@ -225,7 +225,7 @@ func (vm VirtualMachine) TypeExpression(node xpr.Expression, scope *ModelScope, 
 		}
 		node.List = list
 
-		listModel := list.Actual.Unwrap().(mdl.List)
+		listModel := list.Actual.Concrete().(mdl.List)
 
 		less, e := vm.TypeFunctionWithArguments(node.Less, scope, BoolModel, listModel.Elements, listModel.Elements)
 		if e != nil {
@@ -1038,7 +1038,7 @@ func (vm VirtualMachine) TypeExpression(node xpr.Expression, scope *ModelScope, 
 		node.Value = value
 
 		model := mdl.NewUnion(1)
-		model.Set(scase, value.Actual.Unwrap())
+		model.Set(scase, value.Actual)
 
 		retNode = xpr.TypedExpression{node, expected, model}
 
@@ -1060,7 +1060,7 @@ func (vm VirtualMachine) TypeExpression(node xpr.Expression, scope *ModelScope, 
 		}
 
 		if len(node) == 0 {
-			if em, ok := expected.Unwrap().(mdl.List); ok {
+			if em, ok := expected.Concrete().(mdl.List); ok {
 				subModel = em.Elements
 			} else {
 				subModel = AnyModel
@@ -1088,7 +1088,7 @@ func (vm VirtualMachine) TypeExpression(node xpr.Expression, scope *ModelScope, 
 		}
 
 		if len(node) == 0 {
-			if em, ok := expected.Unwrap().(mdl.Map); ok {
+			if em, ok := expected.Concrete().(mdl.Map); ok {
 				subModel = em.Elements
 			} else {
 				subModel = AnyModel
@@ -1118,7 +1118,7 @@ func (vm VirtualMachine) TypeExpression(node xpr.Expression, scope *ModelScope, 
 		}
 
 		if len(node) == 0 {
-			if em, ok := expected.Unwrap().(mdl.Set); ok {
+			if em, ok := expected.Concrete().(mdl.Set); ok {
 				subModel = em.Elements
 			} else {
 				subModel = AnyModel
@@ -1648,7 +1648,7 @@ func (vm VirtualMachine) TypeExpression(node xpr.Expression, scope *ModelScope, 
 		if e != nil {
 			return ZeroTypedExpression, e
 		}
-		value, e := vm.TypeExpression(node.Value, scope, subExpect.Concrete())
+		value, e := vm.TypeExpression(node.Value, scope, subExpect.Model)
 		if e != nil {
 			return value, e
 		}
