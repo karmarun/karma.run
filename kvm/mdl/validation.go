@@ -207,6 +207,9 @@ func (m Ref) Validate(v val.Value, p err.ErrorPath) err.Error {
 	if !ok {
 		return ValidationError{m, v, p}
 	}
+	if m.Model == "" { // ("any ref" case)
+		return nil
+	}
 	if w[0] != m.Model {
 		return ValidationError{m, v, p}
 	}
