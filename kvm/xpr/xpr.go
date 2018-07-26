@@ -610,15 +610,20 @@ func ExpressionFromValue(v val.Value) Expression {
 		}
 		nod := make(Or, len(arg), len(arg))
 		for i, sub := range arg {
-			nod[i] = append(nod, ExpressionFromValue(sub))
+			nod[i] = ExpressionFromValue(sub)
 		}
 		return nod
 
 	case "and":
 		arg := u.Value.(val.List)
+		if len(arg) == 1 {
+			for _, sub := range arg {
+				return ExpressionFromValue(sub)
+			}
+		}
 		nod := make(And, len(arg), len(arg))
 		for i, sub := range arg {
-			nod[i] = append(nod, ExpressionFromValue(sub))
+			nod[i] = ExpressionFromValue(sub)
 		}
 		return nod
 

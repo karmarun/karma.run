@@ -16,7 +16,7 @@ var (
 	HttpsCertFile       string
 	HttpsKeyFile        string
 	InstanceSecret      string
-	DataFile            string
+	DataFile            string = "karma.data" // explicit default
 )
 
 func init() {
