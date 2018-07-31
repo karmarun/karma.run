@@ -120,8 +120,6 @@ func AuthHttpHandler(rw http.ResponseWriter, rq *http.Request) {
 		return
 	}
 
-	fmt.Println(err.ValueToHuman(mv))
-
 	us := mv.(val.Struct).Field("value").(val.Struct)
 
 	if e := bcrypt.CompareHashAndPassword([]byte(us.Field("password").(val.String)), []byte(password)); e != nil {

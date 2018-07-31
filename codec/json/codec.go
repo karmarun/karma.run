@@ -879,10 +879,9 @@ func decodeStruct(json JSON, strct mdl.Struct) (val.Value, JSON, err.Error) {
 			continue
 		}
 		json, e = readLiteral(`}`, skipWhiteSpace(json))
-		if e != nil {
+		if e == nil {
 			break
 		}
-		return vs, json, nil
 	}
 	for _, k := range strct.Keys() {
 		if _, ok := vs.Get(k); ok {
