@@ -38,7 +38,7 @@ formalized as unit-tests and no coverage numbers are available yet.
 To install karma.run you need the [Go toolchain](https://golang.org):
 
     $ go get karma.run
-    
+
 Stable tags will have binary releases.
 
 Get started in 5 minutes
@@ -48,8 +48,8 @@ Get started in 5 minutes
 ## Dependencies & Licenses
 
 karma.run depends on three external software packages:
- * [github.com/boltdb/bolt](https://github.com/boltdb/bolt) (MIT licensed)
+ * [github.com/coreos/bbolt](https://github.com/coreos/bbolt) (MIT licensed)
  * [github.com/kr/pretty](https://github.com/kr/pretty) (MIT licensed)
  * [golang.org/x/crypto/bcrypt](https://github.com/golang/crypto) (BSD licensed)
- 
+
  Please see their respective LICENSE files for legal information.
