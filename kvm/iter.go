@@ -3,7 +3,7 @@
 package kvm
 
 import (
-	"github.com/boltdb/bolt"
+	bolt "github.com/coreos/bbolt"
 	"karma.run/cc"
 	"karma.run/codec/karma.v2"
 	"karma.run/kvm/err"

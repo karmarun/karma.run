@@ -5,7 +5,7 @@ package kvm
 import (
 	"bytes"
 	"fmt"
-	"github.com/boltdb/bolt"
+	bolt "github.com/coreos/bbolt"
 	"github.com/kr/pretty"
 	"hash"
 	"hash/fnv" // FNV-1 has a very low collision rate

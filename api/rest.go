@@ -3,7 +3,7 @@ package api
 import (
 	"bytes"
 	"fmt"
-	"github.com/boltdb/bolt"
+	bolt "github.com/coreos/bbolt"
 	"karma.run/codec"
 	"karma.run/kvm"
 	"karma.run/kvm/err"

@@ -5,7 +5,7 @@ package api
 import (
 	"compress/gzip"
 	"encoding/base64"
-	"github.com/boltdb/bolt"
+	bolt "github.com/coreos/bbolt"
 	"io"
 	"karma.run/codec"
 	"karma.run/config"

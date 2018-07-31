@@ -11,7 +11,7 @@ import (
 	"encoding/base64"
 	"encoding/binary"
 	"fmt"
-	"github.com/boltdb/bolt"
+	bolt "github.com/coreos/bbolt"
 	"golang.org/x/crypto/bcrypt"
 	"karma.run/codec"
 	"karma.run/config"

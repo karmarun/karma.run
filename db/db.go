@@ -3,7 +3,7 @@
 package db
 
 import (
-	"github.com/boltdb/bolt"
+	bolt "github.com/coreos/bbolt"
 	"karma.run/config"
 	"log"
 	"os"

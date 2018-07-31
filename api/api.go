@@ -7,7 +7,7 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
-	"github.com/boltdb/bolt"
+	bolt "github.com/coreos/bbolt"
 	"io"
 	"karma.run/codec"
 	"karma.run/config"

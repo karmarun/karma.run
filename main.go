@@ -7,7 +7,7 @@ import (
 	"crypto/tls"
 	"encoding/base64"
 	"flag"
-	"github.com/boltdb/bolt"
+	bolt "github.com/coreos/bbolt"
 	"golang.org/x/crypto/acme/autocert"
 	"karma.run/api"
 	_ "karma.run/codec/binary"
