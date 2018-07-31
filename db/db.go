@@ -36,6 +36,7 @@ func Open() (*bolt.DB, error) {
 		if e != nil {
 			return nil, e
 		}
+		db.MaxBatchSize = 1024 * 10
 		database = db
 		return db, nil
 	}
