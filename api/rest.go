@@ -30,6 +30,7 @@ func RestApiHttpHandler(rw http.ResponseWriter, rq *http.Request) {
 	case http.MethodPut:
 
 	case http.MethodDelete:
+		RestApiDeleteHttpHandler(rw, rq)
 
 	default:
 		cdc := rq.Context().Value(ContextKeyCodec).(codec.Interface)
@@ -69,6 +70,23 @@ func RestApiGetHttpHandler(rw http.ResponseWriter, rq *http.Request) {
 
 	case 2: // GET /{resource}/{id}
 		RestApiGetResourceIdHttpHandler(segments[0], segments[1], rw, rq)
+		return
+
+	default:
+		// error?
+	}
+}
+
+func RestApiDeleteHttpHandler(rw http.ResponseWriter, rq *http.Request) {
+	segments := pathSegments(rq.URL.Path)[1:] // drop "rest" prefix
+	switch len(segments) {
+	case 0: // DELETE /
+
+	case 1: // DELETE /{resource}
+		RestApiDeleteResourceHttpHandler(segments[0], rw, rq)
+
+	case 2: // DELETE /{resource}/{id}
+		RestApiDeleteResourceIdHttpHandler(segments[0], segments[1], rw, rq)
 		return
 
 	default:
@@ -321,6 +339,77 @@ func maxInt64(a, b val.Int64) val.Int64 {
 		return a
 	}
 	return b
+}
+
+// DELETE /{resource}
+func RestApiDeleteResourceHttpHandler(id string, rw http.ResponseWriter, rq *http.Request) {
+}
+
+// DELETE /{resource}/{id}
+func RestApiDeleteResourceIdHttpHandler(resource, id string, rw http.ResponseWriter, rq *http.Request) {
+
+	cdc := rq.Context().Value(ContextKeyCodec).(codec.Interface)
+	dtbs := rq.Context().Value(ContextKeyDatabase).(*bolt.DB)
+	uid := rq.Context().Value(ContextKeyUserId).(string)
+
+	outValue := (val.Value)(nil)
+
+	e := dtbs.Batch(func(tx *bolt.Tx) error {
+
+		rb := tx.Bucket([]byte(`root`))
+		if rb == nil {
+			return err.InternalError{Problem: `database uninitialized`}
+		}
+
+		vm := &kvm.VirtualMachine{RootBucket: rb, UserID: uid}
+
+		resourceLit := xpr.Literal{val.String(resource)}
+
+		isTag, _, ke := vm.CompileAndExecuteExpression(xpr.TagExists{resourceLit})
+		if ke != nil {
+			log.Panicln(ke)
+		}
+
+		modelExpr := xpr.Expression(nil)
+
+		if isTag.(val.Bool) {
+			modelExpr = xpr.Tag{resourceLit}
+		} else {
+			modelExpr = xpr.Model{resourceLit}
+		}
+
+		modelRef, _, ke := vm.CompileAndExecuteExpression(modelExpr)
+		if ke != nil {
+			return ke
+		}
+
+		targetRef := val.Ref{modelRef.(val.Ref)[1], id}
+
+		oldVal, _, ke := vm.CompileAndExecuteExpression(xpr.Delete{
+			xpr.Literal{targetRef},
+		})
+
+		outValue = oldVal
+
+		return ke
+
+	})
+
+	if e != nil {
+		ke, ok := e.(err.Error)
+		if !ok {
+			log.Println(e)
+			ke = err.InternalError{Problem: `internal error`}
+		}
+		if _, ok := ke.(err.HumanReadableError); !ok {
+			ke = err.HumanReadableError{ke}
+		}
+		writeError(rw, cdc, ke)
+		return
+	}
+
+	rw.Write(cdc.Encode(outValue))
+
 }
 
 // GET /{resource}/{id}
