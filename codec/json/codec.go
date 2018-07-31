@@ -876,11 +876,6 @@ func decodeStruct(json JSON, strct mdl.Struct) (val.Value, JSON, err.Error) {
 		json = temp
 		if temp, e := readLiteral(`,`, skipWhiteSpace(json)); e == nil {
 			json = temp
-			continue
-		}
-		json, e = readLiteral(`}`, skipWhiteSpace(json))
-		if e == nil {
-			break
 		}
 	}
 	for _, k := range strct.Keys() {
@@ -985,32 +980,4 @@ func assertNonEmpty(json JSON) err.Error {
 
 func isNull(x JSON) bool {
 	return x == nil || (len(x) == 4 && (x[0] == 'n' && x[1] == 'u' && x[2] == 'l' && x[3] == 'l'))
-}
-
-func reduceInputParsingErrorList(es err.ErrorList) err.ErrorList {
-	mp := make(map[string]err.ErrorList, len(es))
-	for _, e := range es {
-		e := e.(err.InputParsingError)
-		k := string(e.Input)
-		mp[k] = append(mp[k], e)
-	}
-	es = es[:0] // reuse memory
-	for _, l := range mp {
-		es = append(es, mergeInputParsingErrors(l))
-	}
-	return es
-}
-
-func mergeInputParsingErrors(es err.ErrorList) err.InputParsingError {
-	out := err.InputParsingError{}
-	for i, e := range es {
-		e := e.(err.InputParsingError)
-		if i == 0 {
-			out.Problem = e.Problem
-		} else {
-			out.Problem += " or " + e.Problem
-		}
-		out.Input = e.Input // same for all
-	}
-	return out
 }

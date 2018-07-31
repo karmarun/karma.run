@@ -225,84 +225,91 @@ func RestApiPostResourceHttpHandler(resource string, rw http.ResponseWriter, rq 
 	dtbs := rq.Context().Value(ContextKeyDatabase).(*bolt.DB)
 	uid := rq.Context().Value(ContextKeyUserId).(string)
 
-	tx, e := dtbs.Begin(true)
-	if e != nil {
-		log.Panicln(e)
-	}
-	defer tx.Rollback()
-
-	rb := tx.Bucket([]byte(`root`))
-	if rb == nil {
-		rw.WriteHeader(http.StatusInternalServerError)
-		rw.Write(cdc.Encode(err.InternalError{Problem: `database uninitialized`}.Value()))
-		return
-	}
-
-	vm := &kvm.VirtualMachine{RootBucket: rb, UserID: uid}
-
-	resourceLit := xpr.Literal{val.String(resource)}
-
-	isTag, _, ke := vm.CompileAndExecuteExpression(xpr.TagExists{resourceLit})
-	if ke != nil {
-		log.Panicln(ke)
-	}
-
-	modelExpr := xpr.Expression(nil)
-
-	if isTag.(val.Bool) {
-		modelExpr = xpr.Tag{resourceLit}
-	} else {
-		modelExpr = xpr.Model{resourceLit}
-	}
-
-	modelRef, _, ke := vm.CompileAndExecuteExpression(modelExpr)
-	if ke != nil {
-		writeError(rw, cdc, err.HumanReadableError{ke})
-		return
-	}
-
-	model, ke := vm.Model(modelRef.(val.Ref)[1])
-	if ke != nil {
-		writeError(rw, cdc, err.HumanReadableError{ke})
-		return
-	}
-
+	outValue := (val.Value)(nil)
 	payload := payloadFromRequest(rq)
 
-	values, ke := cdc.Decode(payload, mdl.List{model.Unwrap()})
-	if ke != nil {
-		writeError(rw, cdc, err.HumanReadableError{ke})
-		return
-	}
+	e := dtbs.Batch(func(tx *bolt.Tx) error {
 
-	valueList := values.(val.List)
+		rb := tx.Bucket([]byte(`root`))
+		if rb == nil {
+			return err.InternalError{Problem: `database uninitialized`}
+		}
 
-	funcMap := make(map[string]xpr.Function, len(valueList))
-	for i, value := range valueList {
-		k := strconv.Itoa(i)
-		funcMap[k] = xpr.NewFunction([]string{"_"}, xpr.Literal{value})
-	}
+		vm := &kvm.VirtualMachine{RootBucket: rb, UserID: uid}
 
-	createExpr := xpr.CreateMultiple{
-		In:     modelExpr,
-		Values: funcMap,
-	}
+		resourceLit := xpr.Literal{val.String(resource)}
 
-	createdMap, _, ke := vm.CompileAndExecuteExpression(createExpr)
-	if ke != nil {
-		writeError(rw, cdc, err.HumanReadableError{ke})
-		return
-	}
+		isTag, _, ke := vm.CompileAndExecuteExpression(xpr.TagExists{resourceLit})
+		if ke != nil {
+			log.Panicln(ke)
+		}
 
-	_ = tx.Commit()
+		modelExpr := xpr.Expression(nil)
 
-	createdMap.(val.Struct).ForEach(func(k string, v val.Value) bool {
-		i, _ := strconv.Atoi(k)
-		valueList[i] = v
-		return true
+		if isTag.(val.Bool) {
+			modelExpr = xpr.Tag{resourceLit}
+		} else {
+			modelExpr = xpr.Model{resourceLit}
+		}
+
+		modelRef, _, ke := vm.CompileAndExecuteExpression(modelExpr)
+		if ke != nil {
+			return ke
+		}
+
+		model, ke := vm.Model(modelRef.(val.Ref)[1])
+		if ke != nil {
+			return ke
+		}
+
+		values, ke := cdc.Decode(payload, mdl.List{model.Unwrap()})
+		if ke != nil {
+			return ke
+		}
+
+		valueList := values.(val.List)
+
+		funcMap := make(map[string]xpr.Function, len(valueList))
+		for i, value := range valueList {
+			k := strconv.Itoa(i)
+			funcMap[k] = xpr.NewFunction([]string{"_"}, xpr.Literal{value})
+		}
+
+		createExpr := xpr.CreateMultiple{
+			In:     modelExpr,
+			Values: funcMap,
+		}
+
+		createdMap, _, ke := vm.CompileAndExecuteExpression(createExpr)
+		if ke != nil {
+			return ke
+		}
+
+		createdMap.(val.Struct).ForEach(func(k string, v val.Value) bool {
+			i, _ := strconv.Atoi(k)
+			valueList[i] = v
+			return true
+		})
+
+		outValue = valueList
+		return nil
+
 	})
 
-	rw.Write(cdc.Encode(valueList))
+	if e != nil {
+		ke, ok := e.(err.Error)
+		if !ok {
+			log.Println(e)
+			ke = err.InternalError{Problem: `internal error`}
+		}
+		if _, ok := ke.(err.HumanReadableError); !ok {
+			ke = err.HumanReadableError{ke}
+		}
+		writeError(rw, cdc, ke)
+		return
+	}
+
+	rw.Write(cdc.Encode(outValue))
 
 }
 
