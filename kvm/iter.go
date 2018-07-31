@@ -220,14 +220,20 @@ func newBucketDecodingIterator(bucket *bolt.Bucket, model mdl.Model) bucketDecod
 func (i bucketDecodingIterator) forEach(f func(val.Value) err.Error) err.Error {
 	c := i.bucket.Cursor()
 	mv := val.Meta{}
+	n := i.bucket.Stats().KeyN
 	for k, bs := c.First(); k != nil; k, bs = c.Next() {
-		cacheKey := string(bs)
-		if c, ok := decoderCache.Get(cacheKey); ok {
-			mv = c.(val.Meta).Copy().(val.Meta)
-		} else {
+		if n > 1024 {
 			v, _ := karma.Decode(bs, i.model)
 			mv = DematerializeMeta(v.(val.Struct))
-			decoderCache.Set(cacheKey, mv.Copy())
+		} else {
+			cacheKey := string(bs)
+			if c, ok := decoderCache.Get(cacheKey); ok {
+				mv = c.(val.Meta).Copy().(val.Meta)
+			} else {
+				v, _ := karma.Decode(bs, i.model)
+				mv = DematerializeMeta(v.(val.Struct))
+				decoderCache.Set(cacheKey, mv.Copy())
+			}
 		}
 		if e := f(mv); e != nil {
 			return e
