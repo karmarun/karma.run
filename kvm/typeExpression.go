@@ -1474,7 +1474,7 @@ func (vm VirtualMachine) TypeExpression(node xpr.Expression, scope *ModelScope, 
 			return arg, e
 		}
 		node.Argument = arg
-		retNode = xpr.TypedExpression{node, expected, arg.Actual}
+		retNode = xpr.TypedExpression{node, expected, arg.Actual.Unwrap()} // get rid of constant wrapper in e.g. reverseList([1,2,3])
 
 	case xpr.ExtractStrings:
 		arg, e := vm.TypeExpression(node.Argument, scope, AnyModel)
@@ -1780,7 +1780,7 @@ func (vm VirtualMachine) TypeExpression(node xpr.Expression, scope *ModelScope, 
 		}
 		node.Filter = filter
 
-		retNode = xpr.TypedExpression{node, expected, value.Actual}
+		retNode = xpr.TypedExpression{node, expected, value.Actual.Unwrap()} // get rid of constant wrapper in e.g. filterList([1,2,3], () => ...)
 
 	case xpr.AssertCase:
 		caze, e := vm.TypeExpression(node.Case, scope, StringModel)
@@ -2350,21 +2350,33 @@ func (vm VirtualMachine) TypeExpression(node xpr.Expression, scope *ModelScope, 
 		retNode = xpr.TypedExpression{node, expected, model}
 
 	case xpr.IndexTuple:
-		index := int(node.Number)
-		arity := index + 1
-		subExpect := make(mdl.Tuple, arity, arity)
-		for i, _ := range subExpect {
-			subExpect[i] = AnyModel
-		}
-		value, e := vm.TypeExpression(node.Value, scope, subExpect)
+
+		value, e := vm.TypeExpression(node.Value, scope, AnyModel)
 		if e != nil {
 			return value, e
 		}
 		node.Value = value
-		model := value.Actual.Concrete().(mdl.Tuple)[index]
+
+		tupleModel, ok := value.Actual.Concrete().(mdl.Tuple)
+		if !ok {
+			return ZeroTypedExpression, err.CompilationError{
+				Problem: `indexTuple: argument not of type tuple`,
+			}
+
+		}
+		index := int(node.Number)
+
+		if index >= len(tupleModel) {
+			return ZeroTypedExpression, err.CompilationError{
+				Problem: fmt.Sprintf(`indexTuple: argument is tuple of %d elements, requested index %d`, len(tupleModel), index),
+			}
+		}
+
+		model := tupleModel[index]
 		if cv, ok := value.Actual.(ConstantModel); ok {
 			model = ConstantModel{model, cv.Value.(val.Tuple)[index]}
 		}
+
 		retNode = xpr.TypedExpression{node, expected, model}
 
 	case xpr.Referred:

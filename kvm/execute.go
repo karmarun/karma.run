@@ -1850,6 +1850,7 @@ func (vm VirtualMachine) Execute(program inst.Sequence, scope *ValueScope, args 
 					return nil, e
 				}
 				stack.Push(v)
+				continue
 			}
 			return nil, err.ExecutionError{
 				Problem: fmt.Sprintf(`switchCase: unexpected case: %s`, u.Case),
