@@ -93,8 +93,8 @@ var LanguageModel = mdl.DefineRecursion("function", func(function *mdl.Recursion
 
 			"leftFoldList":  mdl.Tuple{expression, expression, function}, // (list, initial, reducer)
 			"rightFoldList": mdl.Tuple{expression, expression, function}, // (list, initial, reducer)
-			"someList":      mdl.Tuple{expression, function},
-			"everyList":     mdl.Tuple{expression, function},
+			// "someList":      mdl.Tuple{expression, function},
+			// "everyList":     mdl.Tuple{expression, function},
 
 			"addFloat":  mdl.Tuple{expression, expression},
 			"addInt64":  mdl.Tuple{expression, expression},
