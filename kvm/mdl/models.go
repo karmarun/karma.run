@@ -965,7 +965,7 @@ func (Ref) Nullable() bool {
 
 func (r *Recursion) Zeroable() bool {
 	if r.zeroableFlag {
-		return false // base case true correct?
+		return false
 	}
 	r.zeroableFlag = true
 	zeroable := r.Model.Zeroable()

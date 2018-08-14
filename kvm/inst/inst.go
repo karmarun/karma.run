@@ -345,6 +345,14 @@ type MemSortFunction struct {
 	Less Sequence
 }
 
+type LeftFoldList struct {
+	Reducer Sequence
+}
+
+type RightFoldList struct {
+	Reducer Sequence
+}
+
 func (AddFloats) _inst()         {}
 func (AddInts) _inst()           {}
 func (All) _inst()               {}
@@ -506,3 +514,5 @@ func (Define) _inst()            {}
 func (TagExists) _inst()         {}
 func (SubstringIndex) _inst()    {}
 func (MemSortFunction) _inst()   {}
+func (LeftFoldList) _inst()      {}
+func (RightFoldList) _inst()     {}

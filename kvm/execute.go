@@ -448,6 +448,56 @@ func (vm VirtualMachine) Execute(program inst.Sequence, scope *ValueScope, args 
 			}
 			stack.Push(iteratorValue{iter})
 
+		case inst.LeftFoldList:
+			init := stack.Pop()
+			list := stack.Pop()
+			switch list := list.(type) {
+			case val.List:
+				for _, v := range list {
+					v, e := vm.Execute(it.Reducer, scope.Child(), init, v)
+					if e != nil {
+						return nil, e
+					}
+					init = v
+				}
+			case iteratorValue:
+				e := list.iterator.forEach(func(v val.Value) err.Error {
+					v, e := vm.Execute(it.Reducer, scope.Child(), init, v)
+					if e != nil {
+						return e
+					}
+					init = v
+					return nil
+				})
+				if e != nil {
+					return nil, e
+				}
+
+			default:
+				log.Panicf("Execute: LeftFoldList: unexpected type on stack: %T.", list)
+			}
+			stack.Push(init)
+
+		case inst.RightFoldList:
+			init := stack.Pop()
+			list := stack.Pop()
+			if iv, ok := list.(iteratorValue); ok {
+				vs, e := iteratorToList(iv.iterator)
+				if e != nil {
+					return nil, e
+				}
+				list = vs
+			}
+			lsvs := list.(val.List)
+			for i := len(lsvs) - 1; i > -1; i-- {
+				v, e := vm.Execute(it.Reducer, scope.Child(), init, lsvs[i])
+				if e != nil {
+					return nil, e
+				}
+				init = v
+			}
+			stack.Push(init)
+
 		case inst.ReduceList:
 
 			initial := unMeta(stack.Pop())

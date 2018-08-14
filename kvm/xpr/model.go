@@ -91,6 +91,11 @@ var LanguageModel = mdl.DefineRecursion("function", func(function *mdl.Recursion
 			"substringIndex":  mdl.Tuple{expression, expression},
 			"memSortFunction": mdl.Tuple{expression, function},
 
+			"leftFoldList":  mdl.Tuple{expression, expression, function}, // (list, initial, reducer)
+			"rightFoldList": mdl.Tuple{expression, expression, function}, // (list, initial, reducer)
+			"someList":      mdl.Tuple{expression, function},
+			"everyList":     mdl.Tuple{expression, function},
+
 			"addFloat":  mdl.Tuple{expression, expression},
 			"addInt64":  mdl.Tuple{expression, expression},
 			"addInt32":  mdl.Tuple{expression, expression},
@@ -253,6 +258,7 @@ var LanguageModel = mdl.DefineRecursion("function", func(function *mdl.Recursion
 					"return": expression,
 				})},
 			}),
+
 			"if": mdl.StructFromMap(map[string]mdl.Model{
 				"condition": expression,
 				"then":      expression,

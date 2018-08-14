@@ -1081,3 +1081,23 @@ type MemSortFunction struct {
 func (x MemSortFunction) Transform(f func(Expression) Expression) Expression {
 	return f(MemSortFunction{x.List.Transform(f), x.Less})
 }
+
+type LeftFoldList struct {
+	List    Expression
+	Initial Expression
+	Reducer Function
+}
+
+func (x LeftFoldList) Transform(f func(Expression) Expression) Expression {
+	return f(LeftFoldList{x.List.Transform(f), x.Initial.Transform(f), x.Reducer})
+}
+
+type RightFoldList struct {
+	List    Expression
+	Initial Expression
+	Reducer Function
+}
+
+func (x RightFoldList) Transform(f func(Expression) Expression) Expression {
+	return f(RightFoldList{x.List.Transform(f), x.Initial.Transform(f), x.Reducer})
+}

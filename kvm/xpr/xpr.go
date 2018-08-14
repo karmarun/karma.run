@@ -739,6 +739,21 @@ func ExpressionFromValue(v val.Value) Expression {
 			Order: FunctionFromValue(arg[1]),
 		}
 
+	case "leftFoldList":
+		arg := u.Value.(val.Tuple)
+		return LeftFoldList{
+			List:    ExpressionFromValue(arg[0]),
+			Initial: ExpressionFromValue(arg[1]),
+			Reducer: FunctionFromValue(arg[2]),
+		}
+	case "rightFoldList":
+		arg := u.Value.(val.Tuple)
+		return RightFoldList{
+			List:    ExpressionFromValue(arg[0]),
+			Initial: ExpressionFromValue(arg[1]),
+			Reducer: FunctionFromValue(arg[2]),
+		}
+
 	default:
 		panic(fmt.Sprintf("unhandled expression: %s", u.Case))
 

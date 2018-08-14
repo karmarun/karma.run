@@ -1886,6 +1886,54 @@ func (vm VirtualMachine) TypeExpression(node xpr.Expression, scope *ModelScope, 
 
 		retNode = xpr.TypedExpression{node, expected, mdl.List{mapping.Actual}}
 
+	case xpr.LeftFoldList:
+		list, e := vm.TypeExpression(node.List, scope, mdl.List{AnyModel})
+		if e != nil {
+			return list, e
+		}
+		node.List = list
+
+		initial, e := vm.TypeExpression(node.Initial, scope, AnyModel)
+		if e != nil {
+			return initial, e
+		}
+		node.Initial = initial
+
+		inputModel := list.Actual.Concrete().(mdl.List).Elements
+		outputModel := initial.Actual.Concrete()
+
+		reducer, e := vm.TypeFunctionWithArguments(node.Reducer, scope, outputModel, outputModel, inputModel)
+		if e != nil {
+			return ZeroTypedExpression, e
+		}
+		node.Reducer = reducer
+
+		retNode = xpr.TypedExpression{node, expected, outputModel}
+
+	case xpr.RightFoldList:
+		list, e := vm.TypeExpression(node.List, scope, mdl.List{AnyModel})
+		if e != nil {
+			return list, e
+		}
+		node.List = list
+
+		initial, e := vm.TypeExpression(node.Initial, scope, AnyModel)
+		if e != nil {
+			return initial, e
+		}
+		node.Initial = initial
+
+		inputModel := list.Actual.Concrete().(mdl.List).Elements
+		outputModel := initial.Actual.Concrete()
+
+		reducer, e := vm.TypeFunctionWithArguments(node.Reducer, scope, outputModel, outputModel, inputModel)
+		if e != nil {
+			return ZeroTypedExpression, e
+		}
+		node.Reducer = reducer
+
+		retNode = xpr.TypedExpression{node, expected, outputModel}
+
 	case xpr.ReduceList:
 
 		value, e := vm.TypeExpression(node.Value, scope, mdl.List{AnyModel})

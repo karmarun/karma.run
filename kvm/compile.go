@@ -499,6 +499,19 @@ func (vm VirtualMachine) CompileExpression(typed xpr.TypedExpression, prev inst.
 			vm.CompileFunction(node.Mapping.(xpr.TypedFunction)),
 		})
 
+	case xpr.LeftFoldList:
+		prev = vm.CompileExpression(node.List.(xpr.TypedExpression), prev)
+		prev = vm.CompileExpression(node.Initial.(xpr.TypedExpression), prev)
+		return append(prev, inst.LeftFoldList{
+			vm.CompileFunction(node.Reducer.(xpr.TypedFunction)),
+		})
+	case xpr.RightFoldList:
+		prev = vm.CompileExpression(node.List.(xpr.TypedExpression), prev)
+		prev = vm.CompileExpression(node.Initial.(xpr.TypedExpression), prev)
+		return append(prev, inst.RightFoldList{
+			vm.CompileFunction(node.Reducer.(xpr.TypedFunction)),
+		})
+
 	case xpr.ReduceList:
 		prev = vm.CompileExpression(node.Value.(xpr.TypedExpression), prev)
 		prev = vm.CompileExpression(node.Initial.(xpr.TypedExpression), prev)

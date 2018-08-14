@@ -566,7 +566,11 @@ func slurpIterators(v val.Value) (val.Value, err.Error) {
 }
 
 func iteratorToList(ir iterator) (val.List, err.Error) {
-	ls := make(val.List, 0, 1024)
+	ln := ir.length()
+	if ln == -1 {
+		ln = 1024
+	}
+	ls := make(val.List, 0, ln)
 	e := ir.forEach(func(v val.Value) err.Error {
 		ls = append(ls, v)
 		return nil
