@@ -421,6 +421,9 @@ func ExpressionFromValue(v val.Value) Expression {
 		rhs := ExpressionFromValue(args[1])
 		return AddUint8{lhs, rhs}
 
+	case "dateTimeNow":
+		return DateTimeNow{}
+
 	case "currentUser":
 		return CurrentUser{}
 

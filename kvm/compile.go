@@ -342,6 +342,9 @@ func (vm VirtualMachine) CompileExpression(typed xpr.TypedExpression, prev inst.
 		prev = vm.CompileExpression(node[1].(xpr.TypedExpression), prev)
 		return append(prev, inst.AddUint8{})
 
+	case xpr.DateTimeNow:
+		return append(prev, inst.DateTimeNow{})
+
 	case xpr.CurrentUser:
 		return append(prev, inst.CurrentUser{})
 

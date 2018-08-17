@@ -64,6 +64,7 @@ var LanguageModel = mdl.DefineRecursion("function", func(function *mdl.Recursion
 			"define": mdl.Tuple{mdl.String{}, expression},
 			"scope":  mdl.String{},
 
+			"dateTimeNow":    mdl.EmptyStruct,
 			"currentUser":    mdl.EmptyStruct,
 			"all":            expression,
 			"assertPresent":  expression,

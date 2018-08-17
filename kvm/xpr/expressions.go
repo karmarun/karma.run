@@ -23,6 +23,12 @@ func (f function) Expressions() []Expression {
 	return f.exprs
 }
 
+type DateTimeNow struct{}
+
+func (x DateTimeNow) Transform(f func(Expression) Expression) Expression {
+	return f(x)
+}
+
 type CurrentUser struct{}
 
 func (x CurrentUser) Transform(f func(Expression) Expression) Expression {

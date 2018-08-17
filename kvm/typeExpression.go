@@ -993,6 +993,10 @@ func (vm VirtualMachine) TypeExpression(node xpr.Expression, scope *ModelScope, 
 		scope.Set(name, model)
 		retNode = xpr.TypedExpression{node, expected, model}
 
+	case xpr.DateTimeNow:
+		// NOTE: do not bake current date time into AST
+		retNode = xpr.TypedExpression{node, expected, mdl.DateTime{}}
+
 	case xpr.CurrentUser:
 		// NOTE: do not bake current user ref into AST as constant (because of compiler cache).
 		retNode = xpr.TypedExpression{node, expected, mdl.Ref{vm.UserModelId()}}
