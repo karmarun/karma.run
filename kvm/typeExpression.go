@@ -1904,7 +1904,7 @@ func (vm VirtualMachine) TypeExpression(node xpr.Expression, scope *ModelScope, 
 		node.Initial = initial
 
 		inputModel := list.Actual.Concrete().(mdl.List).Elements
-		outputModel := initial.Actual.Concrete()
+		outputModel := initial.Actual.Concrete().Transform(UnwrapConstant)
 
 		reducer, e := vm.TypeFunctionWithArguments(node.Reducer, scope, outputModel, outputModel, inputModel)
 		if e != nil {
@@ -1928,7 +1928,7 @@ func (vm VirtualMachine) TypeExpression(node xpr.Expression, scope *ModelScope, 
 		node.Initial = initial
 
 		inputModel := list.Actual.Concrete().(mdl.List).Elements
-		outputModel := initial.Actual.Concrete()
+		outputModel := initial.Actual.Concrete().Transform(UnwrapConstant)
 
 		reducer, e := vm.TypeFunctionWithArguments(node.Reducer, scope, outputModel, outputModel, inputModel)
 		if e != nil {
