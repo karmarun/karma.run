@@ -1239,13 +1239,15 @@ func (vm VirtualMachine) Execute(program inst.Sequence, scope *ValueScope, args 
 
 		case inst.SetField:
 			in := unMeta(stack.Pop()).(val.Struct)
-			in.Set(it.Field, unMeta(stack.Pop()))
-			stack.Push(in)
+			out := in.Copy().(val.Struct)
+			out.Set(it.Field, unMeta(stack.Pop()))
+			stack.Push(out)
 
 		case inst.SetKey:
 			in := unMeta(stack.Pop()).(val.Map)
-			in.Set(it.Key, unMeta(stack.Pop()))
-			stack.Push(in)
+			out := in.Copy().(val.Map)
+			out.Set(it.Key, unMeta(stack.Pop()))
+			stack.Push(out)
 
 		case inst.Field:
 			stack.Push(unMeta(stack.Pop()).(val.Struct).Field(it.Key))
