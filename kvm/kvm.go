@@ -7,7 +7,6 @@ import (
 	"bytes"
 	"fmt"
 	bolt "github.com/coreos/bbolt"
-	"github.com/kr/pretty"
 	"hash"
 	"hash/fnv" // FNV-1 has a very low collision rate
 	"karma.run/cc"
@@ -1383,7 +1382,7 @@ func (vm VirtualMachine) Write(mid string, values map[string]val.Meta) err.Error
 					return e
 				}
 
-				fun := (xpr.Function)(nil)
+				fun, migId := (xpr.Function)(nil), ([]byte)(nil)
 
 				if expression := migration.Field("expression").(val.Union); expression.Case == "auto" {
 					x, e := findAutoTransformation(sourceModel.Unwrap(), targetModel.Unwrap())
@@ -1398,6 +1397,7 @@ func (vm VirtualMachine) Write(mid string, values map[string]val.Meta) err.Error
 						return e
 					}
 					fun = xpr.FunctionFromValue(x.Value)
+					migId = []byte(exprRef[1])
 				}
 
 				typedFun, e := vm.TypeFunctionWithArguments(fun, nil, targetModel.Unwrap(), sourceModel.Unwrap())
@@ -1412,14 +1412,14 @@ func (vm VirtualMachine) Write(mid string, values map[string]val.Meta) err.Error
 					if e != nil {
 						panic(e)
 					}
-					if e := migBucket.Put([]byte(targetMID), []byte{}); e != nil {
+					if e := migBucket.Put([]byte(targetMID), migId); e != nil {
 						panic(e)
 					}
 					gimBucket, e := sgim.CreateBucketIfNotExists([]byte(targetMID))
 					if e != nil {
 						panic(e)
 					}
-					if e := gimBucket.Put([]byte(sourceMID), []byte{}); e != nil {
+					if e := gimBucket.Put([]byte(sourceMID), migId); e != nil {
 						panic(e)
 					}
 				}
@@ -1577,7 +1577,6 @@ func decodeVertex(bs []byte) (string, string) {
 }
 
 type migrationNode struct {
-	InModel   mdl.Model
 	InValue   val.Value
 	Migration val.Value // a function
 	Children  map[string]*migrationNode
@@ -1595,22 +1594,26 @@ func (vm VirtualMachine) applyMigrationTree(id string, tree map[string]*migratio
 
 	for mid, node := range tree {
 
-		it, mm, e := vm.ParseAndCompile(node.Migration, nil, []mdl.Model{node.InModel}, nil)
+		m, e := vm.Model(mid)
 		if e != nil {
-			log.Panicln(pretty.Sprint(e)) // TODO: should theoretically never happen, but... add lots of contextual info in case it does
+			log.Panicln(e)
+		}
+
+		it, _, e := vm.ParseAndCompile(node.Migration, nil, []mdl.Model{m.Unwrap()}, nil)
+		if e != nil {
+			log.Panicln(e)
 		}
 
 		vl, e := vm.Execute(it, nil, node.InValue)
 		if e != nil {
-			log.Panicln(pretty.Sprint(e)) // TODO: should theoretically never happen, but... add lots of contextual info in case it does
+			log.Panicln(e)
 		}
 
 		mv := vm.WrapValueInMeta(vl, id, mid)
-
 		cache[mid] = mv
 
 		for _, child := range node.Children {
-			child.InValue, child.InModel = mv, mm
+			child.InValue = mv
 		}
 
 		vm.applyMigrationTree(id, node.Children, cache)
@@ -1654,38 +1657,49 @@ func (vm *VirtualMachine) migrationTree(from string, seen map[string]struct{}) m
 		return nil
 	}
 
+	sourceModel, err := vm.Model(from)
+	if err != nil {
+		log.Panicln(err)
+	}
+
 	migs := make(map[string]*migrationNode)
 
 	e := fb.ForEach(func(k, v []byte) error {
-
 		x := string(k)
-
 		if _, ok := seen[x]; ok {
 			return nil // continue
 		}
-
-		exprID := string(v)
-		exprMeta, e := vm.Get(vm.ExpressionModelId(), exprID)
-		if e != nil {
-			return e
+		if len(v) == 0 {
+			// is auto migration
+			targetModel, e := vm.Model(string(k))
+			if e != nil {
+				return e
+			}
+			fun, e := findAutoTransformation(sourceModel.Unwrap(), targetModel.Unwrap())
+			if e != nil {
+				return e
+			}
+			migs[x] = &migrationNode{
+				Migration: xpr.ValueFromFunction(fun),
+				Children:  vm.migrationTree(x, seen),
+			}
+		} else {
+			exprID := string(v)
+			exprMeta, e := vm.Get(vm.ExpressionModelId(), exprID)
+			if e != nil {
+				return e
+			}
+			migs[x] = &migrationNode{
+				Migration: exprMeta.Value,
+				Children:  vm.migrationTree(x, seen),
+			}
 		}
-
-		migs[x] = &migrationNode{
-			InModel:   nil,
-			InValue:   nil,
-			Migration: exprMeta.Value,
-			Children:  vm.migrationTree(x, seen),
-		}
-
 		return nil // continue
 	})
-
 	if e != nil {
 		log.Panicln(e)
 	}
-
 	return migs
-
 }
 
 func (vm *VirtualMachine) reverseMigrationTree(to string, seen map[string]struct{}) map[string]*migrationNode {
@@ -1725,8 +1739,6 @@ func (vm *VirtualMachine) reverseMigrationTree(to string, seen map[string]struct
 		}
 
 		migs[x] = &migrationNode{
-			InModel:   nil,
-			InValue:   nil,
 			Migration: exprMeta.Value,
 			Children:  vm.migrationTree(x, seen),
 		}

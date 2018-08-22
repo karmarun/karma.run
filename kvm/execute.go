@@ -311,7 +311,6 @@ func (vm VirtualMachine) Execute(program inst.Sequence, scope *ValueScope, args 
 
 			migrationMap := vm.applyMigrationTree(rf[1], map[string]*migrationNode{
 				rf[0]: {
-					InModel:   mm, // correct, even if it seems weird
 					InValue:   vl,
 					Migration: xpr.ValueFromFunction(xpr.NewFunction([]string{"input"}, xpr.Scope("input"))),
 					Children:  vm.migrationTree(rf[0], nil),
@@ -399,7 +398,6 @@ func (vm VirtualMachine) Execute(program inst.Sequence, scope *ValueScope, args 
 
 				migrationMap := vm.applyMigrationTree(id, map[string]*migrationNode{
 					it.Model: {
-						InModel:   mm,
 						InValue:   v,
 						Migration: xpr.ValueFromFunction(xpr.NewFunction([]string{"input"}, xpr.Scope("input"))),
 						Children:  migrationTree,
