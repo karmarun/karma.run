@@ -1610,7 +1610,7 @@ func (vm VirtualMachine) applyMigrationTree(id string, tree map[string]*migratio
 			log.Panicln(e)
 		}
 
-		mv := vm.WrapValueInMeta(vl, id, targetMid)
+		mv := vm.WrapValueInMeta(unMeta(vl), id, targetMid)
 		cache[targetMid] = mv
 
 		for _, child := range node.Children {
