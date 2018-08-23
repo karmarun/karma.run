@@ -326,7 +326,10 @@ func NewAutoTransformationError(problem string, source, target mdl.Model) AutoTr
 }
 
 func (e AutoTransformationError) Value() val.Union {
-	panic("todo")
+	params := val.NewStruct(2)
+	params.Set("problem", val.String(e.Problem))
+	params.Set("problem", e.Path.Value())
+	return val.Union{"autoMigrationError", params}
 }
 func (e AutoTransformationError) Error() string {
 	return e.Problem

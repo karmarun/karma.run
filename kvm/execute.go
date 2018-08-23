@@ -398,6 +398,7 @@ func (vm VirtualMachine) Execute(program inst.Sequence, scope *ValueScope, args 
 
 				migrationMap := vm.applyMigrationTree(id, map[string]*migrationNode{
 					it.Model: {
+						InModel:   mm,
 						InValue:   v,
 						Migration: xpr.ValueFromFunction(xpr.NewFunction([]string{"input"}, xpr.Scope("input"))),
 						Children:  migrationTree,

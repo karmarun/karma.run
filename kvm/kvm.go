@@ -1427,8 +1427,7 @@ func (vm VirtualMachine) Write(mid string, values map[string]val.Meta) err.Error
 				sourceBucket := db.Bucket([]byte(sourceModel.Bucket))
 				targetBucket := db.Bucket([]byte(targetModel.Bucket))
 
-				iter := newBucketDecodingIterator(sourceBucket, sourceModel)
-				e = iter.forEach(func(v val.Value) err.Error {
+				e = newBucketDecodingIterator(sourceBucket, sourceModel).forEach(func(v val.Value) err.Error {
 					mv := v.(val.Meta)
 					migrated, e := vm.Execute(instructions, nil, mv.Value)
 					if e != nil {
@@ -1577,6 +1576,7 @@ func decodeVertex(bs []byte) (string, string) {
 }
 
 type migrationNode struct {
+	InModel   mdl.Model
 	InValue   val.Value
 	Migration val.Value // a function
 	Children  map[string]*migrationNode
@@ -1592,25 +1592,26 @@ func (vm VirtualMachine) applyMigrationTree(id string, tree map[string]*migratio
 		return cache
 	}
 
-	for mid, node := range tree {
+	for targetMid, node := range tree {
 
-		m, e := vm.Model(mid)
+		target, e := vm.Model(targetMid)
 		if e != nil {
 			log.Panicln(e)
 		}
 
-		it, _, e := vm.ParseAndCompile(node.Migration, nil, []mdl.Model{m.Unwrap()}, nil)
+		typedFun, e := vm.TypeFunctionWithArguments(xpr.FunctionFromValue(node.Migration), nil, target.Model, node.InModel)
+		if e != nil {
+			log.Panicln(e)
+		}
+		instructions := vm.CompileFunction(typedFun)
+
+		vl, e := vm.Execute(instructions, nil, node.InValue)
 		if e != nil {
 			log.Panicln(e)
 		}
 
-		vl, e := vm.Execute(it, nil, node.InValue)
-		if e != nil {
-			log.Panicln(e)
-		}
-
-		mv := vm.WrapValueInMeta(vl, id, mid)
-		cache[mid] = mv
+		mv := vm.WrapValueInMeta(vl, id, targetMid)
+		cache[targetMid] = mv
 
 		for _, child := range node.Children {
 			child.InValue = mv
@@ -1665,13 +1666,13 @@ func (vm *VirtualMachine) migrationTree(from string, seen map[string]struct{}) m
 	migs := make(map[string]*migrationNode)
 
 	e := fb.ForEach(func(k, v []byte) error {
-		x := string(k)
-		if _, ok := seen[x]; ok {
+		targetMid := string(k)
+		if _, ok := seen[targetMid]; ok {
 			return nil // continue
 		}
 		if len(v) == 0 {
 			// is auto migration
-			targetModel, e := vm.Model(string(k))
+			targetModel, e := vm.Model(string(targetMid))
 			if e != nil {
 				return e
 			}
@@ -1679,9 +1680,10 @@ func (vm *VirtualMachine) migrationTree(from string, seen map[string]struct{}) m
 			if e != nil {
 				return e
 			}
-			migs[x] = &migrationNode{
+			migs[targetMid] = &migrationNode{
+				InModel:   sourceModel,
 				Migration: xpr.ValueFromFunction(fun),
-				Children:  vm.migrationTree(x, seen),
+				Children:  vm.migrationTree(targetMid, seen),
 			}
 		} else {
 			exprID := string(v)
@@ -1689,9 +1691,10 @@ func (vm *VirtualMachine) migrationTree(from string, seen map[string]struct{}) m
 			if e != nil {
 				return e
 			}
-			migs[x] = &migrationNode{
+			migs[targetMid] = &migrationNode{
+				InModel:   sourceModel,
 				Migration: exprMeta.Value,
-				Children:  vm.migrationTree(x, seen),
+				Children:  vm.migrationTree(targetMid, seen),
 			}
 		}
 		return nil // continue

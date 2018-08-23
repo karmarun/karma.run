@@ -52,7 +52,6 @@ func ExportHttpHandler(rw http.ResponseWriter, rq *http.Request) {
 		defer tx.Rollback()
 		rw.Header().Set(`Content-Type`, `application/octet-stream`)
 		rw.Header().Set(`Content-Disposition`, `attachment; filename="`+config.DataFile+`"`)
-		rw.Header().Set(`Content-Encoding`, `gzip`)
 		_, e = tx.WriteTo(ow)
 		if e != nil {
 			return e
