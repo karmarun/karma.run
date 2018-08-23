@@ -1588,7 +1588,7 @@ func DataValueFromExpression(x Expression) val.Value {
 
 	case NewUnion:
 		arg := make(val.Tuple, 2)
-		arg[0] = DataValueFromExpression(node.Case)
+		arg[0] = node.Case.(Literal).Value
 		arg[1] = DataValueFromExpression(node.Value)
 		return val.Union{"union", arg}
 

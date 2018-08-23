@@ -217,7 +217,10 @@ func _findAutoTransformation(source, target mdl.Model) (xpr.Expression, err.Path
 					errout = e.AppendPath(err.ErrorPathElementUnionCase(caze))
 					return false
 				}
-				out[caze] = xpr.NewFunction([]string{"source"}, sub)
+				out[caze] = xpr.NewFunction([]string{"source"}, xpr.NewUnion{
+					Case:  xpr.Literal{val.String(caze)},
+					Value: sub,
+				})
 				return true
 			})
 			return xpr.SwitchCase{
