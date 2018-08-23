@@ -35,6 +35,16 @@ func _findAutoTransformation(source, target mdl.Model) (xpr.Expression, err.Path
 
 	source, target = source.Concrete(), target.Concrete()
 
+	if _, ok := source.(mdl.Optional); !ok {
+		if target, ok := target.(mdl.Optional); ok {
+			sub, e := _findAutoTransformation(source, target.Model)
+			if e != nil {
+				return xpr.Literal{val.Null}, nil
+			}
+			return sub, nil
+		}
+	}
+
 	switch source := source.(type) {
 
 	case mdl.Optional:
@@ -45,8 +55,11 @@ func _findAutoTransformation(source, target mdl.Model) (xpr.Expression, err.Path
 			}
 			return xpr.If{
 				Condition: xpr.IsPresent{xpr.Scope("source")},
-				Then:      sub,
-				Else:      xpr.Literal{val.Null},
+				Then: xpr.With{
+					Value:  xpr.AssertPresent{xpr.Scope("source")},
+					Return: xpr.NewFunction([]string{"source"}, sub),
+				},
+				Else: xpr.Literal{val.Null},
 			}, nil
 		}
 		if target.Zeroable() {
@@ -56,8 +69,11 @@ func _findAutoTransformation(source, target mdl.Model) (xpr.Expression, err.Path
 			}
 			return xpr.If{
 				Condition: xpr.IsPresent{xpr.Scope("source")},
-				Then:      sub,
-				Else:      xpr.Literal{target.Zero()},
+				Then: xpr.With{
+					Value:  xpr.AssertPresent{xpr.Scope("source")},
+					Return: xpr.NewFunction([]string{"source"}, sub),
+				},
+				Else: xpr.Literal{target.Zero()},
 			}, nil
 		}
 		return nil, NewAutoTransformationError(`source is optional but target is neither optional nor zeroable.`, source, target)
