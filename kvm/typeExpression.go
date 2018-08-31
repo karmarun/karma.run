@@ -1211,36 +1211,20 @@ func (vm VirtualMachine) TypeExpression(node xpr.Expression, scope *ModelScope, 
 
 	case xpr.SetField:
 
-		name, e := vm.TypeExpression(node.Name, scope, StringModel)
-		if e != nil {
-			return name, e
-		}
-		node.Name = name
-
-		field := ""
-		if cn, ok := name.Actual.(ConstantModel); ok {
-			field = string(cn.Value.(val.String))
-		} else {
-			return ZeroTypedExpression, err.CompilationError{
-				Problem: `setField: name must be constant expression`,
-				Program: xpr.ValueFromExpression(node),
-			}
-		}
-
 		value, e := vm.TypeExpression(node.Value, scope, AnyModel)
 		if e != nil {
 			return value, e
 		}
 		node.Value = value
 
-		in, e := vm.TypeExpression(node.In, scope, mdl.Struct{}) // any struct
+		in, e := vm.TypeExpression(node.In, scope, mdl.NewStruct(0)) // any struct
 		if e != nil {
 			return in, e
 		}
 		node.In = in
 
 		m := in.Actual.Concrete().Copy().(mdl.Struct)
-		m.Set(field, value.Actual) // do not Unwrap value.Actual (ConstantModel is relevant for typechecking)
+		m.Set(node.Name, value.Actual) // do not Unwrap value.Actual (ConstantModel is relevant for typechecking)
 
 		retNode = xpr.TypedExpression{node, expected, m}
 

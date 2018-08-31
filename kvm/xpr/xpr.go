@@ -462,7 +462,7 @@ func ExpressionFromValue(v val.Value) Expression {
 
 	case "setField":
 		arg := u.Value.(val.Struct)
-		return SetField{ExpressionFromValue(arg.Field("name")), ExpressionFromValue(arg.Field("value")), ExpressionFromValue(arg.Field("in"))}
+		return SetField{string(arg.Field("name").(val.String)), ExpressionFromValue(arg.Field("value")), ExpressionFromValue(arg.Field("in"))}
 
 	case "setKey":
 		arg := u.Value.(val.Struct)
@@ -1220,7 +1220,7 @@ func ValueFromExpression(x Expression) val.Value {
 
 	case SetField:
 		return val.Union{"setField", val.StructFromMap(map[string]val.Value{
-			"name":  ValueFromExpression(node.Name),
+			"name":  val.String(node.Name),
 			"value": ValueFromExpression(node.Value),
 			"in":    ValueFromExpression(node.In),
 		})}

@@ -534,9 +534,7 @@ func (vm VirtualMachine) CompileExpression(typed xpr.TypedExpression, prev inst.
 	case xpr.SetField:
 		prev = vm.CompileExpression(node.Value.(xpr.TypedExpression), prev)
 		prev = vm.CompileExpression(node.In.(xpr.TypedExpression), prev)
-		return append(prev, inst.SetField{
-			string(node.Name.(xpr.TypedExpression).Actual.(ConstantModel).Value.(val.String)),
-		})
+		return append(prev, inst.SetField{node.Name})
 
 	case xpr.SetKey:
 		prev = vm.CompileExpression(node.Value.(xpr.TypedExpression), prev)

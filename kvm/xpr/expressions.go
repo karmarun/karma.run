@@ -542,13 +542,13 @@ func (x MatchRegex) Transform(f func(Expression) Expression) Expression {
 }
 
 type SetField struct {
-	Name  Expression
+	Name  string
 	Value Expression
 	In    Expression
 }
 
 func (x SetField) Transform(f func(Expression) Expression) Expression {
-	return f(SetField{x.Name.Transform(f), x.Value.Transform(f), x.In.Transform(f)})
+	return f(SetField{x.Name, x.Value.Transform(f), x.In.Transform(f)})
 }
 
 type SetKey struct {
