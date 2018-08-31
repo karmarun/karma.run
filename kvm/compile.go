@@ -475,9 +475,7 @@ func (vm VirtualMachine) CompileExpression(typed xpr.TypedExpression, prev inst.
 
 	case xpr.AssertCase:
 		prev = vm.CompileExpression(node.Value.(xpr.TypedExpression), prev)
-		return append(prev, inst.AssertCase{
-			string(node.Case.(xpr.TypedExpression).Actual.(ConstantModel).Value.(val.String)),
-		})
+		return append(prev, inst.AssertCase{node.Case})
 
 	case xpr.IsCase:
 		prev = vm.CompileExpression(node.Case.(xpr.TypedExpression), prev)
@@ -591,9 +589,7 @@ func (vm VirtualMachine) CompileExpression(typed xpr.TypedExpression, prev inst.
 
 	case xpr.NewUnion:
 		prev = vm.CompileExpression(node.Value.(xpr.TypedExpression), prev)
-		return append(prev, inst.BuildUnion{
-			string(node.Case.(xpr.TypedExpression).Actual.(ConstantModel).Value.(val.String)),
-		})
+		return append(prev, inst.BuildUnion{node.Case})
 
 	case xpr.Referred:
 		mref := node.In.(xpr.TypedExpression).Actual.(ConstantModel).Value.(val.Ref)
@@ -667,11 +663,11 @@ func (vm VirtualMachine) CompileExpression(typed xpr.TypedExpression, prev inst.
 		return append(prev, inst.Slice{})
 
 	case xpr.SearchAllRegex:
-		regex := string(node.Regex.(xpr.TypedExpression).Actual.(ConstantModel).Value.(val.String))
-		if node.MultiLine.(xpr.TypedExpression).Actual.(ConstantModel).Value.(val.Bool) {
+		regex := node.Regex
+		if node.MultiLine {
 			regex = `(?m)` + regex
 		}
-		if node.CaseInsensitive.(xpr.TypedExpression).Actual.(ConstantModel).Value.(val.Bool) {
+		if node.CaseInsensitive {
 			regex = `(?i)` + regex
 		}
 		r := regexp.MustCompile(regex) // compilation previously checked
@@ -679,11 +675,11 @@ func (vm VirtualMachine) CompileExpression(typed xpr.TypedExpression, prev inst.
 		return append(prev, inst.SearchAllRegex{r})
 
 	case xpr.SearchRegex:
-		regex := string(node.Regex.(xpr.TypedExpression).Actual.(ConstantModel).Value.(val.String))
-		if node.MultiLine.(xpr.TypedExpression).Actual.(ConstantModel).Value.(val.Bool) {
+		regex := node.Regex
+		if node.MultiLine {
 			regex = `(?m)` + regex
 		}
-		if node.CaseInsensitive.(xpr.TypedExpression).Actual.(ConstantModel).Value.(val.Bool) {
+		if node.CaseInsensitive {
 			regex = `(?i)` + regex
 		}
 		r := regexp.MustCompile(regex) // compilation previously checked
@@ -691,11 +687,11 @@ func (vm VirtualMachine) CompileExpression(typed xpr.TypedExpression, prev inst.
 		return append(prev, inst.SearchRegex{r})
 
 	case xpr.MatchRegex:
-		regex := string(node.Regex.(xpr.TypedExpression).Actual.(ConstantModel).Value.(val.String))
-		if node.MultiLine.(xpr.TypedExpression).Actual.(ConstantModel).Value.(val.Bool) {
+		regex := node.Regex
+		if node.MultiLine {
 			regex = `(?m)` + regex
 		}
-		if node.CaseInsensitive.(xpr.TypedExpression).Actual.(ConstantModel).Value.(val.Bool) {
+		if node.CaseInsensitive {
 			regex = `(?i)` + regex
 		}
 		r := regexp.MustCompile(regex) // compilation previously checked

@@ -234,7 +234,7 @@ func _findAutoTransformation(source, target mdl.Model) (xpr.Expression, err.Path
 					return false
 				}
 				out[caze] = xpr.NewFunction([]string{"source"}, xpr.NewUnion{
-					Case:  xpr.Literal{val.String(caze)},
+					Case:  caze,
 					Value: sub,
 				})
 				return true

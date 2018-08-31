@@ -1012,25 +1012,9 @@ func (vm VirtualMachine) TypeExpression(node xpr.Expression, scope *ModelScope, 
 
 	case xpr.NewUnion:
 
-		caze, e := vm.TypeExpression(node.Case, scope, StringModel)
-		if e != nil {
-			return caze, e
-		}
-		node.Case = caze
-
-		cc, ok := caze.Actual.(ConstantModel)
-		if !ok {
-			return ZeroTypedExpression, err.CompilationError{
-				Problem: `union: case must be constant expression`,
-				Program: xpr.ValueFromExpression(node),
-			}
-		}
-
-		scase := string(cc.Value.(val.String))
-
 		subExpect := mdl.Model(AnyModel)
 		if eu, ok := expected.Concrete().(mdl.Union); ok {
-			if m, ok := eu.Get(scase); ok {
+			if m, ok := eu.Get(node.Case); ok {
 				subExpect = m
 			}
 		}
@@ -1044,10 +1028,10 @@ func (vm VirtualMachine) TypeExpression(node xpr.Expression, scope *ModelScope, 
 		model := mdl.Model(nil)
 		umodel := mdl.NewUnion(1)
 		if ca, ok := value.Actual.(ConstantModel); ok {
-			umodel.Set(scase, ca.Model)
-			model = ConstantModel{umodel, val.Union{scase, ca.Value}}
+			umodel.Set(node.Case, ca.Model)
+			model = ConstantModel{umodel, val.Union{node.Case, ca.Value}}
 		} else {
-			umodel.Set(scase, value.Actual)
+			umodel.Set(node.Case, value.Actual)
 			model = umodel
 		}
 
@@ -1771,19 +1755,6 @@ func (vm VirtualMachine) TypeExpression(node xpr.Expression, scope *ModelScope, 
 		retNode = xpr.TypedExpression{node, expected, value.Actual.Unwrap()} // get rid of constant wrapper in e.g. filterList([1,2,3], () => ...)
 
 	case xpr.AssertCase:
-		caze, e := vm.TypeExpression(node.Case, scope, StringModel)
-		if e != nil {
-			return caze, e
-		}
-		node.Case = caze
-		cc, ok := caze.Actual.(ConstantModel)
-		if !ok {
-			return ZeroTypedExpression, err.CompilationError{
-				Problem: `assertCase: case argument must be constant expression`,
-				Program: xpr.ValueFromExpression(caze),
-			}
-		}
-		caseString := string(cc.Value.(val.String))
 
 		value, e := vm.TypeExpression(node.Value, scope, AnyModel)
 		if e != nil {
@@ -1800,7 +1771,7 @@ func (vm VirtualMachine) TypeExpression(node xpr.Expression, scope *ModelScope, 
 			}
 		}
 
-		model, ok := um.Get(caseString)
+		model, ok := um.Get(node.Case)
 		if !ok {
 			return ZeroTypedExpression, err.CompilationError{
 				Problem: fmt.Sprintf(`assertCase: value never has case specified case`),
@@ -1810,14 +1781,14 @@ func (vm VirtualMachine) TypeExpression(node xpr.Expression, scope *ModelScope, 
 		}
 		if cv, ok := value.Actual.(ConstantModel); ok {
 			uv := cv.Value.(val.Union)
-			if uv.Case != caseString {
+			if uv.Case != node.Case {
 				return ZeroTypedExpression, err.CompilationError{
 					Problem: `assertCase: assertion failed`,
 					Program: xpr.ValueFromExpression(value),
-					// C: val.Map{"case": val.String(caseString)},
+					// C: val.Map{"case": val.String(node.Case)},
 				}
 			}
-			model = ConstantModel{cv.Model.(mdl.Union).Case(caseString), uv.Value}
+			model = ConstantModel{cv.Model.(mdl.Union).Case(node.Case), uv.Value}
 		}
 		retNode = xpr.TypedExpression{node, expected, model}
 
@@ -2097,50 +2068,10 @@ func (vm VirtualMachine) TypeExpression(node xpr.Expression, scope *ModelScope, 
 		}
 		node.Value = value
 
-		regex, e := vm.TypeExpression(node.Regex, scope, StringModel)
-		if e != nil {
-			return regex, e
-		}
-		node.Regex = regex
-
-		cr, ok := regex.Actual.(ConstantModel)
-		if !ok {
-			return ZeroTypedExpression, err.CompilationError{
-				Problem: `searchAllRegex: regex argument must be constant expression`,
-				Program: xpr.ValueFromExpression(regex),
-			}
-		}
-
-		if _, e := regexp.Compile(string(cr.Value.(val.String))); e != nil {
+		if _, e := regexp.Compile(node.Regex); e != nil {
 			return ZeroTypedExpression, err.CompilationError{
 				Problem: `searchAllRegex: regex does not compile`,
-				Program: xpr.ValueFromExpression(regex),
-			}
-		}
-
-		multiLine, e := vm.TypeExpression(node.MultiLine, scope, BoolModel)
-		if e != nil {
-			return multiLine, e
-		}
-		node.MultiLine = multiLine
-
-		if _, ok := multiLine.Actual.(ConstantModel); !ok {
-			return ZeroTypedExpression, err.CompilationError{
-				Problem: `searchAllRegex: multiLine argument must be constant expression`,
-				Program: xpr.ValueFromExpression(regex),
-			}
-		}
-
-		caseInsensitive, e := vm.TypeExpression(node.CaseInsensitive, scope, BoolModel)
-		if e != nil {
-			return caseInsensitive, e
-		}
-		node.CaseInsensitive = caseInsensitive
-
-		if _, ok := caseInsensitive.Actual.(ConstantModel); !ok {
-			return ZeroTypedExpression, err.CompilationError{
-				Problem: `searchAllRegex: caseInsensitive argument must be constant expression compile`,
-				Program: xpr.ValueFromExpression(regex),
+				Program: xpr.ValueFromExpression(node),
 			}
 		}
 
@@ -2154,50 +2085,10 @@ func (vm VirtualMachine) TypeExpression(node xpr.Expression, scope *ModelScope, 
 		}
 		node.Value = value
 
-		regex, e := vm.TypeExpression(node.Regex, scope, StringModel)
-		if e != nil {
-			return regex, e
-		}
-		node.Regex = regex
-
-		cr, ok := regex.Actual.(ConstantModel)
-		if !ok {
-			return ZeroTypedExpression, err.CompilationError{
-				Problem: `searchRegex: regex argument must be constant expression`,
-				Program: xpr.ValueFromExpression(regex),
-			}
-		}
-
-		if _, e := regexp.Compile(string(cr.Value.(val.String))); e != nil {
+		if _, e := regexp.Compile(node.Regex); e != nil {
 			return ZeroTypedExpression, err.CompilationError{
 				Problem: `searchRegex: regex does not compile`,
-				Program: xpr.ValueFromExpression(regex),
-			}
-		}
-
-		multiLine, e := vm.TypeExpression(node.MultiLine, scope, BoolModel)
-		if e != nil {
-			return multiLine, e
-		}
-		node.MultiLine = multiLine
-
-		if _, ok := multiLine.Actual.(ConstantModel); !ok {
-			return ZeroTypedExpression, err.CompilationError{
-				Problem: `searchRegex: multiLine argument must be constant expression`,
-				Program: xpr.ValueFromExpression(regex),
-			}
-		}
-
-		caseInsensitive, e := vm.TypeExpression(node.CaseInsensitive, scope, BoolModel)
-		if e != nil {
-			return caseInsensitive, e
-		}
-		node.CaseInsensitive = caseInsensitive
-
-		if _, ok := caseInsensitive.Actual.(ConstantModel); !ok {
-			return ZeroTypedExpression, err.CompilationError{
-				Problem: `searchRegex: caseInsensitive argument must be constant expression compile`,
-				Program: xpr.ValueFromExpression(regex),
+				Program: xpr.ValueFromExpression(node),
 			}
 		}
 
@@ -2211,50 +2102,10 @@ func (vm VirtualMachine) TypeExpression(node xpr.Expression, scope *ModelScope, 
 		}
 		node.Value = value
 
-		regex, e := vm.TypeExpression(node.Regex, scope, StringModel)
-		if e != nil {
-			return regex, e
-		}
-		node.Regex = regex
-
-		cr, ok := regex.Actual.(ConstantModel)
-		if !ok {
-			return ZeroTypedExpression, err.CompilationError{
-				Problem: `matchRegex: regex argument must be constant expression`,
-				Program: xpr.ValueFromExpression(regex),
-			}
-		}
-
-		if _, e := regexp.Compile(string(cr.Value.(val.String))); e != nil {
+		if _, e := regexp.Compile(node.Regex); e != nil {
 			return ZeroTypedExpression, err.CompilationError{
 				Problem: `matchRegex: regex does not compile`,
-				Program: xpr.ValueFromExpression(regex),
-			}
-		}
-
-		multiLine, e := vm.TypeExpression(node.MultiLine, scope, BoolModel)
-		if e != nil {
-			return multiLine, e
-		}
-		node.MultiLine = multiLine
-
-		if _, ok := multiLine.Actual.(ConstantModel); !ok {
-			return ZeroTypedExpression, err.CompilationError{
-				Problem: `matchRegex: multiLine argument must be constant expression`,
-				Program: xpr.ValueFromExpression(regex),
-			}
-		}
-
-		caseInsensitive, e := vm.TypeExpression(node.CaseInsensitive, scope, BoolModel)
-		if e != nil {
-			return caseInsensitive, e
-		}
-		node.CaseInsensitive = caseInsensitive
-
-		if _, ok := caseInsensitive.Actual.(ConstantModel); !ok {
-			return ZeroTypedExpression, err.CompilationError{
-				Problem: `matchRegex: caseInsensitive argument must be constant expression compile`,
-				Program: xpr.ValueFromExpression(regex),
+				Program: xpr.ValueFromExpression(node),
 			}
 		}
 

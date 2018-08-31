@@ -635,7 +635,7 @@ func ExpressionFromValue(v val.Value) Expression {
 
 	case "assertCase":
 		arg := u.Value.(val.Struct)
-		return AssertCase{ExpressionFromValue(arg.Field("value")), ExpressionFromValue(arg.Field("case"))}
+		return AssertCase{ExpressionFromValue(arg.Field("value")), string(arg.Field("case").(val.String))}
 
 	case "isCase":
 		arg := u.Value.(val.Struct)
@@ -663,27 +663,27 @@ func ExpressionFromValue(v val.Value) Expression {
 		arg := u.Value.(val.Struct)
 		return SearchAllRegex{
 			ExpressionFromValue(arg.Field("value")),
-			ExpressionFromValue(arg.Field("regex")),
-			ExpressionFromValue(arg.Field("multiLine")),
-			ExpressionFromValue(arg.Field("caseInsensitive")),
+			string(arg.Field("regex").(val.String)),
+			bool(arg.Field("multiLine").(val.Bool)),
+			bool(arg.Field("caseInsensitive").(val.Bool)),
 		}
 
 	case "searchRegex":
 		arg := u.Value.(val.Struct)
 		return SearchRegex{
 			ExpressionFromValue(arg.Field("value")),
-			ExpressionFromValue(arg.Field("regex")),
-			ExpressionFromValue(arg.Field("multiLine")),
-			ExpressionFromValue(arg.Field("caseInsensitive")),
+			string(arg.Field("regex").(val.String)),
+			bool(arg.Field("multiLine").(val.Bool)),
+			bool(arg.Field("caseInsensitive").(val.Bool)),
 		}
 
 	case "matchRegex":
 		arg := u.Value.(val.Struct)
 		return MatchRegex{
 			ExpressionFromValue(arg.Field("value")),
-			ExpressionFromValue(arg.Field("regex")),
-			ExpressionFromValue(arg.Field("multiLine")),
-			ExpressionFromValue(arg.Field("caseInsensitive")),
+			string(arg.Field("regex").(val.String)),
+			bool(arg.Field("multiLine").(val.Bool)),
+			bool(arg.Field("caseInsensitive").(val.Bool)),
 		}
 
 	case "switchModelRef":
@@ -815,7 +815,7 @@ func DataExpressionFromValue(v val.Value) Expression {
 
 	case "union":
 		arg := u.Value.(val.Tuple)
-		return NewUnion{Literal{arg[0].(val.String)}, DataExpressionFromValue(arg[1])}
+		return NewUnion{string(arg[0].(val.String)), DataExpressionFromValue(arg[1])}
 
 	case "map":
 		arg := u.Value.(val.Map)
@@ -1330,7 +1330,7 @@ func ValueFromExpression(x Expression) val.Value {
 
 	case AssertCase:
 		return val.Union{"assertCase", val.StructFromMap(map[string]val.Value{
-			"case":  ValueFromExpression(node.Case),
+			"case":  val.String(node.Case),
 			"value": ValueFromExpression(node.Value),
 		})}
 
@@ -1446,26 +1446,26 @@ func ValueFromExpression(x Expression) val.Value {
 
 	case SearchRegex:
 		arg := val.NewStruct(4)
-		arg.Set("regex", ValueFromExpression(node.Regex))
 		arg.Set("value", ValueFromExpression(node.Value))
-		arg.Set("multiLine", ValueFromExpression(node.MultiLine))
-		arg.Set("caseInsensitive", ValueFromExpression(node.CaseInsensitive))
+		arg.Set("regex", val.String(node.Regex))
+		arg.Set("multiLine", val.Bool(node.MultiLine))
+		arg.Set("caseInsensitive", val.Bool(node.CaseInsensitive))
 		return val.Union{"searchRegex", arg}
 
 	case SearchAllRegex:
 		arg := val.NewStruct(4)
-		arg.Set("regex", ValueFromExpression(node.Regex))
 		arg.Set("value", ValueFromExpression(node.Value))
-		arg.Set("multiLine", ValueFromExpression(node.MultiLine))
-		arg.Set("caseInsensitive", ValueFromExpression(node.CaseInsensitive))
+		arg.Set("regex", val.String(node.Regex))
+		arg.Set("multiLine", val.Bool(node.MultiLine))
+		arg.Set("caseInsensitive", val.Bool(node.CaseInsensitive))
 		return val.Union{"searchAllRegex", arg}
 
 	case MatchRegex:
 		arg := val.NewStruct(4)
-		arg.Set("regex", ValueFromExpression(node.Regex))
 		arg.Set("value", ValueFromExpression(node.Value))
-		arg.Set("multiLine", ValueFromExpression(node.MultiLine))
-		arg.Set("caseInsensitive", ValueFromExpression(node.CaseInsensitive))
+		arg.Set("regex", val.String(node.Regex))
+		arg.Set("multiLine", val.Bool(node.MultiLine))
+		arg.Set("caseInsensitive", val.Bool(node.CaseInsensitive))
 		return val.Union{"matchRegex", arg}
 
 	case AssertModelRef:
@@ -1588,7 +1588,7 @@ func DataValueFromExpression(x Expression) val.Value {
 
 	case NewUnion:
 		arg := make(val.Tuple, 2)
-		arg[0] = node.Case.(Literal).Value
+		arg[0] = val.String(node.Case)
 		arg[1] = DataValueFromExpression(node.Value)
 		return val.Union{"union", arg}
 

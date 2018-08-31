@@ -389,11 +389,12 @@ func (x FilterList) Transform(f func(Expression) Expression) Expression {
 }
 
 type AssertCase struct {
-	Value, Case Expression
+	Value Expression
+	Case  string
 }
 
 func (x AssertCase) Transform(f func(Expression) Expression) Expression {
-	return f(AssertCase{x.Value.Transform(f), x.Case.Transform(f)})
+	return f(AssertCase{x.Value.Transform(f), x.Case})
 }
 
 type IsCase struct {
@@ -510,35 +511,35 @@ func (x Slice) Transform(f func(Expression) Expression) Expression {
 
 type SearchAllRegex struct {
 	Value           Expression
-	Regex           Expression
-	MultiLine       Expression
-	CaseInsensitive Expression
+	Regex           string
+	MultiLine       bool
+	CaseInsensitive bool
 }
 
 func (x SearchAllRegex) Transform(f func(Expression) Expression) Expression {
-	return f(SearchAllRegex{x.Value.Transform(f), x.Regex.Transform(f), x.MultiLine.Transform(f), x.CaseInsensitive.Transform(f)})
+	return f(SearchAllRegex{x.Value.Transform(f), x.Regex, x.MultiLine, x.CaseInsensitive})
 }
 
 type SearchRegex struct {
 	Value           Expression
-	Regex           Expression
-	MultiLine       Expression
-	CaseInsensitive Expression
+	Regex           string
+	MultiLine       bool
+	CaseInsensitive bool
 }
 
 func (x SearchRegex) Transform(f func(Expression) Expression) Expression {
-	return f(SearchRegex{x.Value.Transform(f), x.Regex.Transform(f), x.MultiLine.Transform(f), x.CaseInsensitive.Transform(f)})
+	return f(SearchRegex{x.Value.Transform(f), x.Regex, x.MultiLine, x.CaseInsensitive})
 }
 
 type MatchRegex struct {
 	Value           Expression
-	Regex           Expression
-	MultiLine       Expression
-	CaseInsensitive Expression
+	Regex           string
+	MultiLine       bool
+	CaseInsensitive bool
 }
 
 func (x MatchRegex) Transform(f func(Expression) Expression) Expression {
-	return f(MatchRegex{x.Value.Transform(f), x.Regex.Transform(f), x.MultiLine.Transform(f), x.CaseInsensitive.Transform(f)})
+	return f(MatchRegex{x.Value.Transform(f), x.Regex, x.MultiLine, x.CaseInsensitive})
 }
 
 type SetField struct {
@@ -618,11 +619,12 @@ func (x NewStruct) Transform(f func(Expression) Expression) Expression {
 }
 
 type NewUnion struct {
-	Case, Value Expression
+	Case  string
+	Value Expression
 }
 
 func (x NewUnion) Transform(f func(Expression) Expression) Expression {
-	return f(NewUnion{x.Case.Transform(f), x.Value.Transform(f)})
+	return f(NewUnion{x.Case, x.Value.Transform(f)})
 }
 
 type CreateMultiple struct {
