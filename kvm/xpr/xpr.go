@@ -1672,7 +1672,7 @@ func DataValueFromExpression(x Expression) val.Value {
 			return val.Union{"dateTime", v}
 
 		case val.Symbol:
-			return val.Union{"symbol", v}
+			return val.Union{"symbol", val.String(v)}
 
 		case val.Int8:
 			return val.Union{"int8", v}
