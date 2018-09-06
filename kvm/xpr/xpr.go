@@ -716,10 +716,17 @@ func ExpressionFromValue(v val.Value) Expression {
 	case "switchModelRef":
 		arg := u.Value.(val.Struct)
 		css := arg.Field("cases").(val.Set)
-		nod := SwitchModelRef{ExpressionFromValue(arg.Field("value")), ExpressionFromValue(arg.Field("default")), make([]SwitchModelRefCase, 0, len(css))}
+		nod := SwitchModelRef{
+			Value:   ExpressionFromValue(arg.Field("value")),
+			Default: ExpressionFromValue(arg.Field("default")),
+			Cases:   make([]SwitchModelRefCase, 0, len(css)),
+		}
 		for _, sub := range css {
 			subArg := sub.(val.Struct)
-			nod.Cases = append(nod.Cases, SwitchModelRefCase{ExpressionFromValue(subArg.Field("match")), ExpressionFromValue(subArg.Field("return"))})
+			nod.Cases = append(nod.Cases, SwitchModelRefCase{
+				Match:  ExpressionFromValue(subArg.Field("match")),
+				Return: FunctionFromValue(subArg.Field("return")),
+			})
 		}
 		return nod
 
@@ -1533,7 +1540,7 @@ func ValueFromExpression(x Expression) val.Value {
 		for _, caze := range node.Cases {
 			w := val.StructFromMap(map[string]val.Value{
 				"match":  ValueFromExpression(caze.Match),
-				"return": ValueFromExpression(caze.Return),
+				"return": ValueFromFunction(caze.Return),
 			})
 			cases[val.Hash(w, nil).Sum64()] = w
 		}

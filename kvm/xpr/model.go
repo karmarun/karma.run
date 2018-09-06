@@ -265,7 +265,7 @@ var LanguageModel = mdl.DefineRecursion("function", func(function *mdl.Recursion
 				"default": expression,
 				"cases": mdl.Set{mdl.StructFromMap(map[string]mdl.Model{
 					"match":  expression,
-					"return": expression,
+					"return": function,
 				})},
 			}),
 

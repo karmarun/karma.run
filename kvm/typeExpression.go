@@ -2277,13 +2277,53 @@ func (vm VirtualMachine) TypeExpression(node xpr.Expression, scope *ModelScope, 
 		retNode = xpr.TypedExpression{node, expected, model}
 
 	case xpr.SwitchModelRef:
+
 		value, e := vm.TypeExpression(node.Value, scope, AnyModel)
 		if e != nil {
 			return value, e
 		}
 		node.Value = value
 
-		panic("todo")
+		fmt.Printf("%#v\n", value.Actual)
+		// if _, ok := UnwrapConstant(value.Actual).(BucketModel); !ok {
+		// 	return ZeroTypedExpression, err.CompilationError{
+		// 		Problem: `switchModelRef: argument value is not persistent`,
+		// 		Program: xpr.ValueFromExpression(node.Value),
+		// 	}
+		// }
+
+		dflt, e := vm.TypeExpression(node.Default, scope, AnyModel)
+		if e != nil {
+			return ZeroTypedExpression, e
+		}
+		node.Default = dflt
+
+		m := dflt.Actual.Unwrap()
+		for i, caze := range node.Cases {
+			match, e := vm.TypeExpression(caze.Match, scope, mdl.Ref{vm.MetaModelId()})
+			if e != nil {
+				return ZeroTypedExpression, e
+			}
+			cm, ok := match.Actual.(ConstantModel)
+			if !ok {
+				return ZeroTypedExpression, err.CompilationError{
+					Problem: `switchModelRef: all case matches must be constant expressions`,
+					Program: xpr.ValueFromExpression(match),
+				}
+			}
+			sm, e := vm.Model(cm.Value.(val.Ref)[1])
+			if e != nil {
+				return ZeroTypedExpression, e
+			}
+			retrn, e := vm.TypeFunctionWithArguments(caze.Return, scope, AnyModel, sm)
+			if e != nil {
+				return ZeroTypedExpression, e
+			}
+			m = mdl.Either(retrn.Actual.Unwrap(), m, nil)
+			node.Cases[i] = xpr.SwitchModelRefCase{match, retrn}
+		}
+
+		retNode = xpr.TypedExpression{node, expected, m}
 
 	case xpr.CreateMultiple:
 

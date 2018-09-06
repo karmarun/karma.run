@@ -483,12 +483,13 @@ type SwitchModelRef struct {
 
 // SwitchModelRefCase is not an Expression
 type SwitchModelRefCase struct {
-	Match, Return Expression
+	Match  Expression
+	Return Function
 }
 
 // SwitchModelRefCase is not an Expression
 func (c SwitchModelRefCase) _transform(f func(Expression) Expression) SwitchModelRefCase {
-	return SwitchModelRefCase{f(c.Match), f(c.Return)}
+	return SwitchModelRefCase{c.Match.Transform(f), c.Return}
 }
 
 func (x SwitchModelRef) Transform(f func(Expression) Expression) Expression {

@@ -744,7 +744,7 @@ func (vm VirtualMachine) CompileExpression(typed xpr.TypedExpression, prev inst.
 		cases := make(map[string]inst.Sequence, len(node.Cases))
 		for _, sub := range node.Cases {
 			mref := sub.Match.(xpr.TypedExpression).Actual.(ConstantModel).Value.(val.Ref)
-			cases[mref[1]] = vm.CompileExpression(sub.Return.(xpr.TypedExpression), nil)
+			cases[mref[1]] = vm.CompileFunction(sub.Return.(xpr.TypedFunction))
 		}
 		prev = vm.CompileExpression(node.Value.(xpr.TypedExpression), prev)
 		return append(prev, inst.SwitchModelRef{
