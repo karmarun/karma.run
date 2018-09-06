@@ -4,6 +4,7 @@
 package api
 
 import (
+	"archive/zip"
 	"compress/gzip"
 	"encoding/base64"
 	bolt "github.com/coreos/bbolt"
@@ -41,7 +42,8 @@ func ExportHttpHandler(rw http.ResponseWriter, rq *http.Request) {
 	}
 
 	e := func() error {
-		ow, e := gzip.NewWriterLevel(rw, gzip.BestCompression)
+		zw := zip.NewWriter(rw)
+		fw, e := zw.Create(config.DataFile)
 		if e != nil {
 			return e
 		}
@@ -50,14 +52,13 @@ func ExportHttpHandler(rw http.ResponseWriter, rq *http.Request) {
 			return e
 		}
 		defer tx.Rollback()
-		rw.Header().Set(`Content-Type`, `application/octet-stream`)
-		rw.Header().Set(`Content-Disposition`, `attachment; filename="`+config.DataFile+`"`)
-		_, e = tx.WriteTo(ow)
+		rw.Header().Set(`Content-Type`, `application/zip`)
+		rw.Header().Set(`Content-Disposition`, `attachment; filename="`+config.DataFile+`.zip"`)
+		_, e = tx.WriteTo(fw)
 		if e != nil {
 			return e
 		}
-		e = ow.Close()
-		return e
+		return zw.Close()
 	}()
 
 	if e != nil {
