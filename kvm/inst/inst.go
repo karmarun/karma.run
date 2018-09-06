@@ -246,12 +246,10 @@ type SwitchModelRef struct {
 }
 
 type ToFloat struct{}
-type ToInt struct{}
 type ToInt8 struct{}
 type ToInt16 struct{}
 type ToInt32 struct{}
 type ToInt64 struct{}
-type ToUint struct{}
 type ToUint8 struct{}
 type ToUint16 struct{}
 type ToUint32 struct{}
@@ -480,12 +478,10 @@ func (DivideUint64) _inst()      {}
 func (If) _inst()                {}
 func (AssertModelRef) _inst()    {}
 func (ToFloat) _inst()           {}
-func (ToInt) _inst()             {}
 func (ToInt8) _inst()            {}
 func (ToInt16) _inst()           {}
 func (ToInt32) _inst()           {}
 func (ToInt64) _inst()           {}
-func (ToUint) _inst()            {}
 func (ToUint8) _inst()           {}
 func (ToUint16) _inst()          {}
 func (ToUint32) _inst()          {}

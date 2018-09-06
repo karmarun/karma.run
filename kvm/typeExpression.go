@@ -185,6 +185,141 @@ func (vm VirtualMachine) TypeExpression(node xpr.Expression, scope *ModelScope, 
 
 	switch node := node.(type) {
 
+	case xpr.ToFloat:
+		x, e := vm.TypeExpression(node.Expression, scope, AnyModel)
+		if e != nil {
+			return ZeroTypedExpression, e
+		}
+		node.Expression = x
+		xm := x.Actual.Concrete()
+		if !isNumericModel(xm) {
+			return ZeroTypedExpression, err.CompilationError{
+				Problem: `expression must be numeric (int*, uint* or float)`,
+				Program: xpr.ValueFromExpression(node.Expression),
+			}
+		}
+		retNode = xpr.TypedExpression{node, expected, mdl.Float{}}
+
+	case xpr.ToInt8:
+		x, e := vm.TypeExpression(node.Expression, scope, AnyModel)
+		if e != nil {
+			return ZeroTypedExpression, e
+		}
+		node.Expression = x
+		xm := x.Actual.Concrete()
+		if !isNumericModel(xm) {
+			return ZeroTypedExpression, err.CompilationError{
+				Problem: `expression must be numeric (int*, uint* or float)`,
+				Program: xpr.ValueFromExpression(node.Expression),
+			}
+		}
+		retNode = xpr.TypedExpression{node, expected, mdl.Int8{}}
+
+	case xpr.ToInt16:
+		x, e := vm.TypeExpression(node.Expression, scope, AnyModel)
+		if e != nil {
+			return ZeroTypedExpression, e
+		}
+		node.Expression = x
+		xm := x.Actual.Concrete()
+		if !isNumericModel(xm) {
+			return ZeroTypedExpression, err.CompilationError{
+				Problem: `expression must be numeric (int*, uint* or float)`,
+				Program: xpr.ValueFromExpression(node.Expression),
+			}
+		}
+		retNode = xpr.TypedExpression{node, expected, mdl.Int16{}}
+
+	case xpr.ToInt32:
+		x, e := vm.TypeExpression(node.Expression, scope, AnyModel)
+		if e != nil {
+			return ZeroTypedExpression, e
+		}
+		node.Expression = x
+		xm := x.Actual.Concrete()
+		if !isNumericModel(xm) {
+			return ZeroTypedExpression, err.CompilationError{
+				Problem: `expression must be numeric (int*, uint* or float)`,
+				Program: xpr.ValueFromExpression(node.Expression),
+			}
+		}
+		retNode = xpr.TypedExpression{node, expected, mdl.Int32{}}
+
+	case xpr.ToInt64:
+		x, e := vm.TypeExpression(node.Expression, scope, AnyModel)
+		if e != nil {
+			return ZeroTypedExpression, e
+		}
+		node.Expression = x
+		xm := x.Actual.Concrete()
+		if !isNumericModel(xm) {
+			return ZeroTypedExpression, err.CompilationError{
+				Problem: `expression must be numeric (int*, uint* or float)`,
+				Program: xpr.ValueFromExpression(node.Expression),
+			}
+		}
+		retNode = xpr.TypedExpression{node, expected, mdl.Int64{}}
+
+	case xpr.ToUint8:
+		x, e := vm.TypeExpression(node.Expression, scope, AnyModel)
+		if e != nil {
+			return ZeroTypedExpression, e
+		}
+		node.Expression = x
+		xm := x.Actual.Concrete()
+		if !isNumericModel(xm) {
+			return ZeroTypedExpression, err.CompilationError{
+				Problem: `expression must be numeric (int*, uint* or float)`,
+				Program: xpr.ValueFromExpression(node.Expression),
+			}
+		}
+		retNode = xpr.TypedExpression{node, expected, mdl.Uint8{}}
+
+	case xpr.ToUint16:
+		x, e := vm.TypeExpression(node.Expression, scope, AnyModel)
+		if e != nil {
+			return ZeroTypedExpression, e
+		}
+		node.Expression = x
+		xm := x.Actual.Concrete()
+		if !isNumericModel(xm) {
+			return ZeroTypedExpression, err.CompilationError{
+				Problem: `expression must be numeric (int*, uint* or float)`,
+				Program: xpr.ValueFromExpression(node.Expression),
+			}
+		}
+		retNode = xpr.TypedExpression{node, expected, mdl.Uint16{}}
+
+	case xpr.ToUint32:
+		x, e := vm.TypeExpression(node.Expression, scope, AnyModel)
+		if e != nil {
+			return ZeroTypedExpression, e
+		}
+		node.Expression = x
+		xm := x.Actual.Concrete()
+		if !isNumericModel(xm) {
+			return ZeroTypedExpression, err.CompilationError{
+				Problem: `expression must be numeric (int*, uint* or float)`,
+				Program: xpr.ValueFromExpression(node.Expression),
+			}
+		}
+		retNode = xpr.TypedExpression{node, expected, mdl.Uint32{}}
+
+	case xpr.ToUint64:
+		x, e := vm.TypeExpression(node.Expression, scope, AnyModel)
+		if e != nil {
+			return ZeroTypedExpression, e
+		}
+		node.Expression = x
+		xm := x.Actual.Concrete()
+		if !isNumericModel(xm) {
+			return ZeroTypedExpression, err.CompilationError{
+				Problem: `expression must be numeric (int*, uint* or float)`,
+				Program: xpr.ValueFromExpression(node.Expression),
+			}
+		}
+		retNode = xpr.TypedExpression{node, expected, mdl.Uint64{}}
+
 	case xpr.StringContains:
 
 		stryng, e := vm.TypeExpression(node.String, scope, StringModel)
@@ -2615,4 +2750,28 @@ func checkArgumentTypes(f xpr.TypedFunction, args ...mdl.Model) err.Error {
 
 	return nil
 
+}
+
+func isNumericModel(m mdl.Model) bool {
+	switch m.Concrete().(type) {
+	case mdl.Float:
+		return true
+	case mdl.Int8:
+		return true
+	case mdl.Int16:
+		return true
+	case mdl.Int32:
+		return true
+	case mdl.Int64:
+		return true
+	case mdl.Uint8:
+		return true
+	case mdl.Uint16:
+		return true
+	case mdl.Uint32:
+		return true
+	case mdl.Uint64:
+		return true
+	}
+	return false
 }

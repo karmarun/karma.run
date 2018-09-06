@@ -58,6 +58,42 @@ func (vm VirtualMachine) CompileExpression(typed xpr.TypedExpression, prev inst.
 	case xpr.Scope:
 		return append(prev, inst.Scope(node))
 
+	case xpr.ToFloat:
+		prev = vm.CompileExpression(node.Expression.(xpr.TypedExpression), prev)
+		return append(prev, inst.ToFloat{})
+
+	case xpr.ToInt8:
+		prev = vm.CompileExpression(node.Expression.(xpr.TypedExpression), prev)
+		return append(prev, inst.ToInt8{})
+
+	case xpr.ToInt16:
+		prev = vm.CompileExpression(node.Expression.(xpr.TypedExpression), prev)
+		return append(prev, inst.ToInt16{})
+
+	case xpr.ToInt32:
+		prev = vm.CompileExpression(node.Expression.(xpr.TypedExpression), prev)
+		return append(prev, inst.ToInt32{})
+
+	case xpr.ToInt64:
+		prev = vm.CompileExpression(node.Expression.(xpr.TypedExpression), prev)
+		return append(prev, inst.ToInt64{})
+
+	case xpr.ToUint8:
+		prev = vm.CompileExpression(node.Expression.(xpr.TypedExpression), prev)
+		return append(prev, inst.ToUint8{})
+
+	case xpr.ToUint16:
+		prev = vm.CompileExpression(node.Expression.(xpr.TypedExpression), prev)
+		return append(prev, inst.ToUint16{})
+
+	case xpr.ToUint32:
+		prev = vm.CompileExpression(node.Expression.(xpr.TypedExpression), prev)
+		return append(prev, inst.ToUint32{})
+
+	case xpr.ToUint64:
+		prev = vm.CompileExpression(node.Expression.(xpr.TypedExpression), prev)
+		return append(prev, inst.ToUint64{})
+
 	case xpr.StringContains:
 		prev = vm.CompileExpression(node.String.(xpr.TypedExpression), prev)
 		prev = vm.CompileExpression(node.Search.(xpr.TypedExpression), prev)

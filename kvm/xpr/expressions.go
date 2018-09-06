@@ -1109,3 +1109,75 @@ type RightFoldList struct {
 func (x RightFoldList) Transform(f func(Expression) Expression) Expression {
 	return f(RightFoldList{x.List.Transform(f), x.Initial.Transform(f), x.Reducer})
 }
+
+type ToFloat struct {
+	Expression Expression
+}
+
+func (x ToFloat) Transform(f func(Expression) Expression) Expression {
+	return f(ToFloat{x.Expression.Transform(f)})
+}
+
+type ToInt8 struct {
+	Expression Expression
+}
+
+func (x ToInt8) Transform(f func(Expression) Expression) Expression {
+	return f(ToInt8{x.Expression.Transform(f)})
+}
+
+type ToInt16 struct {
+	Expression Expression
+}
+
+func (x ToInt16) Transform(f func(Expression) Expression) Expression {
+	return f(ToInt16{x.Expression.Transform(f)})
+}
+
+type ToInt32 struct {
+	Expression Expression
+}
+
+func (x ToInt32) Transform(f func(Expression) Expression) Expression {
+	return f(ToInt32{x.Expression.Transform(f)})
+}
+
+type ToInt64 struct {
+	Expression Expression
+}
+
+func (x ToInt64) Transform(f func(Expression) Expression) Expression {
+	return f(ToInt64{x.Expression.Transform(f)})
+}
+
+type ToUint8 struct {
+	Expression Expression
+}
+
+func (x ToUint8) Transform(f func(Expression) Expression) Expression {
+	return f(ToUint8{x.Expression.Transform(f)})
+}
+
+type ToUint16 struct {
+	Expression Expression
+}
+
+func (x ToUint16) Transform(f func(Expression) Expression) Expression {
+	return f(ToUint16{x.Expression.Transform(f)})
+}
+
+type ToUint32 struct {
+	Expression Expression
+}
+
+func (x ToUint32) Transform(f func(Expression) Expression) Expression {
+	return f(ToUint32{x.Expression.Transform(f)})
+}
+
+type ToUint64 struct {
+	Expression Expression
+}
+
+func (x ToUint64) Transform(f func(Expression) Expression) Expression {
+	return f(ToUint64{x.Expression.Transform(f)})
+}

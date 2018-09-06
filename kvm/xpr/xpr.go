@@ -71,6 +71,33 @@ func ExpressionFromValue(v val.Value) Expression {
 		"symbol":
 		return DataExpressionFromValue(u)
 
+	case "toFloat":
+		return ToFloat{ExpressionFromValue(u.Value)}
+
+	case "toInt8":
+		return ToInt8{ExpressionFromValue(u.Value)}
+
+	case "toInt16":
+		return ToInt16{ExpressionFromValue(u.Value)}
+
+	case "toInt32":
+		return ToInt32{ExpressionFromValue(u.Value)}
+
+	case "toInt64":
+		return ToInt64{ExpressionFromValue(u.Value)}
+
+	case "toUint8":
+		return ToUint8{ExpressionFromValue(u.Value)}
+
+	case "toUint16":
+		return ToUint16{ExpressionFromValue(u.Value)}
+
+	case "toUint32":
+		return ToUint32{ExpressionFromValue(u.Value)}
+
+	case "toUint64":
+		return ToUint64{ExpressionFromValue(u.Value)}
+
 	case "signature":
 		return FunctionSignature{FunctionFromValue(u.Value)}
 
@@ -896,6 +923,33 @@ func ValueFromExpression(x Expression) val.Value {
 
 	case FunctionSignature:
 		return val.Union{"signature", ValueFromFunction(node.Function)}
+
+	case ToFloat:
+		return val.Union{"toFloat", ValueFromExpression(node.Expression)}
+
+	case ToInt8:
+		return val.Union{"toInt8", ValueFromExpression(node.Expression)}
+
+	case ToInt16:
+		return val.Union{"toInt16", ValueFromExpression(node.Expression)}
+
+	case ToInt32:
+		return val.Union{"toInt32", ValueFromExpression(node.Expression)}
+
+	case ToInt64:
+		return val.Union{"toInt64", ValueFromExpression(node.Expression)}
+
+	case ToUint8:
+		return val.Union{"toUint8", ValueFromExpression(node.Expression)}
+
+	case ToUint16:
+		return val.Union{"toUint16", ValueFromExpression(node.Expression)}
+
+	case ToUint32:
+		return val.Union{"toUint32", ValueFromExpression(node.Expression)}
+
+	case ToUint64:
+		return val.Union{"toUint64", ValueFromExpression(node.Expression)}
 
 	case GtFloat:
 		return val.Union{"gtFloat", val.Tuple{

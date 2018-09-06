@@ -1523,10 +1523,6 @@ func (vm VirtualMachine) Execute(program inst.Sequence, scope *ValueScope, args 
 			v := unMeta(stack.Pop())
 			stack.Push(convertNumericType(v, mdl.Float{}))
 
-		case inst.ToInt:
-			v := unMeta(stack.Pop())
-			stack.Push(convertNumericType(v, mdl.Int64{}))
-
 		case inst.ToInt8:
 			v := unMeta(stack.Pop())
 			stack.Push(convertNumericType(v, mdl.Int8{}))
@@ -1542,10 +1538,6 @@ func (vm VirtualMachine) Execute(program inst.Sequence, scope *ValueScope, args 
 		case inst.ToInt64:
 			v := unMeta(stack.Pop())
 			stack.Push(convertNumericType(v, mdl.Int64{}))
-
-		case inst.ToUint:
-			v := unMeta(stack.Pop())
-			stack.Push(convertNumericType(v, mdl.Uint64{}))
 
 		case inst.ToUint8:
 			v := unMeta(stack.Pop())
