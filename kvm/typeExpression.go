@@ -2284,14 +2284,6 @@ func (vm VirtualMachine) TypeExpression(node xpr.Expression, scope *ModelScope, 
 		}
 		node.Value = value
 
-		fmt.Printf("%#v\n", value.Actual)
-		// if _, ok := UnwrapConstant(value.Actual).(BucketModel); !ok {
-		// 	return ZeroTypedExpression, err.CompilationError{
-		// 		Problem: `switchModelRef: argument value is not persistent`,
-		// 		Program: xpr.ValueFromExpression(node.Value),
-		// 	}
-		// }
-
 		dflt, e := vm.TypeExpression(node.Default, scope, AnyModel)
 		if e != nil {
 			return ZeroTypedExpression, e

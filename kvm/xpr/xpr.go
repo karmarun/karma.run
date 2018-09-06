@@ -1549,6 +1549,7 @@ func ValueFromExpression(x Expression) val.Value {
 			"default": ValueFromExpression(node.Default),
 			"cases":   cases,
 		})}
+
 	case GraphFlow:
 		flow := make(val.Set, len(node.Flow))
 		for _, sub := range node.Flow {

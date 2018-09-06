@@ -86,15 +86,6 @@ var LanguageModel = mdl.DefineRecursion("function", func(function *mdl.Recursion
 			"tag":            expression,
 			"allReferrers":   expression,
 			"tagExists":      expression,
-			"toFloat":        expression,
-			"toInt8":         expression,
-			"toInt16":        expression,
-			"toInt32":        expression,
-			"toInt64":        expression,
-			"toUint8":        expression,
-			"toUint16":       expression,
-			"toUint32":       expression,
-			"toUint64":       expression,
 			"zero":           mdl.EmptyStruct,
 
 			"stringContains":  mdl.Tuple{expression, expression},
@@ -105,6 +96,16 @@ var LanguageModel = mdl.DefineRecursion("function", func(function *mdl.Recursion
 			"rightFoldList": mdl.Tuple{expression, expression, function}, // (list, initial, reducer)
 			// "someList":      mdl.Tuple{expression, function},
 			// "everyList":     mdl.Tuple{expression, function},
+
+			"toFloat":  expression,
+			"toInt8":   expression,
+			"toInt16":  expression,
+			"toInt32":  expression,
+			"toInt64":  expression,
+			"toUint8":  expression,
+			"toUint16": expression,
+			"toUint32": expression,
+			"toUint64": expression,
 
 			"addFloat":  mdl.Tuple{expression, expression},
 			"addInt64":  mdl.Tuple{expression, expression},
