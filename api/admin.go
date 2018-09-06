@@ -5,10 +5,11 @@ package api
 
 import (
 	"archive/zip"
-	"compress/gzip"
 	"encoding/base64"
+	"fmt"
 	bolt "github.com/coreos/bbolt"
 	"io"
+	"io/ioutil"
 	"karma.run/codec"
 	"karma.run/config"
 	"karma.run/db"
@@ -68,6 +69,8 @@ func ExportHttpHandler(rw http.ResponseWriter, rq *http.Request) {
 	}
 }
 
+const maxImportSize = 1024 * 1024 * 1024 // in bytes
+
 func ImportHttpHandler(rw http.ResponseWriter, rq *http.Request) {
 
 	cdc := rq.Context().Value(ContextKeyCodec).(codec.Interface)
@@ -90,21 +93,55 @@ func ImportHttpHandler(rw http.ResponseWriter, rq *http.Request) {
 
 	e := db.WhileClosed(func() error {
 
+		temp, e := ioutil.TempFile("", "karma_import_*")
+		if e != nil {
+			// todo
+		}
+
+		defer os.Remove(temp.Name())
+
+		l, e := io.Copy(temp, io.LimitReader(rq.Body, maxImportSize))
+		if e != nil {
+			return e
+		}
+
+		rq.Body.Close()
+
+		if l == maxImportSize {
+			return fmt.Errorf(`import too big. max size in bytes: %d`, maxImportSize)
+		}
+
+		zr, e := zip.NewReader(temp, l)
+		if e != nil {
+			return e
+		}
+
+		if len(zr.File) == 0 {
+			return fmt.Errorf(`empty zip file`)
+		}
+
+		if len(zr.File) > 1 {
+			return fmt.Errorf(`zip file contains %d files, expected 1`, len(zr.File))
+		}
+
+		fr, e := zr.File[0].Open()
+		if e != nil {
+			return e
+		}
+
+		defer fr.Close()
+
 		f, e := os.OpenFile(config.DataFile, os.O_RDWR|os.O_TRUNC|os.O_CREATE, db.Perm)
 		if e != nil {
 			return e
 		}
-		ir, e := gzip.NewReader(rq.Body)
-		if e != nil {
+		if _, e = io.Copy(f, fr); e != nil {
 			return e
 		}
-		_, e = io.Copy(f, ir)
-		if e != nil {
-			log.Panicln(e.Error())
+		if e := f.Close(); e != nil {
+			return e
 		}
-		_ = ir.Close()
-		_ = f.Close()
-		_ = rq.Body.Close()
+
 		kvm.ClearCompilerCache()
 		return nil
 	})
