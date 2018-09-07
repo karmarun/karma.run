@@ -518,6 +518,14 @@ func (vm VirtualMachine) CompileExpression(typed xpr.TypedExpression, prev inst.
 		prev = vm.CompileExpression(node.Value.(xpr.TypedExpression), prev)
 		return append(prev, inst.IsCase{})
 
+	case xpr.MapEnum:
+		prev = vm.CompileExpression(node.Symbol.(xpr.TypedExpression), prev)
+		return append(prev, inst.MapEnum{
+			Mapping:    node.Mapping,
+			Default:    node.Default,
+			HasDefault: node.HasDefault,
+		})
+
 	case xpr.MapMap:
 		prev = vm.CompileExpression(node.Value.(xpr.TypedExpression), prev)
 		return append(prev, inst.MapMap{

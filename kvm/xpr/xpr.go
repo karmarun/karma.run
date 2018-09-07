@@ -538,6 +538,23 @@ func ExpressionFromValue(v val.Value) Expression {
 		arg := u.Value.(val.Tuple)
 		return Create{ExpressionFromValue(arg[0]), FunctionFromValue(arg[1])}
 
+	case "mapEnum":
+		arg := u.Value.(val.Struct)
+		mapping := arg.Field("mapping").(val.Map)
+		mapEnum := MapEnum{
+			Symbol:  ExpressionFromValue(arg.Field("symbol")),
+			Mapping: make(map[string]string, mapping.Len()),
+		}
+		deflt := arg.Field("default")
+		if deflt != val.Null {
+			mapEnum.HasDefault, mapEnum.Default = true, string(deflt.(val.String))
+		}
+		mapping.ForEach(func(k string, v val.Value) bool {
+			mapEnum.Mapping[k] = string(v.(val.String))
+			return true
+		})
+		return mapEnum
+
 	case "mapMap":
 		arg := u.Value.(val.Tuple)
 		return MapMap{ExpressionFromValue(arg[0]), FunctionFromValue(arg[1])}
@@ -1400,6 +1417,21 @@ func ValueFromExpression(x Expression) val.Value {
 			"case":  ValueFromExpression(node.Case),
 			"value": ValueFromExpression(node.Value),
 		})}
+
+	case MapEnum:
+		arg := val.NewStruct(3)
+		arg.Set("symbol", ValueFromExpression(node.Symbol))
+		mapping := val.NewMap(len(node.Mapping))
+		for k, v := range node.Mapping {
+			mapping.Set(k, val.String(v))
+		}
+		arg.Set("mapping", mapping)
+		deflt := val.Value(val.Null)
+		if node.HasDefault {
+			deflt = val.String(node.Default)
+		}
+		arg.Set("default", deflt)
+		return val.Union{"mapEnum", arg}
 
 	case MapMap:
 		return val.Union{"mapMap", val.Tuple{ValueFromExpression(node.Value), ValueFromFunction(node.Mapping)}}

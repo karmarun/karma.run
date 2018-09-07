@@ -178,6 +178,11 @@ var LanguageModel = mdl.DefineRecursion("function", func(function *mdl.Recursion
 			"mapSet":  mdl.Tuple{expression, function},
 			"mapList": mdl.Tuple{expression, function},
 			"mapMap":  mdl.Tuple{expression, function},
+			"mapEnum": mdl.StructFromMap(map[string]mdl.Model{
+				"symbol":  expression,
+				"default": mdl.Optional{mdl.String{}}, // if absent then mapping must cover all cases
+				"mapping": mdl.Map{mdl.String{}},
+			}),
 
 			"and": mdl.List{expression},
 			"or":  mdl.List{expression},

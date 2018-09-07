@@ -483,15 +483,6 @@ func (m Union) Equals(w Model) bool {
 
 func (m Union) Zero() val.Value {
 	panic("mdl.Union.Zero()")
-	// zero := (val.Value)(nil)
-	// m.ForEach(func(k string, w Model) bool {
-	// 	if w.Zeroable() {
-	// 		zero = val.Union{k, w.Zero()}
-	// 		return false
-	// 	}
-	// 	return true
-	// })
-	// return zero
 }
 
 func (m Union) Concrete() Model {
@@ -1014,12 +1005,6 @@ func (Set) Zeroable() bool {
 
 func (m Union) Zeroable() bool {
 	return false
-	// zeroable := false
-	// m.ForEach(func(k string, w Model) bool {
-	// 	zeroable = w.Zeroable()
-	// 	return !zeroable
-	// })
-	// return zeroable
 }
 
 func (m Struct) Zeroable() bool {

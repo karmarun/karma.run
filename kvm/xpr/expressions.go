@@ -1182,3 +1182,14 @@ type ToUint64 struct {
 func (x ToUint64) Transform(f func(Expression) Expression) Expression {
 	return f(ToUint64{x.Expression.Transform(f)})
 }
+
+type MapEnum struct {
+	Symbol     Expression
+	Default    string
+	HasDefault bool
+	Mapping    map[string]string
+}
+
+func (x MapEnum) Transform(f func(Expression) Expression) Expression {
+	return f(MapEnum{x.Symbol.Transform(f), x.Default, x.HasDefault, x.Mapping})
+}

@@ -351,6 +351,12 @@ type RightFoldList struct {
 	Reducer Sequence
 }
 
+type MapEnum struct {
+	Default    string
+	HasDefault bool
+	Mapping    map[string]string
+}
+
 func (AddFloats) _inst()         {}
 func (AddInts) _inst()           {}
 func (All) _inst()               {}
@@ -512,3 +518,4 @@ func (SubstringIndex) _inst()    {}
 func (MemSortFunction) _inst()   {}
 func (LeftFoldList) _inst()      {}
 func (RightFoldList) _inst()     {}
+func (MapEnum) _inst()           {}

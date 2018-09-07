@@ -420,7 +420,7 @@ func (v String) Primitive() bool {
 	return true
 }
 
-type Ref [2]string
+type Ref [2]string // [0] is model, [1] is id
 
 func (v Ref) Transform(f func(Value) Value) Value {
 	return f(v)

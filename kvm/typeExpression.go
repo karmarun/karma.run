@@ -10,6 +10,7 @@ import (
 	"karma.run/kvm/val"
 	"karma.run/kvm/xpr"
 	"regexp"
+	"strings"
 )
 
 var (
@@ -1946,6 +1947,52 @@ func (vm VirtualMachine) TypeExpression(node xpr.Expression, scope *ModelScope, 
 		node.Value = value
 		// TODO: constant optimization
 		retNode = xpr.TypedExpression{node, expected, BoolModel}
+
+	case xpr.MapEnum:
+
+		symbol, e := vm.TypeExpression(node.Symbol, scope, AnyModel)
+		if e != nil {
+			return ZeroTypedExpression, e
+		}
+		node.Symbol = symbol
+
+		enum, ok := symbol.Actual.Unwrap().(mdl.Enum)
+		if !ok {
+			return ZeroTypedExpression, err.CompilationError{
+				Problem: `mapEnum: symbol argument must be enum`,
+				Program: xpr.ValueFromExpression(symbol),
+			}
+		}
+
+		model := make(mdl.Enum, len(node.Mapping)+1)
+
+		if !node.HasDefault {
+			todo := make(map[string]struct{}, len(enum))
+			for k, _ := range node.Mapping {
+				todo[k] = struct{}{}
+			}
+			for caze, _ := range enum {
+				delete(todo, caze)
+			}
+			if len(todo) > 0 {
+				missing := make([]string, 0, len(todo))
+				for k, _ := range todo {
+					missing = append(missing, k)
+				}
+				return ZeroTypedExpression, err.CompilationError{
+					Problem: fmt.Sprintf(`mapEnum: missing enum cases: %s. consider specifying a default param`, strings.Join(missing, ", ")),
+					Program: xpr.ValueFromExpression(node),
+				}
+			}
+		} else {
+			model[node.Default] = struct{}{}
+		}
+
+		for _, v := range node.Mapping {
+			model[v] = struct{}{}
+		}
+
+		retNode = xpr.TypedExpression{node, expected, model}
 
 	case xpr.MapMap:
 		value, e := vm.TypeExpression(node.Value, scope, mdl.Map{AnyModel})

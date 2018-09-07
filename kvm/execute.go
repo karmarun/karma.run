@@ -554,6 +554,18 @@ func (vm VirtualMachine) Execute(program inst.Sequence, scope *ValueScope, args 
 			}
 			stack.Push(w)
 
+		case inst.MapEnum:
+			symbol := unMeta(stack.Pop()).(val.Symbol)
+			if mapped, ok := it.Mapping[string(symbol)]; ok {
+				stack.Push(val.Symbol(mapped))
+				break
+			}
+			if it.HasDefault {
+				stack.Push(val.Symbol(it.Default))
+				break
+			}
+			log.Panicln(`mapEnum: unexpected symbol %s`, symbol)
+
 		case inst.MapList:
 
 			switch ls := unMeta(stack.Pop()).(type) {
