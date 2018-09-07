@@ -1967,20 +1967,20 @@ func (vm VirtualMachine) TypeExpression(node xpr.Expression, scope *ModelScope, 
 		model := make(mdl.Enum, len(node.Mapping)+1)
 
 		if !node.HasDefault {
-			todo := make(map[string]struct{}, len(enum))
+			cover := make(map[string]struct{}, len(enum))
+			for k, _ := range enum {
+				cover[k] = struct{}{}
+			}
 			for k, _ := range node.Mapping {
-				todo[k] = struct{}{}
+				delete(cover, k)
 			}
-			for caze, _ := range enum {
-				delete(todo, caze)
-			}
-			if len(todo) > 0 {
-				missing := make([]string, 0, len(todo))
-				for k, _ := range todo {
+			if len(cover) > 0 {
+				missing := make([]string, 0, len(cover))
+				for k, _ := range cover {
 					missing = append(missing, k)
 				}
 				return ZeroTypedExpression, err.CompilationError{
-					Problem: fmt.Sprintf(`mapEnum: missing enum cases: %s. consider specifying a default param`, strings.Join(missing, ", ")),
+					Problem: fmt.Sprintf(`mapEnum: missing enum case(s): %s. consider specifying a default.`, strings.Join(missing, ", ")),
 					Program: xpr.ValueFromExpression(node),
 				}
 			}
@@ -1988,7 +1988,13 @@ func (vm VirtualMachine) TypeExpression(node xpr.Expression, scope *ModelScope, 
 			model[node.Default] = struct{}{}
 		}
 
-		for _, v := range node.Mapping {
+		for k, v := range node.Mapping {
+			if _, ok := enum[k]; !ok {
+				return ZeroTypedExpression, err.CompilationError{
+					Problem: fmt.Sprintf(`mapEnum: impossible symbol in mapping: %s`, k),
+					Program: xpr.ValueFromExpression(node),
+				}
+			}
 			model[v] = struct{}{}
 		}
 
