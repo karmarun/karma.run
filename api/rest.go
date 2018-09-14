@@ -28,6 +28,7 @@ func RestApiHttpHandler(rw http.ResponseWriter, rq *http.Request) {
 		RestApiPostHttpHandler(rw, rq)
 
 	case http.MethodPut:
+		RestApiPutHttpHandler(rw, rq)
 
 	case http.MethodDelete:
 		RestApiDeleteHttpHandler(rw, rq)
@@ -42,16 +43,40 @@ func RestApiHttpHandler(rw http.ResponseWriter, rq *http.Request) {
 	}
 }
 
+func RestApiPutHttpHandler(rw http.ResponseWriter, rq *http.Request) {
+	segments := pathSegments(rq.URL.Path)[1:] // drop "rest" prefix
+	switch len(segments) {
+	case 0: // PUT /
+		http.NotFound(rw, rq)
+		return
+
+	case 1: // PUT /{resource}
+		http.NotFound(rw, rq)
+		return
+
+	case 2: // PUT /{resource}/{id}
+		RestApiPutResourceIdHttpHandler(segments[0], segments[1], rw, rq)
+		return
+
+	default:
+		// error?
+	}
+
+}
 func RestApiPostHttpHandler(rw http.ResponseWriter, rq *http.Request) {
 	segments := pathSegments(rq.URL.Path)[1:] // drop "rest" prefix
 	switch len(segments) {
 	case 0: // POST /
+		http.NotFound(rw, rq)
+		return
 
 	case 1: // POST /{resource}
 		RestApiPostResourceHttpHandler(segments[0], rw, rq)
 		return
 
 	case 2: // POST /{resource}/{id}
+		http.NotFound(rw, rq)
+		return
 
 	default:
 		// error?
@@ -62,7 +87,8 @@ func RestApiGetHttpHandler(rw http.ResponseWriter, rq *http.Request) {
 	segments := pathSegments(rq.URL.Path)[1:] // drop "rest" prefix
 	switch len(segments) {
 	case 0: // GET /
-		// swagger spec?
+		http.NotFound(rw, rq)
+		return
 
 	case 1: // GET /{resource}
 		RestApiGetResourceHttpHandler(segments[0], rw, rq)
@@ -239,6 +265,87 @@ func RestApiGetResourceHttpHandler(resource string, rw http.ResponseWriter, rq *
 
 }
 
+// PUT /{resource}/{id}
+func RestApiPutResourceIdHttpHandler(resource, id string, rw http.ResponseWriter, rq *http.Request) {
+
+	cdc := rq.Context().Value(ContextKeyCodec).(codec.Interface)
+	dtbs := rq.Context().Value(ContextKeyDatabase).(*bolt.DB)
+	uid := rq.Context().Value(ContextKeyUserId).(string)
+
+	outValue := (val.Value)(nil)
+	payload := payloadFromRequest(rq)
+
+	e := dtbs.Batch(func(tx *bolt.Tx) error {
+
+		rb := tx.Bucket([]byte(`root`))
+		if rb == nil {
+			return err.InternalError{Problem: `database uninitialized`}
+		}
+
+		vm := &kvm.VirtualMachine{RootBucket: rb, UserID: uid}
+
+		resourceLit := xpr.Literal{val.String(resource)}
+
+		isTag, _, ke := vm.CompileAndExecuteExpression(xpr.TagExists{resourceLit})
+		if ke != nil {
+			log.Panicln(ke)
+		}
+
+		modelExpr := xpr.Expression(nil)
+
+		if isTag.(val.Bool) {
+			modelExpr = xpr.Tag{resourceLit}
+		} else {
+			modelExpr = xpr.Model{resourceLit}
+		}
+
+		modelRef, _, ke := vm.CompileAndExecuteExpression(modelExpr)
+		if ke != nil {
+			return ke
+		}
+
+		model, ke := vm.Model(modelRef.(val.Ref)[1])
+		if ke != nil {
+			return ke
+		}
+
+		value, ke := cdc.Decode(payload, model.Unwrap())
+		if ke != nil {
+			return ke
+		}
+
+		updateExpr := xpr.Update{
+			Ref:   xpr.Literal{val.Ref{modelRef.(val.Ref)[1], id}},
+			Value: xpr.Literal{value},
+		}
+
+		retVal, _, ke := vm.CompileAndExecuteExpression(updateExpr)
+		if ke != nil {
+			return ke
+		}
+
+		outValue = retVal
+		return nil
+
+	})
+
+	if e != nil {
+		ke, ok := e.(err.Error)
+		if !ok {
+			log.Println(e)
+			ke = err.InternalError{Problem: `internal error`}
+		}
+		if _, ok := ke.(err.HumanReadableError); !ok {
+			ke = err.HumanReadableError{ke}
+		}
+		writeError(rw, cdc, ke)
+		return
+	}
+
+	rw.Write(cdc.Encode(outValue))
+
+}
+
 // POST /{resource}
 func RestApiPostResourceHttpHandler(resource string, rw http.ResponseWriter, rq *http.Request) {
 
@@ -342,7 +449,8 @@ func maxInt64(a, b val.Int64) val.Int64 {
 }
 
 // DELETE /{resource}
-func RestApiDeleteResourceHttpHandler(id string, rw http.ResponseWriter, rq *http.Request) {
+func RestApiDeleteResourceHttpHandler(resource string, rw http.ResponseWriter, rq *http.Request) {
+	RestApiDeleteResourceIdHttpHandler(`_model`, resource, rw, rq)
 }
 
 // DELETE /{resource}/{id}
