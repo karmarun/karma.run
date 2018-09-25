@@ -17,6 +17,7 @@ var (
 	HttpsKeyFile        string
 	InstanceSecret      string
 	DataFile            string = "karma.data" // explicit default
+	UdpBroadcast        string = ""
 )
 
 func init() {
@@ -73,6 +74,12 @@ func init() {
 		"data-file",
 		getenv("KARMA_DATA_FILE", DataFile),
 		"Path to data file. Defaults to environment variable KARMA_DATA_FILE.",
+	)
+	flag.StringVar(
+		&UdpBroadcast,
+		"udp-broadcast",
+		getenv("KARMA_UDP_BROADCAST", UdpBroadcast),
+		`UDP address to broadcast write events to, e.g. "255.255.255.255:1234"`,
 	)
 }
 

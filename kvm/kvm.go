@@ -12,6 +12,7 @@ import (
 	"karma.run/cc"
 	"karma.run/codec/karma.v2"
 	"karma.run/common"
+	"karma.run/config"
 	"karma.run/definitions"
 	"karma.run/kvm/err"
 	"karma.run/kvm/inst"
@@ -19,8 +20,26 @@ import (
 	"karma.run/kvm/val"
 	"karma.run/kvm/xpr"
 	"log"
+	"net"
 	"time"
 )
+
+var udpConn = (*net.UDPConn)(nil)
+
+func init() {
+	if config.UdpBroadcast != "" {
+		addr, e := net.ResolveUDPAddr(`udp`, config.UdpBroadcast)
+		if e != nil {
+			log.Fatalln("failed resolving UDP broadcast address", e)
+		}
+		conn, e := net.DialUDP(`udp`, nil, addr)
+		if e != nil {
+			log.Fatalln("failed dialing UDP broadcast address", e)
+		}
+		udpConn = conn
+		log.Println("UDP broadcast writes to", config.UdpBroadcast)
+	}
+}
 
 const SeparatorByte = '~'
 
@@ -1116,6 +1135,10 @@ func (vm VirtualMachine) Delete(mid string, id string) err.Error {
 		ModelCache.Remove(mid + "/" + id)
 	}
 
+	if udpConn != nil {
+		_, _ = udpConn.Write([]byte(mid + "/" + id))
+	}
+
 	return nil
 
 }
@@ -1449,6 +1472,10 @@ func (vm VirtualMachine) Write(mid string, values map[string]val.Meta) err.Error
 		// actual persistence of the value
 		if e := db.Bucket([]byte(mid)).Put([]byte(id), karma.Encode(MaterializeMeta(v), vm.WrapModelInMeta(mid, md.Model))); e != nil {
 			log.Panicln(e)
+		}
+
+		if udpConn != nil {
+			_, _ = udpConn.Write([]byte(mid + "/" + id))
 		}
 
 	}
