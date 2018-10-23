@@ -1450,13 +1450,16 @@ func (vm VirtualMachine) Write(mid string, values map[string]val.Meta) err.Error
 				sourceBucket := db.Bucket([]byte(sourceModel.Bucket))
 				targetBucket := db.Bucket([]byte(targetModel.Bucket))
 
-				e = newBucketDecodingIterator(sourceBucket, sourceModel).forEach(func(v val.Value) err.Error {
+				decodeModel := vm.WrapModelInMeta(sourceMID, sourceModel.Unwrap())
+				e = newBucketDecodingIterator(sourceBucket, decodeModel).forEach(func(v val.Value) err.Error {
 					mv := v.(val.Meta)
 					migrated, e := vm.Execute(instructions, nil, mv.Value)
 					if e != nil {
 						return e
 					}
-					if e := targetBucket.Put([]byte(mv.Id[1]), karma.Encode(migrated, targetModel.Unwrap())); e != nil {
+					encodeValue := MaterializeMeta(vm.WrapValueInMeta(unMeta(migrated), mv.Id[1], targetMID))
+					encodeModel := vm.WrapModelInMeta(targetMID, targetModel.Unwrap())
+					if e := targetBucket.Put([]byte(mv.Id[1]), karma.Encode(encodeValue, encodeModel)); e != nil {
 						panic(e)
 					}
 					return nil
