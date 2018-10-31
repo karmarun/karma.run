@@ -33,7 +33,7 @@ var version = `0.5-beta.deterministic`
 
 type Payload []byte
 
-const MaxPayloadBytes = 1 * 1024 * 1024 // 1MB
+const MaxPayloadBytes = 8 * 1024 * 1024 // 8MB
 
 type TxType byte
 
