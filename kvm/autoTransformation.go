@@ -143,7 +143,7 @@ func _findAutoTransformation(source, target mdl.Model) (xpr.Expression, err.Path
 			}
 			return xpr.MapList{
 				Value:   xpr.Scope("source"),
-				Mapping: xpr.NewFunction([]string{"source"}, sub),
+				Mapping: xpr.NewFunction([]string{"i", "source"}, sub),
 			}, nil
 		}
 		return nil, NewAutoTransformationError(`source is list but target is not`, source, target)
@@ -156,7 +156,7 @@ func _findAutoTransformation(source, target mdl.Model) (xpr.Expression, err.Path
 			}
 			return xpr.MapSet{
 				Value:   xpr.Scope("source"),
-				Mapping: xpr.NewFunction([]string{"source"}, sub),
+				Mapping: xpr.NewFunction([]string{"i", "source"}, sub),
 			}, nil
 		}
 		return nil, NewAutoTransformationError(`source is set but target is not`, source, target)
@@ -169,7 +169,7 @@ func _findAutoTransformation(source, target mdl.Model) (xpr.Expression, err.Path
 			}
 			return xpr.MapMap{
 				Value:   xpr.Scope("source"),
-				Mapping: xpr.NewFunction([]string{"source"}, sub),
+				Mapping: xpr.NewFunction([]string{"i", "source"}, sub),
 			}, nil
 		}
 		return nil, NewAutoTransformationError(`source is map but target is not`, source, target)
