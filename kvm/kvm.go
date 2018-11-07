@@ -952,7 +952,21 @@ func (vm VirtualMachine) InRefs(mid, id string) []val.Ref {
 	return out
 }
 
-func (vm VirtualMachine) Delete(mid string, id string) err.Error {
+func (vm VirtualMachine) deleteFromGraph(mid, id string) {
+	key := encodeVertex(mid, id)
+	gb, pb := vm.RootBucket.Bucket(definitions.GraphBucketBytes), vm.RootBucket.Bucket(definitions.PhargBucketBytes)
+	if bucket := gb.Bucket(key); bucket != nil {
+		if e := bucket.ForEach(func(target, _ []byte) error {
+			return pb.Bucket(target).Delete(key)
+		}); e != nil {
+			log.Panicln(e)
+		}
+	}
+	_ = gb.DeleteBucket(key)
+	_ = pb.DeleteBucket(key)
+}
+
+func (vm VirtualMachine) Delete(mid, id string) err.Error {
 
 	db := vm.RootBucket
 
@@ -1018,32 +1032,7 @@ func (vm VirtualMachine) Delete(mid string, id string) err.Error {
 		}
 	}
 
-	{ // delete graph edges
-
-		key := encodeVertex(mid, id)
-		gb, pb := db.Bucket(definitions.GraphBucketBytes), db.Bucket(definitions.PhargBucketBytes)
-
-		targets := ([][]byte)(nil)
-		if kb := gb.Bucket(key); kb != nil {
-			e := kb.ForEach(func(k, v []byte) error {
-				targets = append(targets, k)
-				return nil
-			})
-			if e != nil {
-				log.Panicln(e)
-			}
-			if e := gb.DeleteBucket(key); e != nil {
-				log.Panicln(e)
-			}
-		}
-
-		for _, target := range targets {
-			if e := pb.Bucket(target).Delete(key); e != nil {
-				log.Panicln(e)
-			}
-		}
-
-	}
+	vm.deleteFromGraph(mid, id)
 
 	{ // delete unique indices
 
@@ -1076,15 +1065,15 @@ func (vm VirtualMachine) Delete(mid string, id string) err.Error {
 	// if deleting a model: remove data, graph and pharg buckets
 	if mid == vm.MetaModelId() {
 
+		// remove all graph edges of all objects
+		if e := db.Bucket([]byte(id)).ForEach(func(k, v []byte) error {
+			vm.deleteFromGraph(id, string(k))
+			return nil
+		}); e != nil {
+			log.Panicln(e)
+		}
+
 		if e := db.DeleteBucket([]byte(id)); e != nil && e != bolt.ErrBucketNotFound {
-			log.Panicln(e)
-		}
-
-		if e := db.Bucket(definitions.GraphBucketBytes).DeleteBucket(encodeVertex(mid, id)); e != nil && e != bolt.ErrBucketNotFound {
-			log.Panicln(e)
-		}
-
-		if e := db.Bucket(definitions.PhargBucketBytes).DeleteBucket(encodeVertex(mid, id)); e != nil && e != bolt.ErrBucketNotFound {
 			log.Panicln(e)
 		}
 
@@ -1293,14 +1282,6 @@ func (vm VirtualMachine) Write(mid string, values map[string]val.Meta) err.Error
 		if mid == vm.MetaModelId() {
 
 			if _, e := db.CreateBucketIfNotExists([]byte(id)); e != nil {
-				log.Panicln(e)
-			}
-
-			if _, e := db.Bucket(definitions.GraphBucketBytes).CreateBucketIfNotExists(encodeVertex(mid, id)); e != nil {
-				log.Panicln(e)
-			}
-
-			if _, e := db.Bucket(definitions.PhargBucketBytes).CreateBucketIfNotExists(encodeVertex(mid, id)); e != nil {
 				log.Panicln(e)
 			}
 
