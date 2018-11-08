@@ -1620,6 +1620,19 @@ func ValueFromExpression(x Expression) val.Value {
 			"expression": ValueFromFunction(node.Order),
 		})}
 
+	case LeftFoldList:
+		return val.Union{"leftFoldList", val.Tuple{
+			ValueFromExpression(node.List),
+			ValueFromExpression(node.Initial),
+			ValueFromFunction(node.Reducer),
+		}}
+	case RightFoldList:
+		return val.Union{"rightFoldList", val.Tuple{
+			ValueFromExpression(node.List),
+			ValueFromExpression(node.Initial),
+			ValueFromFunction(node.Reducer),
+		}}
+
 	case StringContains:
 		return val.Union{"stringContains", val.Tuple{
 			ValueFromExpression(node.String),

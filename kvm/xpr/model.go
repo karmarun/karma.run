@@ -169,8 +169,8 @@ var LanguageModel = mdl.DefineRecursion("function", func(function *mdl.Recursion
 
 			"after":       mdl.Tuple{expression, expression},
 			"before":      mdl.Tuple{expression, expression},
-			"equal":       mdl.Tuple{expression, expression},
 			"concatLists": mdl.Tuple{expression, expression},
+			"equal":       mdl.Tuple{expression, expression},
 			"field":       mdl.Tuple{mdl.String{}, expression},
 			"key":         mdl.Tuple{expression, expression},
 
