@@ -757,7 +757,7 @@ func (vm VirtualMachine) Execute(program inst.Sequence, scope *ValueScope, args 
 
 			if !vm.exists(it.Model, ref[1]) {
 				return nil, err.ExecutionError{
-					Problem: fmt.Printf(`relocateRef: target does not exist (%s, %s)`, it.Model, ref[1]),
+					Problem: fmt.Sprintf(`relocateRef: target does not exist (%s, %s)`, it.Model, ref[1]),
 				}
 			}
 
