@@ -755,43 +755,9 @@ func (vm VirtualMachine) Execute(program inst.Sequence, scope *ValueScope, args 
 				continue
 			}
 
-			migs := vm.RootBucket.Bucket(definitions.MigrationBucketBytes)
-			todo := make([]string, 0, 16)
-			todo = append(todo, ref[0])
-			done := make(map[string]struct{})
-			path := false
-
-			for len(todo) > 0 {
-				origin := todo[0]
-				todo = todo[1:]
-				if origin == it.Model {
-					path = true
-					break // found a path! yay
-				}
-				if _, ok := done[origin]; ok {
-					continue
-				}
-				done[origin] = struct{}{}
-				fb := migs.Bucket([]byte(origin))
-				if fb == nil {
-					continue
-				}
-				e := fb.ForEach(func(t, _ []byte) error {
-					to := string(t)
-					if _, ok := done[to]; ok {
-						return nil // continue
-					}
-					todo = append(todo, to)
-					return nil // continue
-				})
-				if e != nil {
-					log.Panicln(e)
-				}
-			}
-
-			if !path {
+			if !vm.exists(it.Model, ref[1]) {
 				return nil, err.ExecutionError{
-					Problem: `relocateRef: no migration path between source and target models`,
+					Problem: fmt.Printf(`relocateRef: target does not exist (%s, %s)`, it.Model, ref[1]),
 				}
 			}
 

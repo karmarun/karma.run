@@ -1620,6 +1620,12 @@ func ValueFromExpression(x Expression) val.Value {
 			"expression": ValueFromFunction(node.Order),
 		})}
 
+	case ConcatLists:
+		return val.Union{"concatLists", val.Tuple{
+			ValueFromExpression(node[0]),
+			ValueFromExpression(node[1]),
+		}}
+
 	case LeftFoldList:
 		return val.Union{"leftFoldList", val.Tuple{
 			ValueFromExpression(node.List),

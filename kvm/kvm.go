@@ -891,6 +891,13 @@ func (vm VirtualMachine) get(mid, oid string) (val.Meta, err.Error) {
 	return mv, nil
 
 }
+func (vm VirtualMachine) exists(mid, oid string) bool {
+	bk := vm.RootBucket.Bucket([]byte(mid))
+	if bk == nil {
+		return false
+	}
+	return (nil != bk.Get([]byte(oid)))
+}
 
 const ModelCacheCapacity = 512
 
