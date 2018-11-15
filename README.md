@@ -18,22 +18,40 @@ karma.run comes with batteries included and features such as:
  * a relational model with traversable reference graph.
  * functional, homoiconic query interface.
 
-## Roadmap
+## Run Karma (Docker)
 
-There are many features and tasks yet to be implemented. Some of them are:
- * Write lots of unit tests and measure code coverage.
- * Releasing a karma.run-compatible web-based GUI ("the web editor") as FOSS.
- * Writing and releasing official client libraries for different programming languages.
+**create a secret key:**  
+The secret is the auth key of the servers "admin" user. In order to run karma you need to generate a secret:
 
-## Status
+**Mac:**
+```bash
+head -c 1024 /dev/urandom | base64
+```
+**Linux:**
+If you are on Linux use the base64 -w0 flag to strip the newlines out
+```bash
+head -c 1024 /dev/urandom | base64 -w0
+```
 
-The project is currently in alpha stage. Concretely, any and all APIs are subject to change.
-In regards to documentation, there is some but it's mostly old and unusable, we are working
-on an updated and accurate version.
-Tests have been conducted by building real-life applications on top of karma.run but not
-formalized as unit-tests and no coverage numbers are available yet.
+pull the image 
+```bash
+docker pull karmarun/karma.run
+```
 
-## Installation
+run karma
+```bash
+docker run -d \
+           -e "KARMA_DATA_FILE=/karma-run-db.data" \
+           -e "KARMA_INSTANCE_SECRET=base 64 encoded secret key" \
+           -p 8080:80 \
+           karmarun/karma.run
+```
+
+## Documentation
+
+[docs.karma.run](https://docs.karma.run)
+
+## Installation (Go)
 
 To install karma.run you need the [Go toolchain](https://golang.org):
 
