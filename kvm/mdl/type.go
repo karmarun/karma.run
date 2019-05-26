@@ -14,10 +14,6 @@ func (m Annotation) ValueType() val.Type {
 	return m.Model.ValueType()
 }
 
-func (m Unique) ValueType() val.Type {
-	return m.Model.ValueType()
-}
-
 func (m Optional) ValueType() val.Type {
 	return m.Model.ValueType()
 }

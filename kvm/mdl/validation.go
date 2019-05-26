@@ -75,9 +75,6 @@ func (m Optional) Validate(v val.Value, p err.ErrorPath) err.Error {
 func (m Any) Validate(v val.Value, p err.ErrorPath) err.Error {
 	return nil
 }
-func (m Unique) Validate(v val.Value, p err.ErrorPath) err.Error {
-	return m.Model.Validate(v, p)
-}
 func (m Annotation) Validate(v val.Value, p err.ErrorPath) err.Error {
 	return m.Model.Validate(v, p)
 }

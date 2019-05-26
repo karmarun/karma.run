@@ -644,7 +644,6 @@ func (vm VirtualMachine) InitDB() error {
 		definitions.MigrationBucketBytes,
 		definitions.NoitargimBucketBytes,
 		definitions.TagBucketBytes,
-		definitions.UniqueBucketBytes,
 		definitions.GraphBucketBytes,
 		definitions.PhargBucketBytes,
 	} {
@@ -1041,28 +1040,6 @@ func (vm VirtualMachine) Delete(mid, id string) err.Error {
 
 	vm.deleteFromGraph(mid, id)
 
-	{ // delete unique indices
-
-		m, e := vm.Model(mid)
-		if e != nil {
-			return e
-		}
-
-		if uniqs := uniqueHashes(m, v.Value); uniqs != nil {
-
-			ub := db.Bucket(definitions.UniqueBucketBytes).Bucket([]byte(mid))
-
-			for _, uq := range uniqs {
-				key := append(hashStringSlice(uq.Path), uq.Hash...)
-				if e := ub.Delete(key); e != nil {
-					log.Panicln(e)
-				}
-			}
-
-		}
-
-	}
-
 	{ // delete object itself
 		if e := db.Bucket([]byte(mid)).Delete([]byte(id)); e != nil {
 			log.Panicln(e)
@@ -1160,58 +1137,6 @@ func (vm VirtualMachine) Write(mid string, values map[string]val.Meta) err.Error
 				}
 			}
 			v.Value = xpr.ValueFromFunction(fun)
-		}
-
-		if uniqs := uniqueHashes(md, v.Value); len(uniqs) > 0 {
-
-			ub, e := db.Bucket(definitions.UniqueBucketBytes).CreateBucketIfNotExists([]byte(mid))
-			if e != nil {
-				log.Panicln(e) // [1]
-			}
-
-			{ // check unique constraint violation
-				for _, uq := range uniqs {
-					key := append(hashStringSlice(uq.Path), uq.Hash...)
-					if bs := ub.Get(key); bs != nil {
-						if string(bs) != id { // only error if not updating self
-							return err.ExecutionError{
-								`unique constraint violation`,
-								nil,
-								// TODO: use err.ErrorPath to indicate where the violation occurred
-								// C: val.Map{"path": stringSliceToList(uq.Path)},
-							}
-						}
-					}
-				}
-			}
-
-			{ // delete old unique hashes
-				del := make([][]byte, 0, 16)
-				e = ub.ForEach(func(k, v []byte) error {
-					if string(v) == id {
-						del = append(del, k)
-					}
-					return nil
-				})
-				if e != nil {
-					log.Panicln(e) // [1]
-				}
-				for _, k := range del {
-					if e := ub.Delete(k); e != nil {
-						log.Panicln(e) // [1]
-					}
-				}
-			}
-
-			{ // write new unique hashes
-				for _, uq := range uniqs {
-					key := append(hashStringSlice(uq.Path), uq.Hash...)
-					if e := ub.Put(key, []byte(id)); e != nil {
-						log.Panicln(e)
-					}
-				}
-			}
-
 		}
 
 		{
@@ -1505,66 +1430,6 @@ func extractRefs(v val.Value) []val.Ref {
 	})
 
 	return edges
-}
-
-func uniqueHashes(m mdl.Model, v val.Value) []uniquePath {
-
-	uniquePaths := uniquePaths(m)
-
-	if uniquePaths == nil {
-		return nil
-	}
-
-	hashes := make([]hash.Hash64, len(uniquePaths), len(uniquePaths))
-	for i, _ := range hashes {
-		hashes[i] = fnv.New64()
-	}
-
-	m.Unwrap().TraverseValue(unMeta(v), func(v val.Value, m mdl.Model) {
-
-		if u, ok := m.(mdl.Unique); ok {
-
-			i := -1
-
-			for j, p := range uniquePaths {
-				if p.Unique == u {
-					i = j
-					break
-				}
-			}
-
-			// panic if i == -1 -> programming error
-
-			hashes[i].Write([]byte{SeparatorByte})     // separator
-			hashes[i].Write(val.Hash(v, nil).Sum(nil)) // sorts keys in structs and maps
-
-		}
-
-	})
-
-	for i, h := range hashes {
-		uniquePaths[i].Hash = h.Sum(nil)
-	}
-
-	return uniquePaths
-}
-
-type uniquePath struct {
-	Unique mdl.Unique
-	Path   []string
-	Hash   []byte
-}
-
-func uniquePaths(m mdl.Model) []uniquePath {
-	paths := ([]uniquePath)(nil)
-	m.Traverse(nil, func(p []string, m mdl.Model) {
-		if u, ok := m.(mdl.Unique); ok {
-			paths = append(paths, uniquePath{
-				Unique: u, Path: p, Hash: nil,
-			})
-		}
-	})
-	return paths
 }
 
 func hashStringSlice(ss []string) []byte {

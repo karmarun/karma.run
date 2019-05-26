@@ -129,19 +129,6 @@ func _checkType(actual, expected mdl.Model, recs map[[2]*mdl.Recursion]struct{})
 		}
 	}
 
-	{ // handle unique
-		lu, lok := actual.(mdl.Unique)
-		ru, rok := expected.(mdl.Unique)
-		switch {
-		case lok && rok: // both uniques
-			return _checkType(lu.Model, ru.Model, recs)
-		case lok && !rok: // actual is unique, expected not
-			return _checkType(lu.Model, expected, recs)
-		case !lok && rok: // actual not unique, expected is
-			return _checkType(actual, ru.Model, recs)
-		}
-	}
-
 	{ // handle annotations
 		la, lok := actual.(mdl.Annotation)
 		ra, rok := expected.(mdl.Annotation)

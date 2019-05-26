@@ -10,7 +10,6 @@ const (
 	MetaModel       = `MetaModel`
 	TagModel        = `TagModel`
 	TagBucket       = `TagBucket`
-	UniqueBucket    = `UniqueBucket`
 	GraphBucket     = `GraphBucket`
 	PhargBucket     = `PhargBucket` // (inverse GraphBucket)
 	MigrationBucket = `MigrationBucket`
@@ -26,7 +25,6 @@ var (
 	MetaModelBytes       = []byte(MetaModel)
 	TagModelBytes        = []byte(TagModel)
 	TagBucketBytes       = []byte(TagBucket)
-	UniqueBucketBytes    = []byte(UniqueBucket)
 	GraphBucketBytes     = []byte(GraphBucket)
 	PhargBucketBytes     = []byte(PhargBucket)
 	MigrationBucketBytes = []byte(MigrationBucket)
@@ -63,7 +61,6 @@ func NewMetaModelValue(metaId string) val.Value {
 			"ref":      val.Union{"ref", val.Ref{metaId, metaId}},
 			"map":      val.Union{"recurse", val.String("model")},
 			"optional": val.Union{"recurse", val.String("model")},
-			"unique":   val.Union{"recurse", val.String("model")},
 			"enum":     val.Union{"set", val.Union{"string", val.Struct{}}},
 			"bool":     val.Union{"struct", val.Map{}},
 			"dateTime": val.Union{"struct", val.Map{}},
@@ -84,14 +81,14 @@ func NewMetaModelValue(metaId string) val.Value {
 
 func NewTagModelValue(metaId string) val.Value {
 	return val.Union{"struct", val.MapFromMap(map[string]val.Value{
-		"tag":   val.Union{"unique", val.Union{"string", val.Struct{}}},
+		"tag":   val.Union{"string", val.Struct{}},
 		"model": val.Union{"ref", val.Ref{metaId, metaId}},
 	})}
 }
 
 func NewUserModelValue(metaId, roleId string) val.Value {
 	return val.Union{"struct", val.MapFromMap(map[string]val.Value{
-		"username": val.Union{"unique", val.Union{"string", val.Struct{}}},
+		"username": val.Union{"string", val.Struct{}},
 		"password": val.Union{"string", val.Struct{}},
 		"roles":    val.Union{"list", val.Union{"ref", val.Ref{metaId, roleId}}},
 	})}
@@ -99,7 +96,7 @@ func NewUserModelValue(metaId, roleId string) val.Value {
 
 func NewRoleModelValue(metaId, exprId string) val.Value {
 	return val.Union{"struct", val.MapFromMap(map[string]val.Value{
-		"name": val.Union{"unique", val.Union{"string", val.Struct{}}},
+		"name": val.Union{"string", val.Struct{}},
 		"permissions": val.Union{"struct", val.MapFromMap(map[string]val.Value{
 			"create": val.Union{"ref", val.Ref{metaId, exprId}},
 			"read":   val.Union{"ref", val.Ref{metaId, exprId}},

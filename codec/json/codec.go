@@ -252,9 +252,6 @@ func decode(json JSON, model mdl.Model) (val.Value, JSON, err.Error) {
 	case *mdl.Recursion:
 		return decode(json, m.Model)
 
-	case mdl.Unique:
-		return decode(json, m.Model)
-
 	case mdl.Set:
 		vs, json, e := decodeArray(json, m.Elements)
 		if e != nil {

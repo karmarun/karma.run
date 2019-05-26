@@ -110,9 +110,6 @@ func ValueFromModel(metaId string, model Model, recursions map[*Recursion]struct
 	case Optional:
 		return val.Union{"optional", ValueFromModel(metaId, m.Model, recursions)}
 
-	case Unique:
-		return val.Union{"unique", ValueFromModel(metaId, m.Model, recursions)}
-
 	case Annotation:
 		return val.Union{
 			"annotation", val.StructFromMap(map[string]val.Value{
@@ -399,15 +396,9 @@ func ModelFromValue(metaId string, u val.Union, recursions map[string]*Recursion
 		}
 		return Optional{m}, nil
 
+		// backwards compatibility
 	case "unique":
-		m, e := ModelFromValue(metaId, u.Value.(val.Union), recursions)
-		if e != nil {
-			return nil, e.AppendPath(err.ErrorPathElementUnionCase(u.Case))
-		}
-		if _, ok := m.(Unique); ok {
-			return nil, err.ModelParsingError{`nested unique`, u, nil} // TODO: make this check more robust
-		}
-		return Unique{Model: m}, nil
+		return ModelFromValue(metaId, u.Value.(val.Union), recursions)
 
 	case "null":
 		return Null{}, nil
@@ -612,8 +603,6 @@ func couldRecurseInfinitely(m Model, seen map[*Recursion]struct{}) bool {
 			return true
 		}
 		seen[m] = struct{}{}
-		return couldRecurseInfinitely(m.Model, seen)
-	case Unique:
 		return couldRecurseInfinitely(m.Model, seen)
 	case Annotation:
 		return couldRecurseInfinitely(m.Model, seen)

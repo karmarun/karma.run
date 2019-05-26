@@ -587,43 +587,6 @@ func (m Ref) Equals(n Model) bool {
 	return false
 }
 
-type Unique struct {
-	Model Model
-}
-
-func (r Unique) Zero() val.Value {
-	return r.Model.Zero()
-}
-
-func (m Unique) Transform(f func(Model) Model) Model {
-	return f(Unique{m.Model.Transform(f)})
-}
-
-func (o Unique) TraverseValue(j val.Value, f func(val.Value, Model)) {
-	f(j, o)
-	o.Model.TraverseValue(j, f)
-}
-
-func (o Unique) Copy() Model {
-	return Unique{o.Model.Copy()}
-}
-
-func (r Unique) Traverse(p []string, f func([]string, Model)) {
-	f(p, r)
-	r.Model.Traverse(append(p, "model"), f)
-}
-
-func (m Unique) Concrete() Model {
-	return m.Model.Concrete()
-}
-
-func (m Unique) Equals(n Model) bool {
-	if q, ok := n.(Unique); ok {
-		return m.Model.Equals(q.Model)
-	}
-	return false
-}
-
 type DateTime struct{}
 
 func (r DateTime) Zero() val.Value {
@@ -892,10 +855,6 @@ func (Any) Nullable() bool {
 	return false
 }
 
-func (u Unique) Nullable() bool {
-	return u.Model.Nullable()
-}
-
 func (a Annotation) Nullable() bool {
 	return a.Model.Nullable()
 }
@@ -968,10 +927,6 @@ func (Optional) Zeroable() bool {
 
 func (Any) Zeroable() bool {
 	return false
-}
-
-func (u Unique) Zeroable() bool {
-	return u.Model.Zeroable()
 }
 
 func (a Annotation) Zeroable() bool {
@@ -1049,10 +1004,6 @@ func (m Optional) Unwrap() Model {
 }
 
 func (m Any) Unwrap() Model {
-	return m
-}
-
-func (m Unique) Unwrap() Model {
 	return m
 }
 

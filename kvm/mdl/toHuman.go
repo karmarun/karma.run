@@ -30,8 +30,6 @@ func modelToHuman(m Model, indent int, r map[*Recursion]struct{}) string {
 		delete(r, m)
 		return s
 
-	case Unique:
-		return fmt.Sprintf(`unique %s`, modelToHuman(m.Model, indent, r))
 	case Annotation:
 		return fmt.Sprintf(`annotation(%s) of %s`, m.Value, modelToHuman(m.Model, indent, r))
 	case Set:
