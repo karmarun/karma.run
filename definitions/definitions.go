@@ -6,6 +6,8 @@ import (
 	"karma.run/kvm/val"
 )
 
+const KarmaRunVersion = `1.1.0`
+
 const (
 	MetaModel       = `MetaModel`
 	TagModel        = `TagModel`
@@ -16,9 +18,11 @@ const (
 	NoitargimBucket = `NoitargimBucket`
 	MigrationModel  = `MigrationModel`
 	ExpressionModel = `ExpressionModel`
+	IndexModel      = `IndexModel`
 	UserModel       = `UserModel`
 	RoleModel       = `RoleModel`
 	RootUser        = `RootUser`
+	VersionKey      = `VersionKey`
 )
 
 var (
@@ -31,9 +35,11 @@ var (
 	NoitargimBucketBytes = []byte(NoitargimBucket)
 	MigrationModelBytes  = []byte(MigrationModel)
 	ExpressionModelBytes = []byte(ExpressionModel)
+	IndexModelBytes      = []byte(IndexModel)
 	UserModelBytes       = []byte(UserModel)
 	RoleModelBytes       = []byte(RoleModel)
 	RootUserBytes        = []byte(RootUser)
+	VersionKeyBytes      = []byte(VersionKey)
 )
 
 func NewMetaModelValue(metaId string) val.Value {
@@ -115,4 +121,12 @@ func NewMigrationModelValue(metaId, exprId string) val.Value {
 			"manual": val.Union{"ref", val.Ref{metaId, exprId}},
 		})},
 	})}}
+}
+
+func NewIndexModelValue(metaId, exprId string) val.Value {
+	return val.Union{"struct", val.MapFromMap(map[string]val.Value{
+		"model":   val.Union{"ref", val.Ref{metaId, metaId}},
+		"mapping": val.Union{"ref", val.Ref{metaId, exprId}},
+		"unique":  val.Union{"bool", val.NewStruct(0)},
+	})}
 }

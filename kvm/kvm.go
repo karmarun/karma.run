@@ -6,11 +6,13 @@ package kvm
 import (
 	"bytes"
 	"fmt"
-	bolt "github.com/coreos/bbolt"
-	"hash"
 	"hash/fnv" // FNV-1 has a very low collision rate
+	"log"
+	"net"
+	"time"
+
+	bolt "github.com/coreos/bbolt"
 	"karma.run/cc"
-	"karma.run/codec/karma.v2"
 	"karma.run/common"
 	"karma.run/config"
 	"karma.run/definitions"
@@ -19,9 +21,7 @@ import (
 	"karma.run/kvm/mdl"
 	"karma.run/kvm/val"
 	"karma.run/kvm/xpr"
-	"log"
-	"net"
-	"time"
+	"karma.run/codec/karma.v2"
 )
 
 var udpConn = (*net.UDPConn)(nil)
@@ -57,6 +57,7 @@ type VirtualMachine struct {
 		MetaModelId       string
 		TagModelId        string
 		MigrationModelId  string
+		IndexModelId      string
 	}
 }
 
@@ -97,6 +98,14 @@ func (vm *VirtualMachine) ExpressionModelId() string {
 	}
 	s := string(vm.RootBucket.Get(definitions.ExpressionModelBytes))
 	vm.cache.ExpressionModelId = s
+	return s
+}
+func (vm *VirtualMachine) IndexModelId() string {
+	if vm.cache.IndexModelId != "" {
+		return vm.cache.IndexModelId
+	}
+	s := string(vm.RootBucket.Get(definitions.IndexModelBytes))
+	vm.cache.IndexModelId = s
 	return s
 }
 
@@ -627,6 +636,44 @@ func (vm VirtualMachine) UpdateModels() error {
 	}
 
 	return nil
+}
+
+func (vm VirtualMachine) UpgradeDB() error {
+
+	db := vm.RootBucket
+
+	versionBytes := db.Get(definitions.VersionKeyBytes)
+
+	if versionBytes == nil {
+		if e := vm.upgradePre110DB(); e != nil {
+			return e
+		}
+	}
+
+	return nil
+
+}
+
+func (vm VirtualMachine) upgradePre110DB() error {
+
+	log.Println(`upgrading pre-v1.1.0 database to v1.1.0`)
+
+	db := vm.RootBucket
+
+	if e := db.Put(definitions.VersionKeyBytes, []byte(definitions.KarmaRunVersion)); e != nil {
+		return e
+	}
+
+	meta := vm.MetaModelId()
+	indx := vm.IndexModelId()
+
+	v := vm.WrapValueInMeta(mdl.ValueFromModel(meta, xpr.LanguageModel, nil), indx, meta)
+	if e := vm.RootBucket.Bucket([]byte(meta)).Put([]byte(indx), karma.Encode(MaterializeMeta(v), vm.WrapModelInMeta(meta, vm.MetaModel()))); e != nil {
+		return e
+	}
+
+	return nil
+
 }
 
 func (vm VirtualMachine) InitDB() error {

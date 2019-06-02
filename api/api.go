@@ -29,8 +29,6 @@ import (
 	_ "net/http/pprof"
 )
 
-var version = `1.0.0`
-
 type Payload []byte
 
 const MaxPayloadBytes = 8 * 1024 * 1024 // 8MB
@@ -112,7 +110,7 @@ func HttpHandler(rw http.ResponseWriter, rq *http.Request) {
 
 	if rq.Method == http.MethodGet && path == "" { // health checks, etc...
 		rw.WriteHeader(http.StatusOK)
-		rw.Write([]byte(`karma.run ` + version))
+		rw.Write([]byte(`karma.run ` + definitions.KarmaRunVersion))
 		return
 	}
 

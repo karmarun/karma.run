@@ -8,6 +8,10 @@ import (
 	"crypto/tls"
 	"encoding/base64"
 	"flag"
+	"log"
+	"net/http"
+	"strings"
+
 	bolt "github.com/coreos/bbolt"
 	"golang.org/x/crypto/acme/autocert"
 	"karma.run/api"
@@ -16,9 +20,6 @@ import (
 	"karma.run/config"
 	"karma.run/db"
 	"karma.run/kvm"
-	"log"
-	"net/http"
-	"strings"
 )
 
 func main() {
@@ -52,9 +53,9 @@ func main() {
 		}
 		rootBytes := []byte(`root`)
 		e = db.Update(func(tx *bolt.Tx) error {
-			if tx.Bucket(rootBytes) != nil {
+			if rb := tx.Bucket(rootBytes); rb != nil {
 				log.Println("data file already initialized")
-				return nil
+				return (&kvm.VirtualMachine{RootBucket: rb}).UpgradeDB()
 			}
 			log.Println("initializing data file...")
 			rb, e := tx.CreateBucket(rootBytes)
