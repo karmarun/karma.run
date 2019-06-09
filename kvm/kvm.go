@@ -12,8 +12,8 @@ import (
 	"time"
 
 	bolt "github.com/coreos/bbolt"
-	karma "karma.run/codec/karma.v2"
 	"karma.run/cc"
+	karma "karma.run/codec/karma.v2"
 	"karma.run/common"
 	"karma.run/config"
 	"karma.run/definitions"
@@ -152,9 +152,7 @@ func (vm VirtualMachine) ParseCompileAndExecute(v val.Value, scope *ModelScope, 
 	return v, model, e
 }
 
-func (vm VirtualMachine) CompileAndExecuteExpression(expression xpr.Expression) (val.Value, mdl.Model, err.Error) {
-
-	fun := xpr.NewFunction(nil, expression)
+func (vm VirtualMachine) CompileAndExecuteFunction(fun xpr.Function) (val.Value, mdl.Model, err.Error) {
 
 	typed, e := vm.TypeFunction(fun, nil, AnyModel)
 	if e != nil {
@@ -168,6 +166,10 @@ func (vm VirtualMachine) CompileAndExecuteExpression(expression xpr.Expression) 
 
 	value, e = slurpIterators(value)
 	return value, typed.Actual, e
+}
+
+func (vm VirtualMachine) CompileAndExecuteExpression(expression xpr.Expression) (val.Value, mdl.Model, err.Error) {
+	return vm.CompileAndExecuteFunction(xpr.NewFunction(nil, expression))
 }
 
 func (vm VirtualMachine) ParseAndCompile(v val.Value, scope *ModelScope, parameters []mdl.Model, expect mdl.Model) (inst.Sequence, mdl.Model, err.Error) {
@@ -656,7 +658,7 @@ func (vm VirtualMachine) UpgradeDB() error {
 
 func (vm VirtualMachine) upgradePre110DB() error {
 
-	log.Println(`upgrading pre-v1.1.0 database to v1.1.0`)
+	// log.Println(`upgrading pre-v1.1.0 database to v1.1.0`)
 
 	db := vm.RootBucket
 
@@ -664,15 +666,70 @@ func (vm VirtualMachine) upgradePre110DB() error {
 		return e
 	}
 
-	meta, indx := vm.MetaModelId(), vm.IndexModelId()
+	meta, expr, tag := vm.MetaModelId(), vm.ExpressionModelId(), vm.TagModelId()
 
-	v := vm.WrapValueInMeta(mdl.ValueFromModel(meta, xpr.LanguageModel, nil), indx, meta)
-	if e := vm.RootBucket.Bucket([]byte(meta)).Put([]byte(indx), karma.Encode(MaterializeMeta(v), vm.WrapModelInMeta(meta, vm.MetaModel()))); e != nil {
+	createIndexModel := xpr.NewFunction(nil, xpr.Define{
+		Name: `indexModel`,
+		Argument: xpr.Create{
+			In:    xpr.Literal{val.Ref{meta, meta}},
+			Value: xpr.NewFunction([]string{`_`}, xpr.Literal{definitions.NewIndexModelValue(meta, expr)}),
+		},
+	}, xpr.Create{
+		In: xpr.Literal{val.Ref{meta, tag}},
+		Value: xpr.NewFunction([]string{`_`}, xpr.NewStruct{
+			"tag":   xpr.Literal{val.String("_index")},
+			"model": xpr.Scope(`indexModel`),
+		}),
+	}, xpr.Scope(`indexModel`))
+
+	v, _, e := vm.CompileAndExecuteFunction(createIndexModel)
+	if e != nil {
+		return e
+	}
+
+	indx := v.(val.Ref)[1]
+
+	mapping, e := vm.createFunction(xpr.NewFunction([]string{`index`}, xpr.Field{Name: `model`, Value: xpr.Scope(`index`)}))
+	if e != nil {
+		return e
+	}
+
+	create := xpr.NewFunction(nil, xpr.Create{
+		In: xpr.Literal{val.Ref{meta, indx}},
+		Value: xpr.NewFunction([]string{`_`}, xpr.Literal{
+			Value: val.StructFromMap(map[string]val.Value{
+				"model":   val.Ref{meta, indx},
+				"mapping": mapping,
+				"unique":  val.Bool(false),
+			}),
+		}),
+	})
+
+	if _, _, e := vm.CompileAndExecuteFunction(create); e != nil {
 		return e
 	}
 
 	return nil
 
+}
+
+func (vm VirtualMachine) createFunction(fun xpr.Function) (val.Ref, err.Error) {
+
+	funValue := xpr.ValueFromFunction(fun)
+
+	meta, expr := vm.MetaModelId(), vm.ExpressionModelId()
+
+	create := xpr.NewFunction(nil, xpr.Create{
+		In:    xpr.Literal{val.Ref{meta, expr}},
+		Value: xpr.NewFunction([]string{`_`}, xpr.Literal{funValue}),
+	})
+
+	v, _, e := vm.CompileAndExecuteFunction(create)
+	if e != nil {
+		return val.Ref{}, e
+	}
+
+	return v.(val.Ref), nil
 }
 
 func (vm VirtualMachine) InitDB() error {
@@ -885,6 +942,10 @@ func (vm VirtualMachine) InitDB() error {
 			return e
 		}
 
+	}
+
+	if e := vm.upgradePre110DB(); e != nil {
+		return e
 	}
 
 	return nil
