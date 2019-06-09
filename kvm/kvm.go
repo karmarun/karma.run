@@ -12,6 +12,7 @@ import (
 	"time"
 
 	bolt "github.com/coreos/bbolt"
+	karma "karma.run/codec/karma.v2"
 	"karma.run/cc"
 	"karma.run/common"
 	"karma.run/config"
@@ -21,7 +22,6 @@ import (
 	"karma.run/kvm/mdl"
 	"karma.run/kvm/val"
 	"karma.run/kvm/xpr"
-	"karma.run/codec/karma.v2"
 )
 
 var udpConn = (*net.UDPConn)(nil)
@@ -660,12 +660,11 @@ func (vm VirtualMachine) upgradePre110DB() error {
 
 	db := vm.RootBucket
 
-	if e := db.Put(definitions.VersionKeyBytes, []byte(definitions.KarmaRunVersion)); e != nil {
+	if e := db.Put(definitions.VersionKeyBytes, []byte(`1.1.0`)); e != nil {
 		return e
 	}
 
-	meta := vm.MetaModelId()
-	indx := vm.IndexModelId()
+	meta, indx := vm.MetaModelId(), vm.IndexModelId()
 
 	v := vm.WrapValueInMeta(mdl.ValueFromModel(meta, xpr.LanguageModel, nil), indx, meta)
 	if e := vm.RootBucket.Bucket([]byte(meta)).Put([]byte(indx), karma.Encode(MaterializeMeta(v), vm.WrapModelInMeta(meta, vm.MetaModel()))); e != nil {
