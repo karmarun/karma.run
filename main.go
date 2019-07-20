@@ -36,9 +36,9 @@ func init() {
 	flag.StringVar(&httpPort, "http-port", "80", "Required. Port to serve (insecure) HTTP clients on. Overriden by environment variable: PORT or HTTP_PORT.")
 	flag.StringVar(&httpsPort, "https-port", "443", "Required. Port to serve HTTPS and HTTP/2 clients on. Overriden by environment variable: HTTPS_PORT.")
 
-	flag.StringVar(&letsencryptDomains, "letsencrypt-domains", "", "Comma-separated list of HTTPS domains to automatically secure via LetsEncrypt. Overriden by environment variable: LETSENCRYPT_DOMAINS.")
-	flag.StringVar(&letsencryptEmail, "letsencrypt-email", "", "Sets the contact email for LetsEncrypt. Required if --letsencrypt-domains is set. Overriden by environment variable: LETSENCRYPT_EMAIL.")
-	flag.StringVar(&letsencryptCacheDir, "letsencrypt-cache-dir", "", "Sets the LetsEncrypt file cache location. Required if --letsencrypt-domains is set. Overriden by environment variable: LETSENCRYPT_CACHE_DIR.")
+	flag.StringVar(&letsencryptDomains, "letsencrypt-domains", "", "Comma-separated list of HTTPS domains to automatically secure via LetsEncrypt. Overriden by environment variable: KARMA_LETSENCRYPT_DOMAINS.")
+	flag.StringVar(&letsencryptEmail, "letsencrypt-email", "", "Sets the contact email for LetsEncrypt. Required if --letsencrypt-domains is set. Overriden by environment variable: KARMA_LETSENCRYPT_EMAIL.")
+	flag.StringVar(&letsencryptCacheDir, "letsencrypt-cache-dir", "", "Sets the LetsEncrypt file cache location. Required if --letsencrypt-domains is set. Overriden by environment variable: KARMA_LETSENCRYPT_CACHE_DIR.")
 
 	flag.StringVar(&httpsCertFile, "https-cert-file", "", "Path to TLS certificate. Has no effect if LetsEncrypt config if set. Overriden by environment variable: HTTPS_CERT_FILE.")
 	flag.StringVar(&httpsKeyFile, "https-key-file", "", "Path to TLS private key file. Has no effect if LetsEncrypt config if set. Overriden by environment variable: HTTPS_KEY_FILE.")
@@ -62,13 +62,13 @@ func main() {
 		if s := os.Getenv(`HTTPS_PORT`); len(s) > 0 {
 			httpsPort = s
 		}
-		if s := os.Getenv(`LETSENCRYPT_DOMAINS`); len(s) > 0 {
+		if s := os.Getenv(`KARMA_LETSENCRYPT_DOMAINS`); len(s) > 0 {
 			letsencryptDomains = s
 		}
-		if s := os.Getenv(`LETSENCRYPT_EMAIL`); len(s) > 0 {
+		if s := os.Getenv(`KARMA_LETSENCRYPT_EMAIL`); len(s) > 0 {
 			letsencryptEmail = s
 		}
-		if s := os.Getenv(`LETSENCRYPT_CACHE_DIR`); len(s) > 0 {
+		if s := os.Getenv(`KARMA_LETSENCRYPT_CACHE_DIR`); len(s) > 0 {
 			letsencryptCacheDir = s
 		}
 		if s := os.Getenv(`HTTPS_CERT_FILE`); len(s) > 0 {
@@ -108,13 +108,13 @@ func main() {
 		if e := os.Setenv(`HTTPS_PORT`, httpsPort); e != nil {
 			log.Fatalln(e)
 		}
-		if e := os.Setenv(`LETSENCRYPT_DOMAINS`, letsencryptDomains); e != nil {
+		if e := os.Setenv(`KARMA_LETSENCRYPT_DOMAINS`, letsencryptDomains); e != nil {
 			log.Fatalln(e)
 		}
-		if e := os.Setenv(`LETSENCRYPT_EMAIL`, letsencryptEmail); e != nil {
+		if e := os.Setenv(`KARMA_LETSENCRYPT_EMAIL`, letsencryptEmail); e != nil {
 			log.Fatalln(e)
 		}
-		if e := os.Setenv(`LETSENCRYPT_CACHE_DIR`, letsencryptCacheDir); e != nil {
+		if e := os.Setenv(`KARMA_LETSENCRYPT_CACHE_DIR`, letsencryptCacheDir); e != nil {
 			log.Fatalln(e)
 		}
 		if e := os.Setenv(`HTTPS_CERT_FILE`, httpsCertFile); e != nil {
