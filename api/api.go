@@ -37,7 +37,7 @@ func (p Payload) Close() {
 	PayloadPool.Put(p[:MaxPayloadBytes])
 }
 
-const MaxPayloadBytes = 1 * 1024 * 1024 // 1MB
+const MaxPayloadBytes = 10 * 1024 * 1024 // 10MB
 
 var (
 	PayloadPool = &sync.Pool{
